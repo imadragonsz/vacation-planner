@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "./supabaseClient.ts";
-import { VacationDetails } from "./VacationDetails.tsx";
+import { VacationDetails } from "./pages/VacationDetails.tsx";
 import { VacationCalendar } from "./VacationCalendar.tsx";
 import AccountPage from "./pages/AccountPage.tsx";
 import VacationEditModal from "./VacationEditModal.tsx";

@@ -1,5 +1,5 @@
 import React, { useState, Suspense } from "react";
-import { useLocations, Location } from "../hooks/useLocations.ts";
+import { useLocations, VacationLocation } from "../hooks/useLocations.ts";
 import { useAgendas } from "../hooks/useAgendas.ts";
 import { supabase } from "../../src/supabaseClient.ts";
 import { Vacation } from "../../src/vacation";
@@ -57,9 +57,8 @@ export function VacationDetails({
 
   const [newLocName, setNewLocName] = useState("");
   const [newLocAddr, setNewLocAddr] = useState("");
-  const [selectedLocation, setSelectedLocation] = useState<Location | null>(
-    null
-  );
+  const [selectedLocation, setSelectedLocation] =
+    useState<VacationLocation | null>(null);
 
   React.useEffect(() => {
     if (!selectedLocation && locations.length > 0) {
