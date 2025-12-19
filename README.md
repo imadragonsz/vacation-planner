@@ -55,6 +55,38 @@ To create a production build, run:
 npm run build
 ```
 
+## Setting Up Supabase
+
+This project requires a Supabase database for authentication and data storage. Follow these steps to set it up:
+
+1. **Create a Supabase Account**:
+
+   - Go to [Supabase](https://supabase.com) and sign up for a free account.
+
+2. **Create a New Project**:
+
+   - Once logged in, create a new project and provide the required details (e.g., project name, database password).
+
+3. **Get the API Keys**:
+
+   - Navigate to the "Settings" section of your project and copy the `SUPABASE_URL` and `SUPABASE_ANON_KEY`.
+
+4. **Set Up Environment Variables**:
+
+   - Create a `.env` file in the root of the `client` directory and add the following:
+     ```env
+     REACT_APP_SUPABASE_URL=your-supabase-url
+     REACT_APP_SUPABASE_ANON_KEY=your-anon-key
+     ```
+     Replace `your-supabase-url` and `your-anon-key` with the values from your Supabase project.
+
+5. **Run Database Migrations** (if applicable):
+
+   - Use the Supabase SQL editor to set up your database schema as required by the application.
+
+6. **Test the Connection**:
+   - Start the development server and ensure the application connects to Supabase successfully.
+
 ## Contributing
 
 Contributions are welcome! Please fork the repository and submit a pull request.
