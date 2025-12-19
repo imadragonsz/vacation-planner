@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient.ts";
 
-export type Location = {
+export type VacationLocation = {
   id: number;
   vacation_id: number;
   name: string;
@@ -9,7 +9,7 @@ export type Location = {
 };
 
 export function useLocations(vacationId: number) {
-  const [locations, setLocations] = useState<Location[]>([]);
+  const [locations, setLocations] = useState<VacationLocation[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -24,7 +24,7 @@ export function useLocations(vacationId: number) {
       .select("*")
       .eq("vacation_id", vacationId)
       .order("id", { ascending: true });
-    if (!error && data) setLocations(data as Location[]);
+    if (!error && data) setLocations(data as VacationLocation[]);
     setLoading(false);
   }
 
