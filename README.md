@@ -119,6 +119,10 @@ This project requires a Supabase database for authentication and data storage. F
 
 ---
 
+## About This Project
+
+This project was created with the assistance of **GitHub Copilot**, an AI-powered coding assistant. It helped streamline the development process by providing intelligent code suggestions and automating repetitive tasks.
+
 ## Contributing
 
 Contributions are welcome! Please fork the repository and submit a pull request.
