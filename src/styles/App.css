@@ -1,0 +1,250 @@
+/* General Styles */
+body {
+  margin: 0;
+  padding: 0;
+  background: linear-gradient(180deg, #1e1e2f, #181a21);
+  color: #fff;
+  font-family: "Segoe UI", "Roboto", Arial, sans-serif;
+}
+
+/* Layout */
+.vp-main {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 40px 16px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.vp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background: #232638;
+  border-radius: 12px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+}
+
+.vp-header h1 {
+  font-size: 36px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.vp-header nav {
+  display: flex;
+  gap: 16px;
+}
+
+.vp-header nav a {
+  color: #bfc7e0;
+  text-decoration: none;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.vp-header nav a:hover {
+  background: #3a3f54;
+}
+
+.vp-content {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 32px;
+}
+
+.vp-sidebar {
+  background: #232638;
+  border-radius: 12px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+  padding: 24px;
+  width: 100%;
+}
+
+.vp-sidebar h2 {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.vp-sidebar input[type="text"] {
+  width: 100%;
+  margin-bottom: 16px;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #3a3f54;
+  background: #181a21;
+  color: #fff;
+}
+
+.vp-sidebar label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  width: 100%;
+}
+
+.vp-sidebar ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.vp-sidebar ul li {
+  background: #3a3f54;
+  color: #fff;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+.vp-sidebar ul li:hover {
+  background: #4a4f64;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.vp-main-content {
+  background: #232638;
+  border-radius: 12px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+  padding: 24px;
+}
+
+.vp-details {
+  background: #3a3f54;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.vp-footer {
+  text-align: center;
+  padding: 16px;
+  background: #181a21;
+  color: #bfc7e0;
+  font-size: 14px;
+}
+
+/* Buttons */
+.vp-button {
+  background: #4caf50;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 20px;
+  font-weight: 600;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.vp-button:hover {
+  background: #45a049;
+  transform: scale(1.05);
+}
+
+/* Inputs */
+.vp-input {
+  width: 100%;
+  margin-bottom: 16px;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #3a3f54;
+  background: #181a21;
+  color: #fff;
+}
+
+/* Map and Agenda Styles */
+.vp-map-container {
+  background: #232638;
+  border-radius: 16px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+  padding: 32px;
+  margin-bottom: 24px;
+  margin-top: 24px;
+}
+
+.vp-map {
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.vp-agenda-container {
+  background: #232638;
+  border-radius: 16px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+  padding: 32px;
+  margin-top: 24px;
+}
+
+.vp-agenda-header {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: #fff;
+}
+
+.vp-agenda-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+}
+
+.vp-agenda-table th,
+.vp-agenda-table td {
+  padding: 14px;
+  text-align: left;
+  color: #fff;
+}
+
+.vp-agenda-table th {
+  background: #3a3f54;
+  font-weight: 600;
+}
+
+.vp-agenda-table tr:nth-child(even) {
+  background: #2a2e3c;
+}
+
+.vp-agenda-table tr:hover {
+  background: #4a4f64;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .vp-content {
+    grid-template-columns: 1fr;
+  }
+
+  .vp-sidebar,
+  .vp-main-content {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .vp-header h1 {
+    font-size: 28px;
+  }
+
+  .vp-header nav a {
+    font-size: 14px;
+    padding: 6px 12px;
+  }
+
+  .vp-header .vp-button {
+    font-size: 14px;
+    padding: 8px 14px;
+  }
+}
