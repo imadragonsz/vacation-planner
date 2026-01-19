@@ -31,7 +31,6 @@ export const useUser = () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      console.log("Fetched user:", user); // Log the fetched user
       setUser(user);
     };
 
@@ -39,7 +38,6 @@ export const useUser = () => {
 
     const { data: subscription } = supabase.auth.onAuthStateChange(
       (_event, session) => {
-        console.log("Auth state changed. Current user:", session?.user); // Log auth state changes
         setUser(session?.user || null);
       }
     );

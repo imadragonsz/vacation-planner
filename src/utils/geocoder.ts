@@ -1,6 +1,5 @@
 /**
- * Global geocoding queue to ensure we prioritize Photon and use Nominatim
- * as a rate-limited backup.
+ * Global geocoding queue using Photon (komoot.io).
  */
 
 interface GeocodeRequest {
@@ -12,8 +11,6 @@ interface GeocodeRequest {
 
 const queue: GeocodeRequest[] = [];
 let isProcessing = false;
-let lastNominatimRequestTime = 0;
-const NOMINATIM_DELAY = 1500; // Nominatim strict 1 req/sec + buffer
 
 // Basic LocalStorage cache to prevent repeated lookups for the same query
 const CACHE_KEY = "vp_geocoding_cache";
@@ -115,64 +112,32 @@ async function processQueue() {
     }
 
     try {
-      // 2. Try Photon First (Primary - No strict delay required)
       const photonUrl = getPhotonUrl(request.url);
-      if (photonUrl) {
-        try {
-          console.info(`[Geocoder] Trying Photon: ${photonUrl}`);
-          const res = await fetchWithTimeout(photonUrl, 8000);
-          if (res.ok) {
-            const data = await res.json();
-            const normalized = normalizePhotonResponse(data, request.url);
-
-            // If search returned results, use them. If empty, maybe Nominatim knows more?
-            if (
-              normalized &&
-              (!Array.isArray(normalized) || normalized.length > 0)
-            ) {
-              cache[request.url] = normalized;
-              saveCache();
-              request.resolve(normalized);
-              continue; // Move to next item in queue
-            }
-          }
-        } catch (err) {
-          console.warn(
-            "[Geocoder] Photon failed, falling back to Nominatim",
-            err
-          );
-        }
+      if (!photonUrl) {
+        request.reject(new Error("Invalid geocoding URL"));
+        continue;
       }
 
-      // 3. Try Nominatim (Backup - Strict 1 req/sec)
-      const now = Date.now();
-      const timeSinceLast = now - lastNominatimRequestTime;
-      if (timeSinceLast < NOMINATIM_DELAY) {
-        await new Promise((r) =>
-          setTimeout(r, NOMINATIM_DELAY - timeSinceLast)
-        );
-      }
-
-      console.info(`[Geocoder] Trying Nominatim (Backup): ${request.url}`);
-      lastNominatimRequestTime = Date.now();
-      const res = await fetchWithTimeout(request.url, 12000);
-
-      if (res.status === 503 || res.status === 429) {
-        if (request.retries < 3) {
-          queue.push({ ...request, retries: request.retries + 1 });
-          await new Promise((r) => setTimeout(r, 5000));
-        } else {
-          request.reject(new Error("Service unavailable after retries"));
-        }
-      } else {
+      console.info(`[Geocoder] Trying Photon: ${photonUrl}`);
+      const res = await fetchWithTimeout(photonUrl, 8000);
+      if (res.ok) {
         const data = await res.json();
-        cache[request.url] = data;
+        const normalized = normalizePhotonResponse(data, request.url);
+
+        cache[request.url] = normalized;
         saveCache();
-        request.resolve(data);
+        request.resolve(normalized);
+      } else {
+        throw new Error(`Photon failed with status ${res.status}`);
       }
     } catch (err: any) {
+      console.warn(
+        `[Geocoder] Error processing ${request.url}. Retries: ${request.retries}`
+      );
       if (request.retries < 2) {
         queue.push({ ...request, retries: request.retries + 1 });
+        // Small delay before retry
+        await new Promise((r) => setTimeout(r, 1000));
       } else {
         request.reject(err);
       }

@@ -45,8 +45,7 @@ function AuthForm({ onAuth, mode, setMode, errorMsg }: AuthFormProps) {
         reset: async () => supabase.auth.resetPasswordForEmail(resetEmail),
       };
 
-      const { error, data } = await actions[mode]();
-      console.log(`${mode} response:`, { error, data });
+      const { error } = await actions[mode]();
 
       if (error) {
         setMsg(error.message);

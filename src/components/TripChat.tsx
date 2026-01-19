@@ -92,9 +92,6 @@ export default function TripChat({ vacationId, user }: TripChatProps) {
         }
       )
       .subscribe((status) => {
-        if (status === "SUBSCRIBED") {
-          console.log("Successfully subscribed to chat events");
-        }
         if (status === "CHANNEL_ERROR") {
           console.error(
             "Realtime subscription failed. Check if Realtime is enabled in Supabase and your key is valid."

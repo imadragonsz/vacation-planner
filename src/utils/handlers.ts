@@ -7,19 +7,15 @@ export async function handleArchiveVacation(
   fetchVacations: () => void,
   setToast: (toast: { message: string; type: "success" | "error" }) => void
 ) {
-  console.log("Vacation ID:", vacation.id);
-
   if (vacation.archived) {
     const confirmed = window.confirm(
       "Are you sure you want to delete this vacation?"
     );
     if (confirmed) {
-      console.log("Deleting vacation:", vacation);
       const { error } = await supabase
         .from("vacations")
         .delete()
         .eq("id", vacation.id);
-      console.log("Supabase query result:", { error });
       if (!error) {
         fetchVacations(); // Ensure vacation list is fetched after deletion
         setToast({ message: "Vacation deleted.", type: "success" });
@@ -35,8 +31,6 @@ export async function handleArchiveVacation(
     .select("archived")
     .eq("id", Number(vacation.id));
 
-  console.log("Supabase response:", { vacationData, fetchError });
-
   if (fetchError || !vacationData || vacationData.length === 0) {
     setToast({ message: "Failed to fetch vacation status.", type: "error" });
     return;
@@ -50,12 +44,10 @@ export async function handleArchiveVacation(
     );
     if (confirmed) {
       pushUndo();
-      console.log("Archiving vacation:", vacation);
       const { error } = await supabase
         .from("vacations")
         .update({ archived: true })
         .eq("id", vacation.id);
-      console.log("Supabase query result:", { error });
       if (!error) {
         fetchVacations(); // Ensure vacation list is fetched after archiving
         setToast({ message: "Vacation archived.", type: "success" });
@@ -77,14 +69,10 @@ export async function handleArchiveRestore(
 
   if (!confirmed) return;
 
-  console.log("Restoring vacation:", vacation);
-
   const { error } = await supabase
     .from("vacations")
     .update({ archived: false })
     .eq("id", vacation.id);
-
-  console.log("Supabase query result:", { error });
 
   if (!error) {
     fetchVacations();

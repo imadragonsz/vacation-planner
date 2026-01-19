@@ -52,17 +52,22 @@ const LocationPopup: React.FC<LocationPopupProps> = ({
   }, [address, lat, lng]);
 
   return (
-    <div
-      style={{
-        maxWidth: 220,
-        maxHeight: 120,
-        overflowY: "auto",
-        wordBreak: "break-word",
-        overflowWrap: "break-word",
-      }}
-    >
-      <b>{name}</b>
-      {address && <div>{englishAddress || address}</div>}
+    <div className="vp-popup-container">
+      <div className="vp-popup-header">
+        <h3 className="vp-popup-title" style={{ fontSize: "1.1rem" }}>
+          {name}
+        </h3>
+      </div>
+      {address && (
+        <div className="vp-popup-body">
+          <div className="vp-popup-item">
+            <span className="vp-popup-icon">📍</span>
+            <span className="vp-popup-value" style={{ fontSize: "0.8rem" }}>
+              {englishAddress || address}
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -123,20 +128,43 @@ const AgendaMarker: React.FC<AgendaMarkerProps> = ({ agenda }) => {
     return (
       <Marker position={[35.6895, 139.6917]} icon={agendaIcon}>
         <Popup>
-          <div style={{ maxWidth: 220, color: "red" }}>
-            <b>Could not geocode address:</b>
-            <br />
-            {agenda.address}
-            <br />
-            <b>Agenda:</b> {agenda.description}
-            <br />
-            <b>Date:</b> {agenda.agenda_date}
-            {agenda.Time && (
-              <>
-                <br />
-                <b>Time:</b> {agenda.Time.slice(0, 5)}
-              </>
-            )}
+          <div className="vp-popup-container">
+            <div className="vp-popup-header">
+              <h3
+                className="vp-popup-title"
+                style={{ background: "#ff6b6b", WebkitBackgroundClip: "text" }}
+              >
+                Location Not Found
+              </h3>
+            </div>
+            <div className="vp-popup-body">
+              <div className="vp-popup-item">
+                <span
+                  className="vp-popup-icon"
+                  style={{
+                    background: "rgba(255,107,107,0.1)",
+                    color: "#ff6b6b",
+                  }}
+                >
+                  ⚠️
+                </span>
+                <span className="vp-popup-value" style={{ color: "#ff6b6b" }}>
+                  {agenda.address}
+                </span>
+              </div>
+              <div className="vp-popup-item">
+                <span
+                  className="vp-popup-icon"
+                  style={{
+                    background: "rgba(255,107,107,0.1)",
+                    color: "#ff6b6b",
+                  }}
+                >
+                  📝
+                </span>
+                <span className="vp-popup-value">{agenda.description}</span>
+              </div>
+            </div>
           </div>
         </Popup>
       </Marker>
@@ -145,25 +173,28 @@ const AgendaMarker: React.FC<AgendaMarkerProps> = ({ agenda }) => {
   return (
     <Marker position={[coords.lat, coords.lng]} icon={agendaIcon}>
       <Popup>
-        <div
-          style={{
-            maxWidth: 220,
-            maxHeight: 120,
-            overflowY: "auto",
-            wordBreak: "break-word",
-            overflowWrap: "break-word",
-          }}
-        >
-          <b>Agenda:</b> {agenda.description}
-          <br />
-          <b>Date:</b> {agenda.agenda_date}
-          {agenda.Time && ` | Time: ${agenda.Time.slice(0, 5)}`}
-          <br />
-          <b>Address:</b> {agenda.address}
-          <br />
-          <button onClick={handleGetRoute} style={{ marginTop: 8 }}>
-            Get Route
-          </button>
+        <div className="vp-popup-container">
+          <div className="vp-popup-header">
+            <h3 className="vp-popup-title">{agenda.description}</h3>
+          </div>
+          <div className="vp-popup-body">
+            <div className="vp-popup-item">
+              <span className="vp-popup-icon">📅</span>
+              <span className="vp-popup-value">
+                {agenda.agenda_date}
+                {agenda.Time && ` | ${agenda.Time.slice(0, 5)}`}
+              </span>
+            </div>
+            <div className="vp-popup-item">
+              <span className="vp-popup-icon">📍</span>
+              <span className="vp-popup-value" style={{ fontSize: "0.8rem" }}>
+                {agenda.address}
+              </span>
+            </div>
+            <button className="vp-popup-button" onClick={handleGetRoute}>
+              Get Route
+            </button>
+          </div>
         </div>
       </Popup>
     </Marker>

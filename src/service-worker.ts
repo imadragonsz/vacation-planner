@@ -123,7 +123,7 @@ registerRoute(
 // Helpful for showing recent weather/location info even when signal is spotty.
 registerRoute(
   ({ url }) =>
-    url.hostname.includes("nominatim.openstreetmap.org") ||
+    url.hostname.includes("photon.komoot.io") ||
     url.hostname.includes("api.open-meteo.com"),
   new StaleWhileRevalidate({
     cacheName: "location-and-weather",

@@ -26,13 +26,11 @@ export default function MyItinerary({ user, onHome }: MyItineraryProps) {
   useEffect(() => {
     async function fetchMyItinerary() {
       if (!user) {
-        console.log("[MyItinerary] No user found, skipping fetch");
         return;
       }
       setLoading(true);
 
       const userId = user.id;
-      console.log("[MyItinerary] Fetching for userId:", userId);
 
       try {
         // Step 1: Fetch joined location IDs
@@ -49,7 +47,6 @@ export default function MyItinerary({ user, onHome }: MyItineraryProps) {
         }
 
         const joinedLocIds = lpData?.map((lp) => lp.location_id) || [];
-        console.log("[MyItinerary] Joined Location IDs:", joinedLocIds);
 
         // Step 2: Fetch joined agenda IDs
         const { data: apData, error: apError } = await supabase
@@ -65,7 +62,6 @@ export default function MyItinerary({ user, onHome }: MyItineraryProps) {
         }
 
         const joinedAgIds = apData?.map((ap) => ap.agenda_id) || [];
-        console.log("[MyItinerary] Joined Activity IDs:", joinedAgIds);
 
         // Map to group items by location
         const locationGroups: Record<number, any> = {};
@@ -182,7 +178,6 @@ export default function MyItinerary({ user, onHome }: MyItineraryProps) {
           );
         });
 
-        console.log("[MyItinerary] Processed groups:", processedGroups);
         setItems(processedGroups);
       } catch (err) {
         console.error("[MyItinerary] Critical error:", err);

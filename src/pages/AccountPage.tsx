@@ -70,7 +70,6 @@ export default function AccountPage({
     }
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) console.error(error.message);
-    else console.log("Password updated!");
     setCurrentPassword("");
     setNewPassword("");
   }

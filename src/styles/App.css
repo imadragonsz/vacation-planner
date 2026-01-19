@@ -1,3 +1,14 @@
+:root {
+  --bg: #0f1115;
+  --card: #1c1f26;
+  --text: #ffffff;
+  --text-muted: #94a3b8;
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --glass: rgba(255, 255, 255, 0.03);
+  --border: rgba(255, 255, 255, 0.08);
+}
+
 /* General Styles */
 html,
 body {
@@ -290,18 +301,105 @@ body {
   }
 }
 
-@media (max-width: 480px) {
-  .vp-header h1 {
-    font-size: 28px;
-  }
+/* Leaflet adjustments */
+.leaflet-popup-content-wrapper {
+  background: #1e2130 !important;
+  color: #fff !important;
+  border-radius: 16px !important;
+  padding: 0 !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
 
-  .vp-header nav a {
-    font-size: 14px;
-    padding: 6px 12px;
-  }
+.leaflet-popup-tip {
+  background: #1e2130 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
 
-  .vp-header .vp-button {
-    font-size: 14px;
-    padding: 8px 14px;
-  }
+.leaflet-popup-content {
+  margin: 0 !important;
+  width: auto !important;
+  min-width: 200px !important;
+  max-width: 300px !important;
+}
+
+.leaflet-container a.leaflet-popup-close-button {
+  color: #94a3b8 !important;
+  padding: 8px 8px 0 0 !important;
+  font-size: 18px !important;
+}
+
+.leaflet-container a.leaflet-popup-close-button:hover {
+  color: #fff !important;
+}
+
+.vp-popup-container {
+  padding: 20px;
+}
+
+.vp-popup-header {
+  margin-bottom: 16px;
+}
+
+.vp-popup-title {
+  font-weight: 800;
+  font-size: 1.25rem;
+  margin: 0;
+  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.02em;
+}
+
+.vp-popup-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.vp-popup-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+
+.vp-popup-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: rgba(59, 130, 246, 0.1);
+  border-radius: 6px;
+  color: #60a5fa;
+  font-size: 12px;
+}
+
+.vp-popup-value {
+  color: #e2e8f0;
+  font-weight: 500;
+  flex: 1;
+}
+
+.vp-popup-button {
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.vp-popup-button:hover {
+  background: #2563eb;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
 }
