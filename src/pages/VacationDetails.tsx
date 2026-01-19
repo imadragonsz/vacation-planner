@@ -1,5 +1,6 @@
 import React, { useState, useEffect, Suspense } from "react";
 import { useLocations, VacationLocation } from "../hooks/useLocations";
+import { addToGeocodeQueue } from "../utils/geocoder";
 import { useAgendas } from "../hooks/useAgendas";
 import { useParticipants, Participant } from "../hooks/useParticipants";
 import { useItemParticipants } from "../hooks/useItemParticipants";
@@ -21,6 +22,8 @@ import {
   Tooltip,
   ToggleButton,
   ToggleButtonGroup,
+  useTheme,
+  useMediaQuery,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
@@ -94,36 +97,50 @@ export function VacationDetails({
   const { locations, addLocation, updateLocation, removeLocation } =
     useLocations(vacationId);
 
-  // Geocode locations for map pins
+  // Geocode locations for map pins with rate limiting
   const [geoLocations, setGeoLocations] = useState<any[]>([]);
   React.useEffect(() => {
     let cancelled = false;
     async function geocodeAll() {
-      const results = await Promise.all(
-        locations.map(async (loc) => {
-          const query = loc.address || loc.name;
-          if (!query) return { ...loc };
+      const results: any[] = [];
+      for (const loc of locations) {
+        if (cancelled) break;
 
-          const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(
-            query
-          )}`;
-          try {
-            const res = await fetch(url);
-            const data = await res.json();
-            if (data && data.length > 0) {
-              return {
-                ...loc,
-                lat: parseFloat(data[0].lat),
-                lng: parseFloat(data[0].lon),
-              };
-            }
-          } catch (error) {
-            console.error("Error fetching geocode data:", error, query);
+        const query = loc.address || loc.name;
+        if (!query) {
+          results.push({ ...loc });
+          if (!cancelled) setGeoLocations([...results]);
+          continue;
+        }
+
+        if (loc.lat && loc.lng) {
+          results.push({ ...loc });
+          if (!cancelled) setGeoLocations([...results]);
+          continue;
+        }
+
+        const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(
+          query
+        )}`;
+
+        try {
+          const data = await addToGeocodeQueue(url);
+          if (data && data.length > 0) {
+            results.push({
+              ...loc,
+              lat: parseFloat(data[0].lat),
+              lng: parseFloat(data[0].lon),
+            });
+          } else {
+            results.push({ ...loc });
           }
-          return { ...loc };
-        })
-      );
-      if (!cancelled) setGeoLocations(results);
+        } catch (error) {
+          console.error("Error fetching geocode data:", error, query);
+          results.push({ ...loc });
+        }
+
+        if (!cancelled) setGeoLocations([...results]);
+      }
     }
     geocodeAll();
     return () => {
@@ -287,7 +304,13 @@ export function VacationDetails({
         }}
       >
         {/* Left Column: Map and Agendas */}
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            gap: { xs: 2, md: 4 },
+          }}
+        >
           {/* Map Section */}
           <Paper
             elevation={0}
@@ -316,7 +339,7 @@ export function VacationDetails({
             </Box>
             <Box
               sx={{
-                height: 500,
+                height: { xs: 300, md: 500 },
                 borderRadius: 3,
                 overflow: "hidden",
                 bgcolor: "rgba(0,0,0,0.2)",
@@ -350,7 +373,7 @@ export function VacationDetails({
                 <Paper
                   elevation={0}
                   sx={{
-                    p: 4,
+                    p: { xs: 2, md: 4 },
                     borderRadius: 4,
                     bgcolor: "rgba(255,255,255,0.03)",
                     backdropFilter: "blur(10px)",
@@ -397,7 +420,7 @@ export function VacationDetails({
                         flexDirection: "column",
                         gap: 2.5,
                         mb: 4,
-                        p: 3,
+                        p: { xs: 2, sm: 3 },
                         borderRadius: 4,
                         bgcolor: "rgba(255,255,255,0.03)",
                         border: "1px solid rgba(255,255,255,0.05)",
@@ -669,7 +692,7 @@ export function VacationDetails({
           <Paper
             elevation={0}
             sx={{
-              p: 3,
+              p: { xs: 2, md: 3 },
               borderRadius: 4,
               bgcolor: "rgba(255,255,255,0.03)",
               backdropFilter: "blur(10px)",
@@ -707,7 +730,7 @@ export function VacationDetails({
                   flexDirection: "column",
                   gap: 2,
                   mb: 4,
-                  p: 2,
+                  p: { xs: 1.5, sm: 2 },
                   borderRadius: 3,
                   bgcolor: "rgba(0,0,0,0.1)",
                 }}
@@ -1047,6 +1070,8 @@ export function VacationEditor({
   leaveVacation,
   participants,
 }: VacationEditorProps) {
+  const muiTheme = useTheme();
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down("sm"));
   const [editing, setEditing] = useState(false);
   const [ownerProfile, setOwnerProfile] = useState<any>(null);
 
@@ -1081,7 +1106,7 @@ export function VacationEditor({
   }
 
   return (
-    <Box sx={{ mb: 6 }}>
+    <Box sx={{ px: { xs: 2, md: 4, lg: 6 }, mb: 6 }}>
       {editing ? (
         <Paper
           elevation={0}
@@ -1099,6 +1124,7 @@ export function VacationEditor({
               gridTemplateColumns: { xs: "1fr", md: "2fr 1fr 1fr auto" },
               gap: 2,
               alignItems: "end",
+              maxWidth: "100%",
             }}
           >
             <TextField
@@ -1107,6 +1133,7 @@ export function VacationEditor({
               value={name}
               onChange={(e) => setName(e.target.value)}
               fullWidth
+              sx={{ maxWidth: { md: "none" } }}
             />
             <TextField
               label="Start Date"
@@ -1148,8 +1175,10 @@ export function VacationEditor({
         <Box
           sx={{
             display: "flex",
+            flexDirection: { xs: "column", md: "row" },
             justifyContent: "space-between",
-            alignItems: "center",
+            alignItems: { xs: "flex-start", md: "center" },
+            gap: 2,
           }}
         >
           <Box>
@@ -1159,6 +1188,8 @@ export function VacationEditor({
                 fontWeight: 900,
                 letterSpacing: "-1.5px",
                 mb: 0.5,
+                fontSize: { xs: "2rem", md: "3rem" },
+                wordBreak: "break-word",
                 background:
                   "linear-gradient(90deg, #fff 0%, rgba(255,255,255,0.7) 100%)",
                 WebkitBackgroundClip: "text",
@@ -1167,7 +1198,14 @@ export function VacationEditor({
             >
               {vacation.name}
             </Typography>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1.5,
+                flexWrap: "wrap",
+              }}
+            >
               <Typography
                 variant="overline"
                 sx={{
@@ -1308,6 +1346,7 @@ export function VacationEditor({
             <Button
               onClick={() => setEditing(true)}
               variant="outlined"
+              fullWidth={isMobile}
               startIcon={<EditIcon sx={{ fontSize: "1rem" }} />}
               sx={{
                 color: "rgba(255,255,255,0.6)",
@@ -1317,15 +1356,14 @@ export function VacationEditor({
                   borderColor: "rgba(255,255,255,0.2)",
                 },
                 borderRadius: 2,
-                px: 2,
-                py: 0.8,
-                fontWeight: 800,
-                fontSize: "0.85rem",
-                backdropFilter: "blur(10px)",
-                textTransform: "none",
+                px: 2.5,
+                py: 1,
+                fontWeight: 700,
+                mt: { xs: 1, md: 0 },
+                maxWidth: { xs: "280px", md: "none" },
               }}
             >
-              Edit Trip
+              Edit Trip Details
             </Button>
           )}
         </Box>

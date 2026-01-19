@@ -155,7 +155,10 @@ export default function TripChat({ vacationId, user }: TripChatProps) {
         >
           <ChatIcon sx={{ color: "#fff", fontSize: 20 }} />
         </Box>
-        <Typography variant="h6" sx={{ fontWeight: 800 }}>
+        <Typography
+          variant="h6"
+          sx={{ fontWeight: 800, fontSize: { xs: "1rem", md: "1.25rem" } }}
+        >
           Trip Chat
         </Typography>
       </Box>

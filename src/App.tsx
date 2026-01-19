@@ -28,8 +28,15 @@ import {
   Divider,
   Tabs,
   Tab,
+  BottomNavigation,
+  BottomNavigationAction,
+  Paper,
+  useMediaQuery,
 } from "@mui/material";
 import MapIcon from "@mui/icons-material/Map";
+import HomeIcon from "@mui/icons-material/Home";
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import AddIcon from "@mui/icons-material/Add";
 
 import { Vacation } from "./vacation";
@@ -92,6 +99,8 @@ function App({ user, setUser }: AppProps) {
 
   const loading = vacationsLoading || addVacationLoading;
 
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
   // State variables
   const [loadingUser, setLoadingUser] = useState(true);
   const [search, setSearch] = useState("");
@@ -117,6 +126,22 @@ function App({ user, setUser }: AppProps) {
 
   useEffect(() => {
     fetchVacations(showArchived);
+
+    // Subscribe to any changes in the vacations table
+    const channel = supabase
+      .channel("vacations-list-channel")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "vacations" },
+        () => {
+          fetchVacations(showArchived);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [showArchived, fetchVacations]);
 
   // Check database connection
@@ -440,12 +465,19 @@ function App({ user, setUser }: AppProps) {
                 backdropFilter: "blur(20px)",
                 p: 3,
                 borderRight: "1px solid rgba(255, 255, 255, 0.05)",
-                display: "flex",
+                display:
+                  isMobile &&
+                  (selectedVacation ||
+                    showAccount ||
+                    showCalendar ||
+                    showItinerary)
+                    ? "none"
+                    : "flex",
                 flexDirection: "column",
                 gap: 2,
                 position: "sticky",
                 top: 0,
-                height: "calc(100vh - 84px)",
+                height: isMobile ? "auto" : "calc(100vh - 84px)",
               }}
             >
               <Typography
@@ -637,6 +669,7 @@ function App({ user, setUser }: AppProps) {
                 height: "calc(100vh - 84px)",
                 overflowY: "auto",
                 bgcolor: "inherit",
+                p: { xs: 1.5, sm: 2, md: 3 }, // Added padding here
               }}
             >
               {selectedVacation ? (
@@ -691,6 +724,57 @@ function App({ user, setUser }: AppProps) {
               type={toastType}
               onClose={() => setToastMessage(null)}
             />
+          )}
+
+          {isMobile && user && (
+            <Paper
+              sx={{
+                position: "fixed",
+                bottom: 0,
+                left: 0,
+                right: 0,
+                zIndex: 1100,
+              }}
+              elevation={3}
+            >
+              <BottomNavigation
+                showLabels
+                value={
+                  showAccount ? 3 : showCalendar ? 2 : showItinerary ? 1 : 0
+                }
+                onChange={(event, newValue) => {
+                  if (newValue === 0) {
+                    setShowAccount(false);
+                    setShowCalendar(false);
+                    setShowItinerary(false);
+                    setSelectedVacation(null);
+                  } else if (newValue === 1) {
+                    setShowAccount(false);
+                    setShowCalendar(false);
+                    setShowItinerary(true);
+                  } else if (newValue === 2) {
+                    setShowAccount(false);
+                    setShowCalendar(true);
+                    setShowItinerary(false);
+                  } else if (newValue === 3) {
+                    setShowAccount(true);
+                    setShowCalendar(false);
+                    setShowItinerary(false);
+                  }
+                }}
+              >
+                <BottomNavigationAction label="Trips" icon={<HomeIcon />} />
+                <BottomNavigationAction label="Plan" icon={<MapIcon />} />
+                <BottomNavigationAction
+                  label="Calendar"
+                  icon={<CalendarMonthIcon />}
+                />
+                <BottomNavigationAction
+                  label="Account"
+                  icon={<AccountCircleIcon />}
+                />
+              </BottomNavigation>
+            </Paper>
           )}
         </div>
       </UserContext.Provider>

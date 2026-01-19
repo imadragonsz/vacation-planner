@@ -1,4 +1,5 @@
 import React from "react";
+import { addToGeocodeQueue } from "./utils/geocoder";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import { agendaIcon, locationIcon } from "./markerIcons";
 import "leaflet/dist/leaflet.css";
@@ -39,10 +40,10 @@ const LocationPopup: React.FC<LocationPopupProps> = ({
 
   React.useEffect(() => {
     if (!address) return;
-    fetch(
+    // Using global geocode queue to prevent rate limiting
+    addToGeocodeQueue(
       `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=en`
     )
-      .then((res) => res.json())
       .then((data) => {
         if (data && data.display_name) setEnglishAddress(data.display_name);
         else setEnglishAddress(address);
@@ -76,23 +77,37 @@ const AgendaMarker: React.FC<AgendaMarkerProps> = ({ agenda }) => {
 
   React.useEffect(() => {
     if (!agenda.address) return;
-    fetch(
-      `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(
-        agenda.address
-      )}`
-    )
-      .then((res) => res.json())
-      .then((data) => {
-        if (data && data.length > 0) {
+
+    let cancelled = false;
+
+    const performGeocode = async () => {
+      // Small random startup jitter to spread out initial queueing
+      await new Promise((resolve) => setTimeout(resolve, Math.random() * 2000));
+      if (cancelled) return;
+
+      try {
+        const data = await addToGeocodeQueue(
+          `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(
+            agenda.address || ""
+          )}`
+        );
+        if (!cancelled && data && data.length > 0) {
           setCoords({
             lat: parseFloat(data[0].lat),
             lng: parseFloat(data[0].lon),
           });
         }
-      })
-      .catch((err) => {
-        console.error("AgendaMarker geocode error for", agenda.address, err);
-      });
+      } catch (err) {
+        if (!cancelled) {
+          console.error("AgendaMarker geocode error for", agenda.address, err);
+        }
+      }
+    };
+
+    performGeocode();
+    return () => {
+      cancelled = true;
+    };
   }, [agenda.address]);
 
   const handleGetRoute = () => {
@@ -177,7 +192,10 @@ const VacationMap = ({
         zoom={4}
         style={{ height: "100%", width: "100%" }}
       >
-        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+        <TileLayer
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        />
         {locations.map((loc) => {
           if (loc.lat && loc.lng) {
             return (

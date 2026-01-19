@@ -89,7 +89,7 @@ function AuthForm({ onAuth, mode, setMode, errorMsg }: AuthFormProps) {
         flexDirection: "column",
         alignItems: "stretch",
         gap: 3,
-        p: 6,
+        p: { xs: 3, md: 6 },
         width: "100%",
         maxWidth: 420,
         backgroundColor: "rgba(255, 255, 255, 0.05)",

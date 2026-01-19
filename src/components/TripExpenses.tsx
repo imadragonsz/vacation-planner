@@ -91,7 +91,28 @@ export default function TripExpenses({ vacationId, user }: TripExpensesProps) {
   useEffect(() => {
     fetchExpenses();
     fetchRates();
-  }, [fetchExpenses]);
+
+    // Subscribe to real-time changes
+    const channel = supabase
+      .channel(`expenses-${vacationId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "trip_expenses",
+          filter: `vacation_id=eq.${vacationId}`,
+        },
+        () => {
+          fetchExpenses();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchExpenses, vacationId]);
 
   async function handleAddExpense(e: React.FormEvent) {
     e.preventDefault();
@@ -167,7 +188,10 @@ export default function TripExpenses({ vacationId, user }: TripExpensesProps) {
           <AccountBalanceWalletIcon sx={{ color: "#fff", fontSize: 20 }} />
         </Box>
         <Box sx={{ flex: 1 }}>
-          <Typography variant="h6" sx={{ fontWeight: 800 }}>
+          <Typography
+            variant="h6"
+            sx={{ fontWeight: 800, fontSize: { xs: "1rem", md: "1.25rem" } }}
+          >
             Budgeting
           </Typography>
           <Typography
@@ -222,8 +246,14 @@ export default function TripExpenses({ vacationId, user }: TripExpensesProps) {
             }}
           />
         </Box>
-        <Box sx={{ display: "flex", gap: 1 }}>
-          <FormControl size="small" sx={{ minWidth: 110 }}>
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: { xs: "column", sm: "row" },
+            gap: 1,
+          }}
+        >
+          <FormControl size="small" sx={{ minWidth: { xs: "100%", sm: 110 } }}>
             <Select
               value={currency}
               onChange={(e) => setCurrency(e.target.value)}
@@ -382,10 +412,16 @@ export default function TripExpenses({ vacationId, user }: TripExpensesProps) {
                     },
                   }}
                 />
-                <Box sx={{ textAlign: "right", mr: 1 }}>
+                <Box
+                  sx={{ textAlign: "right", mr: 1, minWidth: "fit-content" }}
+                >
                   <Typography
                     variant="body2"
-                    sx={{ fontWeight: 900, color: "#4caf50" }}
+                    sx={{
+                      fontWeight: 900,
+                      color: "#81c784", // Brighter green for better visibility
+                      fontSize: "1rem",
+                    }}
                   >
                     {symbol}
                     {Number(exp.amount).toFixed(2)}

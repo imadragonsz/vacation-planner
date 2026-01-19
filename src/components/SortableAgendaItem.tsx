@@ -69,13 +69,15 @@ export function SortableAgendaItem({
       style={style}
       elevation={0}
       sx={{
-        p: 2,
+        p: { xs: 1.5, sm: 2 },
         borderRadius: 2,
         bgcolor: "rgba(255,255,255,0.02)",
         border: "1px solid rgba(255,255,255,0.05)",
         display: "flex",
-        alignItems: "center",
-        gap: 2,
+        flexDirection: { xs: "column", sm: "row" },
+        alignItems: { xs: "stretch", sm: "center" },
+        gap: { xs: 1, sm: 2 },
+        position: "relative",
         transition: "all 0.2s",
         "&:hover": {
           bgcolor: "rgba(255,255,255,0.04)",
@@ -90,111 +92,141 @@ export function SortableAgendaItem({
         }),
       }}
     >
-      {canEdit && (
-        <Box
-          className="drag-handle"
-          {...attributes}
-          {...listeners}
-          sx={{
-            cursor: "grab",
-            opacity: 0.1,
-            transition: "opacity 0.2s",
-            "&:active": { cursor: "grabbing" },
-            display: "flex",
-            alignItems: "center",
-          }}
-        >
-          <DragIndicatorIcon fontSize="small" />
-        </Box>
-      )}
-
-      <Box sx={{ minWidth: 60, textAlign: "center" }}>
-        <Typography
-          variant="caption"
-          sx={{
-            fontWeight: 800,
-            color: "primary.main",
-            textTransform: "uppercase",
-            fontSize: "0.65rem",
-            letterSpacing: 1,
-          }}
-        >
-          {new Date(ag.agenda_date).toLocaleDateString(undefined, {
-            month: "short",
-          })}
-        </Typography>
-        <Typography variant="h6" sx={{ fontWeight: 900, lineHeight: 1 }}>
-          {new Date(ag.agenda_date).getDate()}
-        </Typography>
-        {ag.Time && (
-          <Typography
-            variant="caption"
-            sx={{
-              display: "block",
-              fontWeight: 700,
-              mt: 0.5,
-              opacity: 0.7,
-              fontSize: "0.7rem",
-            }}
-          >
-            {ag.Time.slice(0, 5)}
-          </Typography>
-        )}
-      </Box>
-
-      <Divider orientation="vertical" flexItem sx={{ opacity: 0.1 }} />
-
+      {/* Header section with Date, Icon and Text */}
       <Box
         sx={{
           display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: 32,
-          height: 32,
-          borderRadius: 1,
-          bgcolor: "rgba(255,255,255,0.03)",
-          color: "primary.main",
+          alignItems: "flex-start",
+          gap: { xs: 1.5, sm: 2 },
+          flex: 1,
+          minWidth: 0,
         }}
       >
-        {getTravelIcon(ag.type || "activity")}
-      </Box>
+        {canEdit && (
+          <Box
+            className="drag-handle"
+            {...attributes}
+            {...listeners}
+            sx={{
+              cursor: "grab",
+              opacity: 0.1,
+              transition: "opacity 0.2s",
+              "&:active": { cursor: "grabbing" },
+              display: "flex",
+              alignItems: "center",
+              mt: 1,
+            }}
+          >
+            <DragIndicatorIcon fontSize="small" />
+          </Box>
+        )}
 
-      <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Typography sx={{ fontWeight: 700, fontSize: "1rem" }}>
-          {ag.description}
-        </Typography>
-        {ag.address && (
+        {/* Date Block */}
+        <Box sx={{ minWidth: { xs: 45, sm: 60 }, textAlign: "center" }}>
           <Typography
             variant="caption"
             sx={{
-              opacity: 0.4,
-              display: "flex",
-              alignItems: "center",
-              gap: 0.5,
-              mt: 0.2,
+              fontWeight: 800,
+              color: "primary.main",
+              textTransform: "uppercase",
+              fontSize: "0.65rem",
+              letterSpacing: 1,
             }}
           >
-            <LocationOnIcon sx={{ fontSize: 13 }} />
-            {ag.address}
+            {new Date(ag.agenda_date).toLocaleDateString(undefined, {
+              month: "short",
+            })}
           </Typography>
-        )}
-        <Box sx={{ display: "flex", alignItems: "center", mt: 0.5 }}>
-          <AvatarGroup
-            max={3}
-            sx={{
-              "& .MuiAvatar-root": {
-                width: 20,
-                height: 20,
-                fontSize: "0.55rem",
-              },
-            }}
+          <Typography variant="h6" sx={{ fontWeight: 900, lineHeight: 1 }}>
+            {new Date(ag.agenda_date).getDate()}
+          </Typography>
+          {ag.Time && (
+            <Typography
+              variant="caption"
+              sx={{
+                display: "block",
+                fontWeight: 700,
+                mt: 0.5,
+                opacity: 0.7,
+                fontSize: "0.7rem",
+              }}
+            >
+              {ag.Time.slice(0, 5)}
+            </Typography>
+          )}
+        </Box>
+
+        <Divider
+          orientation="vertical"
+          flexItem
+          sx={{ opacity: 0.1, display: { xs: "none", sm: "block" } }}
+        />
+
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Box
+            sx={{ display: "flex", alignItems: "flex-start", gap: 1, mb: 0.5 }}
           >
-            {participants.map((p: any) => (
-              <Tooltip key={p.user_id} title={p.display_name}>
-                <Avatar>{p.display_name?.charAt(0)}</Avatar>
-              </Tooltip>
-            ))}
-          </AvatarGroup>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 24,
+                height: 24,
+                borderRadius: 1,
+                bgcolor: "rgba(255,255,255,0.03)",
+                color: "primary.main",
+                flexShrink: 0,
+                mt: 0.2,
+              }}
+            >
+              {getTravelIcon(ag.type || "activity")}
+            </Box>
+            <Typography
+              sx={{
+                fontWeight: 700,
+                fontSize: "1rem",
+                lineHeight: 1.2,
+                wordBreak: "break-word",
+              }}
+            >
+              {ag.description}
+            </Typography>
+          </Box>
+
+          {ag.address && (
+            <Typography
+              variant="caption"
+              sx={{
+                opacity: 0.4,
+                display: "flex",
+                alignItems: "center",
+                gap: 0.5,
+                mt: 0.2,
+              }}
+            >
+              <LocationOnIcon sx={{ fontSize: 13 }} />
+              {ag.address}
+            </Typography>
+          )}
+          <Box sx={{ display: "flex", alignItems: "center", mt: 0.5 }}>
+            <AvatarGroup
+              max={3}
+              sx={{
+                "& .MuiAvatar-root": {
+                  width: 20,
+                  height: 20,
+                  fontSize: "0.55rem",
+                },
+              }}
+            >
+              {participants.map((p: any) => (
+                <Tooltip key={p.user_id} title={p.display_name}>
+                  <Avatar>{p.display_name?.charAt(0)}</Avatar>
+                </Tooltip>
+              ))}
+            </AvatarGroup>
+          </Box>
         </Box>
       </Box>
 
@@ -204,8 +236,12 @@ export function SortableAgendaItem({
           display: "flex",
           alignItems: "center",
           gap: 0.5,
-          opacity: 0.6,
+          opacity: { xs: 1, sm: 0.6 },
           transition: "opacity 0.2s",
+          mt: { xs: 1, sm: 0 },
+          justifyContent: { xs: "flex-end", sm: "flex-start" },
+          borderTop: { xs: "1px solid rgba(255,255,255,0.05)", sm: "none" },
+          pt: { xs: 1, sm: 0 },
         }}
       >
         {user && canEdit && (

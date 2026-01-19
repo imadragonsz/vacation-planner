@@ -105,7 +105,13 @@ const VacationAddModal: React.FC<VacationAddModalProps> = ({
               },
             }}
           />
-          <Box sx={{ display: "flex", gap: 2 }}>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: { xs: "column", sm: "row" },
+              gap: 2,
+            }}
+          >
             <DatePicker
               label="Start Date"
               value={startDate ? dayjs(startDate) : null}

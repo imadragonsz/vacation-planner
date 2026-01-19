@@ -1,5 +1,17 @@
 import React from "react";
-import { AppBar, Toolbar, Button, Typography } from "@mui/material";
+import {
+  AppBar,
+  Toolbar,
+  Button,
+  Typography,
+  Box,
+  IconButton,
+  useMediaQuery,
+  useTheme,
+} from "@mui/material";
+import LogoutIcon from "@mui/icons-material/Logout";
+import LightModeIcon from "@mui/icons-material/LightMode";
+import DarkModeIcon from "@mui/icons-material/DarkMode";
 
 export interface NavBarProps {
   theme: "dark" | "light";
@@ -25,6 +37,9 @@ const NavBar: React.FC<NavBarProps> = ({
   setShowAuthModal,
   onBackToTrips,
 }) => {
+  const muiTheme = useTheme();
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down("sm"));
+
   return (
     <AppBar
       position="sticky"
@@ -33,93 +48,116 @@ const NavBar: React.FC<NavBarProps> = ({
         backdropFilter: "blur(10px)",
         borderBottom: "1px solid rgba(255, 255, 255, 0.05)",
         boxShadow: "none",
-        mb: 4,
+        mb: { xs: 1, md: 4 },
       }}
     >
-      <Toolbar style={{ display: "flex", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
+      <Toolbar sx={{ display: "flex", justifyContent: "space-between" }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: "16px" }}>
           <Typography
             variant="h6"
             component="div"
-            sx={{ fontWeight: 800, letterSpacing: -0.5, mr: 2 }}
+            sx={{
+              fontWeight: 800,
+              letterSpacing: -0.5,
+              fontSize: { xs: "1.1rem", md: "1.25rem" },
+            }}
           >
             Vacation Planner
           </Typography>
-          <Button
-            color="inherit"
-            onClick={() => {
-              if (onBackToTrips) {
-                onBackToTrips();
-              } else {
-                setShowAccount(false);
-                setShowCalendar(false);
-                if (setShowItinerary) setShowItinerary(false);
-              }
-            }}
-            sx={{ fontWeight: 600 }}
-          >
-            Home
-          </Button>
-          <Button
-            color="inherit"
-            onClick={() => {
-              setShowAccount(false);
-              setShowCalendar(false);
-              if (setShowItinerary) setShowItinerary(true);
-            }}
-            disabled={!user}
-            sx={{ fontWeight: 600 }}
-          >
-            My Plan
-          </Button>
-          <Button
-            color="inherit"
-            onClick={() => {
-              setShowAccount(false);
-              setShowCalendar(true);
-              if (setShowItinerary) setShowItinerary(false);
-            }}
-            sx={{ fontWeight: 600 }}
-          >
-            Calendar
-          </Button>
-          <Button
-            color="inherit"
-            onClick={() => user && setShowAccount(true)}
-            disabled={!user}
-            sx={{ fontWeight: 600 }}
-          >
-            Account
-          </Button>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+
+          {!isMobile && (
+            <Box sx={{ display: "flex", gap: 1 }}>
+              <Button
+                color="inherit"
+                onClick={() => {
+                  if (onBackToTrips) {
+                    onBackToTrips();
+                  } else {
+                    setShowAccount(false);
+                    setShowCalendar(false);
+                    if (setShowItinerary) setShowItinerary(false);
+                  }
+                }}
+                sx={{ fontWeight: 600 }}
+              >
+                Home
+              </Button>
+              <Button
+                color="inherit"
+                onClick={() => {
+                  setShowAccount(false);
+                  setShowCalendar(false);
+                  if (setShowItinerary) setShowItinerary(true);
+                }}
+                disabled={!user}
+                sx={{ fontWeight: 600 }}
+              >
+                My Plan
+              </Button>
+              <Button
+                color="inherit"
+                onClick={() => {
+                  setShowAccount(false);
+                  setShowCalendar(true);
+                  if (setShowItinerary) setShowItinerary(false);
+                }}
+                sx={{ fontWeight: 600 }}
+              >
+                Calendar
+              </Button>
+              <Button
+                color="inherit"
+                onClick={() => user && setShowAccount(true)}
+                disabled={!user}
+                sx={{ fontWeight: 600 }}
+              >
+                Account
+              </Button>
+            </Box>
+          )}
+        </Box>
+
+        <Box sx={{ display: "flex", alignItems: "center", gap: "8px" }}>
           {user ? (
-            <Button
-              color="inherit"
-              onClick={handleLogout}
-              sx={{ fontWeight: 600 }}
-            >
-              Log Out
-            </Button>
+            isMobile ? (
+              <IconButton color="inherit" onClick={handleLogout} size="small">
+                <LogoutIcon fontSize="small" />
+              </IconButton>
+            ) : (
+              <Button
+                color="inherit"
+                onClick={handleLogout}
+                sx={{ fontWeight: 600 }}
+              >
+                Log Out
+              </Button>
+            )
           ) : (
             <Button
               color="inherit"
               onClick={() => setShowAuthModal && setShowAuthModal(true)}
-              sx={{ fontWeight: 600 }}
+              sx={{
+                fontWeight: 600,
+                fontSize: isMobile ? "0.8rem" : "0.875rem",
+              }}
             >
-              Login/Register
+              Login
             </Button>
           )}
-          <Button
-            variant="outlined"
+
+          <IconButton
             size="small"
             color="inherit"
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            sx={{ fontWeight: 600, ml: 1, borderRadius: 2 }}
+            sx={{ ml: 0.5 }}
           >
-            {theme === "dark" ? "☀️ Light" : "🌙 Dark"}
-          </Button>
-        </div>
+            {theme === "dark" ? (
+              <LightModeIcon fontSize="small" />
+            ) : (
+              <DarkModeIcon fontSize="small" />
+            )}
+          </IconButton>
+        </Box>
       </Toolbar>
     </AppBar>
   );

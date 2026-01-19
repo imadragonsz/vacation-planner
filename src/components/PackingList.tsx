@@ -65,7 +65,28 @@ export default function PackingList({ vacationId, user }: PackingListProps) {
 
   useEffect(() => {
     fetchItems();
-  }, [fetchItems]);
+
+    // Subscribe to real-time changes
+    const channel = supabase
+      .channel(`packing-${vacationId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "packing_items",
+          filter: `vacation_id=eq.${vacationId}`,
+        },
+        () => {
+          fetchItems();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchItems, vacationId]);
 
   async function handleAddItem(e: React.FormEvent) {
     e.preventDefault();
@@ -144,7 +165,10 @@ export default function PackingList({ vacationId, user }: PackingListProps) {
             <InventoryIcon sx={{ color: "#fff", fontSize: 20 }} />
           </Box>
           <Box sx={{ flex: 1 }}>
-            <Typography variant="h6" sx={{ fontWeight: 800 }}>
+            <Typography
+              variant="h6"
+              sx={{ fontWeight: 800, fontSize: { xs: "1rem", md: "1.25rem" } }}
+            >
               Packing Checklist
             </Typography>
             <Typography
