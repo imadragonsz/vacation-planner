@@ -17,6 +17,7 @@ export type Agenda = {
   agenda_date: string;
   description: string;
   address?: string;
+  Time?: string;
 };
 
 type LocationPopupProps = {
@@ -115,6 +116,12 @@ const AgendaMarker: React.FC<AgendaMarkerProps> = ({ agenda }) => {
             <b>Agenda:</b> {agenda.description}
             <br />
             <b>Date:</b> {agenda.agenda_date}
+            {agenda.Time && (
+              <>
+                <br />
+                <b>Time:</b> {agenda.Time.slice(0, 5)}
+              </>
+            )}
           </div>
         </Popup>
       </Marker>
@@ -135,6 +142,7 @@ const AgendaMarker: React.FC<AgendaMarkerProps> = ({ agenda }) => {
           <b>Agenda:</b> {agenda.description}
           <br />
           <b>Date:</b> {agenda.agenda_date}
+          {agenda.Time && ` | Time: ${agenda.Time.slice(0, 5)}`}
           <br />
           <b>Address:</b> {agenda.address}
           <br />

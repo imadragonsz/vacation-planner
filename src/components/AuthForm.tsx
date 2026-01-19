@@ -1,39 +1,24 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
-import { StyledButton } from "../ui";
+import { TextField, Button, IconButton, Typography, Box } from "@mui/material";
+import Visibility from "@mui/icons-material/Visibility";
+import VisibilityOff from "@mui/icons-material/VisibilityOff";
 
 interface AuthFormProps {
-  themeVars: any;
   onAuth: (err: any) => void;
   mode: "login" | "register" | "reset";
   setMode: (mode: "login" | "register" | "reset") => void;
   errorMsg: string | null;
 }
 
-function AuthForm({
-  themeVars,
-  onAuth,
-  mode,
-  setMode,
-  errorMsg,
-}: AuthFormProps) {
+function AuthForm({ onAuth, mode, setMode, errorMsg }: AuthFormProps) {
   const [email, setEmail] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
   const [resetEmail, setResetEmail] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const emailRef = useRef<HTMLInputElement>(null!);
-  const passwordRef = useRef<HTMLInputElement>(null!);
-  const resetEmailRef = useRef<HTMLInputElement>(null!);
-
-  useEffect(() => {
-    if (mode === "reset" && resetEmailRef.current) {
-      resetEmailRef.current.focus();
-    } else if (emailRef.current) {
-      emailRef.current.focus();
-    }
-  }, [mode]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -44,7 +29,19 @@ function AuthForm({
       const actions = {
         login: async () =>
           supabase.auth.signInWithPassword({ email, password }),
-        register: async () => supabase.auth.signUp({ email, password }),
+        register: async () => {
+          const { data, error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: { data: { display_name: displayName } },
+          });
+          if (!error && data.user) {
+            await supabase
+              .from("profiles")
+              .insert([{ id: data.user.id, display_name: displayName }]);
+          }
+          return { data, error };
+        },
         reset: async () => supabase.auth.resetPasswordForEmail(resetEmail),
       };
 
@@ -84,221 +81,198 @@ function AuthForm({
   }, [mode]);
 
   return (
-    <form
-      key={mode} // Force remount on mode change
+    <Box
+      component="form"
       onSubmit={handleSubmit}
-      className="auth-form-modal-form"
-      style={{
-        position: "fixed",
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "stretch",
+        gap: 3,
+        p: 6,
+        width: "100%",
+        maxWidth: 420,
+        backgroundColor: "rgba(255, 255, 255, 0.05)",
+        backdropFilter: "blur(15px)",
+        borderRadius: 6,
+        border: "1px solid rgba(255, 255, 255, 0.1)",
+        boxShadow: "0 25px 50px rgba(0,0,0,0.5)",
+        color: "#fff",
+        position: "absolute",
         top: "50%",
         left: "50%",
         transform: "translate(-50%, -50%)",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: "20px",
-        padding: "32px",
-        width: "100%",
-        maxWidth: "420px",
-        backgroundColor: themeVars.card,
-        borderRadius: "16px",
-        boxShadow: "0px 8px 32px rgba(0, 0, 0, 0.2)",
-        color: themeVars.text,
-        zIndex: 1000,
       }}
     >
-      <h2
-        className="auth-form-title"
-        style={{ fontSize: "24px", fontWeight: "bold", marginBottom: "10px" }}
-      >
-        {mode === "login"
-          ? "Sign In"
-          : mode === "register"
-          ? "Register"
-          : "Reset Password"}
-      </h2>
-      {mode !== "reset" && (
-        <input
-          ref={emailRef}
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          style={{
-            width: "100%",
-            padding: "14px",
-            borderRadius: "10px",
-            border: "1px solid #ccc",
-            fontSize: "16px",
-          }}
-        />
-      )}
-      {(mode === "login" || mode === "register") && (
-        <div
-          className="auth-form-password-row"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            width: "100%",
-          }}
-        >
-          <input
-            ref={passwordRef}
+      <Box sx={{ mb: 2, textAlign: "center" }}>
+        <Typography variant="h4" component="h2" sx={{ fontWeight: 900, mb: 1 }}>
+          {mode === "login"
+            ? "Welcome Back"
+            : mode === "register"
+            ? "Create Account"
+            : "Reset Password"}
+        </Typography>
+        <Typography variant="body2" sx={{ opacity: 0.6 }}>
+          {mode === "login"
+            ? "Please enter your details to sign in"
+            : mode === "register"
+            ? "Sign up to start planning your trips"
+            : "Enter your email to receive a reset link"}
+        </Typography>
+      </Box>
+
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+        {mode === "register" && (
+          <TextField
+            label="Display Name"
+            type="text"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            required
+            fullWidth
+            size="medium"
+          />
+        )}
+        {mode !== "reset" && (
+          <TextField
+            label="Email Address"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            fullWidth
+            size="medium"
+          />
+        )}
+        {(mode === "login" || mode === "register") && (
+          <TextField
+            label="Password"
             type={showPassword ? "text" : "password"}
-            placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            style={{
-              width: "100%",
-              padding: "14px",
-              borderRadius: "10px",
-              border: "1px solid #ccc",
-              fontSize: "16px",
+            fullWidth
+            size="medium"
+            InputProps={{
+              endAdornment: (
+                <IconButton
+                  onClick={() => setShowPassword(!showPassword)}
+                  edge="end"
+                  sx={{ color: "rgba(255,255,255,0.5)" }}
+                >
+                  {showPassword ? <VisibilityOff /> : <Visibility />}
+                </IconButton>
+              ),
             }}
           />
-          <button
-            type="button"
-            tabIndex={-1}
-            aria-label={showPassword ? "Hide password" : "Show password"}
-            onClick={() => setShowPassword((v) => !v)}
-            className="auth-form-password-toggle"
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              color: themeVars.text,
-              fontSize: "18px",
-            }}
-          >
-            {showPassword ? "🙈" : "👁️"}
-          </button>
-        </div>
-      )}
-      {mode === "reset" && (
-        <input
-          ref={resetEmailRef}
-          type="email"
-          placeholder="Email"
-          value={resetEmail}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            setResetEmail(e.target.value)
-          }
-          required
-          style={{
-            width: "100%",
-            padding: "14px",
-            borderRadius: "10px",
-            border: "1px solid #ccc",
-            fontSize: "16px",
+        )}
+        {mode === "reset" && (
+          <TextField
+            label="Email Address"
+            type="email"
+            value={resetEmail}
+            onChange={(e) => setResetEmail(e.target.value)}
+            required
+            fullWidth
+            size="medium"
+          />
+        )}
+      </Box>
+
+      {(msg || errorMsg) && (
+        <Typography
+          variant="body2"
+          sx={{
+            color: (msg || errorMsg)?.includes("Check your email")
+              ? "#4ade80"
+              : "#ff4d4d",
+            bgcolor: "rgba(0,0,0,0.2)",
+            p: 1.5,
+            borderRadius: 2,
+            textAlign: "center",
+            fontSize: "0.85rem",
+            fontWeight: 600,
           }}
-        />
+        >
+          {msg || errorMsg}
+        </Typography>
       )}
-      <StyledButton
+
+      <Button
         type="submit"
-        accent
-        themeVars={themeVars}
+        variant="contained"
+        color="primary"
+        fullWidth
         disabled={loading}
-        className="auth-form-submit"
-        style={{
-          width: "100%",
-          padding: "14px",
-          borderRadius: "10px",
-          fontSize: "18px",
-          backgroundColor: themeVars.accent,
-          color: themeVars.text,
-          fontWeight: "bold",
+        sx={{
+          py: 1.8,
+          fontSize: "1rem",
+          fontWeight: 800,
+          textTransform: "none",
+          borderRadius: 3,
+          boxShadow: "0 10px 20px rgba(25, 118, 210, 0.3)",
         }}
       >
         {loading
-          ? "Loading..."
+          ? "Processing..."
           : mode === "login"
           ? "Sign In"
           : mode === "register"
-          ? "Register"
+          ? "Create Account"
           : "Send Reset Link"}
-      </StyledButton>
-      <div
-        className="auth-form-links-row"
-        style={{
+      </Button>
+
+      <Box
+        sx={{
+          mt: 1,
           display: "flex",
-          justifyContent: "space-between",
-          width: "100%",
-          fontSize: "16px",
+          flexDirection: "column",
+          gap: 1,
+          alignItems: "center",
         }}
       >
-        {mode !== "login" && (
-          <StyledButton
-            type="button"
-            style={{
-              background: "none",
-              border: "none",
-              color: themeVars.accent,
-              cursor: "pointer",
-              textDecoration: "underline",
-              fontSize: "14px",
-            }}
-            themeVars={themeVars}
-            onClick={() => {
-              setMode("login");
-              setEmail("");
-              setPassword("");
-              setResetEmail("");
-            }}
-          >
-            Back to Login
-          </StyledButton>
-        )}
         {mode === "login" && (
           <>
-            <StyledButton
-              type="button"
-              style={{
-                background: "none",
-                border: "none",
-                color: themeVars.accent,
-                cursor: "pointer",
-                textDecoration: "underline",
-                fontSize: "14px",
-              }}
-              themeVars={themeVars}
-              onClick={() => {
-                setMode("register");
-                setEmail("");
-                setPassword("");
-              }}
+            <Button
+              variant="text"
+              sx={{ color: "rgba(255,255,255,0.6)", textTransform: "none" }}
+              onClick={() => setMode("register")}
             >
-              Register
-            </StyledButton>
-            <StyledButton
-              type="button"
-              style={{
-                background: "none",
-                border: "none",
-                color: themeVars.accent,
-                cursor: "pointer",
-                textDecoration: "underline",
-                fontSize: "14px",
+              Don't have an account? <strong>Sign Up</strong>
+            </Button>
+            <Button
+              variant="text"
+              sx={{
+                color: "rgba(255,255,255,0.4)",
+                fontSize: "0.75rem",
+                textTransform: "none",
               }}
-              themeVars={themeVars}
-              onClick={() => {
-                setMode("reset");
-                setResetEmail("");
-              }}
+              onClick={() => setMode("reset")}
             >
               Forgot Password?
-            </StyledButton>
+            </Button>
           </>
         )}
-      </div>
-      {(errorMsg || msg) && (
-        <p style={{ color: errorMsg ? "red" : "green", marginTop: "12px" }}>
-          {errorMsg || msg}
-        </p>
-      )}
-    </form>
+        {mode === "register" && (
+          <Button
+            variant="text"
+            sx={{ color: "rgba(255,255,255,0.6)", textTransform: "none" }}
+            onClick={() => setMode("login")}
+          >
+            Already have an account? <strong>Sign In</strong>
+          </Button>
+        )}
+        {mode === "reset" && (
+          <Button
+            variant="text"
+            sx={{ color: "rgba(255,255,255,0.6)", textTransform: "none" }}
+            onClick={() => setMode("login")}
+          >
+            Back to <strong>Sign In</strong>
+          </Button>
+        )}
+      </Box>
+    </Box>
   );
 }
 

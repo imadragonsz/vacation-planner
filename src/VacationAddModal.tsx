@@ -1,11 +1,20 @@
 import React, { useState } from "react";
-import "./styles/VacationAddModal.css";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Button,
+  Box,
+} from "@mui/material";
+import { DatePicker } from "@mui/x-date-pickers";
+import dayjs from "dayjs";
 
 interface VacationAddModalProps {
+  open: boolean;
   onClose: () => void;
   onSubmit: (data: VacationData) => void;
-  themeVars: any;
-  style?: React.CSSProperties; // Added optional style prop
 }
 
 interface VacationData {
@@ -16,10 +25,9 @@ interface VacationData {
 }
 
 const VacationAddModal: React.FC<VacationAddModalProps> = ({
+  open,
   onClose,
   onSubmit,
-  themeVars,
-  style,
 }) => {
   const [name, setName] = useState("");
   const [destination, setDestination] = useState("");
@@ -34,74 +42,124 @@ const VacationAddModal: React.FC<VacationAddModalProps> = ({
       return;
     }
 
-    console.log("Submitting vacation:", {
-      name,
-      destination,
-      startDate,
-      endDate,
-    });
-
     onSubmit({ name, destination, startDate, endDate });
     onClose();
   };
 
   return (
-    <div
-      className="vacation-add-modal"
-      style={{
-        background: themeVars.background,
-        color: themeVars.textColor,
-        ...style, // Merged inline styles
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{
+        sx: {
+          bgcolor: "rgba(255, 255, 255, 0.05)",
+          backdropFilter: "blur(20px)",
+          borderRadius: 6,
+          border: "1px solid rgba(255, 255, 255, 0.1)",
+          backgroundImage: "none",
+          p: 2,
+        },
       }}
     >
-      <div
-        className="modal-content"
-        style={{
-          background: themeVars.modalBackground,
-          color: themeVars.modalTextColor,
-        }}
-      >
-        <button className="close-button" onClick={onClose}>
-          ×
-        </button>
-        <h2>Add Vacation</h2>
-        <form onSubmit={handleSubmit} className="vacation-form">
-          <input
-            type="text"
-            placeholder="Trip Name"
+      <DialogTitle sx={{ fontWeight: 900, fontSize: "1.75rem", pb: 1 }}>
+        Add Vacation
+      </DialogTitle>
+      <DialogContent sx={{ mt: 2 }}>
+        <form
+          onSubmit={handleSubmit}
+          id="vacation-add-form"
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "20px",
+            paddingTop: "4px",
+          }}
+        >
+          <TextField
+            label="Trip Name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
-            className="vp-input"
+            fullWidth
+            placeholder="e.g. Summer in Italy"
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                bgcolor: "rgba(0,0,0,0.1)",
+                borderRadius: 2.5,
+              },
+            }}
           />
-          <input
-            type="text"
-            placeholder="Destination"
+          <TextField
+            label="Destination"
             value={destination}
             onChange={(e) => setDestination(e.target.value)}
             required
-            className="vp-input"
+            fullWidth
+            placeholder="e.g. Rome, Amalfi Coast"
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                bgcolor: "rgba(0,0,0,0.1)",
+                borderRadius: 2.5,
+              },
+            }}
           />
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            required
-            className="vp-input"
-          />
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            required
-            className="vp-input"
-          />
-          <button type="submit" className="vp-button">
-            Add Vacation
-          </button>
+          <Box sx={{ display: "flex", gap: 2 }}>
+            <DatePicker
+              label="Start Date"
+              value={startDate ? dayjs(startDate) : null}
+              onChange={(newValue) =>
+                setStartDate(newValue ? newValue.format("YYYY-MM-DD") : "")
+              }
+              sx={{
+                flex: 1,
+                "& .MuiOutlinedInput-root": {
+                  bgcolor: "rgba(0,0,0,0.1)",
+                  borderRadius: 2.5,
+                },
+              }}
+            />
+            <DatePicker
+              label="End Date"
+              value={endDate ? dayjs(endDate) : null}
+              onChange={(newValue) =>
+                setEndDate(newValue ? newValue.format("YYYY-MM-DD") : "")
+              }
+              sx={{
+                flex: 1,
+                "& .MuiOutlinedInput-root": {
+                  bgcolor: "rgba(0,0,0,0.1)",
+                  borderRadius: 2.5,
+                },
+              }}
+            />
+          </Box>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+      <DialogActions sx={{ p: 3, pt: 1, gap: 1 }}>
+        <Button
+          onClick={onClose}
+          variant="outlined"
+          sx={{
+            color: "rgba(255,255,255,0.6)",
+            borderColor: "rgba(255,255,255,0.2)",
+            borderRadius: 3,
+            px: 3,
+          }}
+        >
+          Cancel
+        </Button>
+        <Button
+          onClick={handleSubmit}
+          variant="contained"
+          color="primary"
+          sx={{ fontWeight: 800, borderRadius: 3, px: 4, py: 1 }}
+        >
+          Create Trip
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 };
 

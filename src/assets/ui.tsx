@@ -1,3 +1,0 @@
-// Moved from src\ui.tsx
-
-// ...existing code...

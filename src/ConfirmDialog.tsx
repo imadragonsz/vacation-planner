@@ -1,6 +1,12 @@
 import React from "react";
-import ModalOverlay from "./ModalOverlay";
-import { StyledButton } from "./ui";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Typography,
+} from "@mui/material";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -9,7 +15,6 @@ interface ConfirmDialogProps {
   onCancel: () => void;
   confirmText?: string;
   cancelText?: string;
-  themeVars: any;
 }
 
 const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
@@ -17,35 +22,54 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   message,
   onConfirm,
   onCancel,
-  confirmText = "Yes",
-  cancelText = "No",
-  themeVars,
+  confirmText = "Confirm",
+  cancelText = "Cancel",
 }) => {
-  if (!open) return null;
   return (
-    <ModalOverlay onClose={onCancel}>
-      <div
-        style={{
-          background: themeVars.card,
-          color: themeVars.text,
-          borderRadius: 12,
-          boxShadow: themeVars.shadow,
-          padding: 32,
-          minWidth: 280,
-          maxWidth: 400,
-        }}
-      >
-        <div style={{ marginBottom: 20 }}>{message}</div>
-        <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
-          <StyledButton onClick={onConfirm} accent themeVars={themeVars}>
-            {confirmText}
-          </StyledButton>
-          <StyledButton onClick={onCancel} danger themeVars={themeVars}>
-            {cancelText}
-          </StyledButton>
-        </div>
-      </div>
-    </ModalOverlay>
+    <Dialog
+      open={open}
+      onClose={onCancel}
+      maxWidth="xs"
+      fullWidth
+      PaperProps={{
+        sx: {
+          bgcolor: "rgba(255, 255, 255, 0.05)",
+          backdropFilter: "blur(20px)",
+          borderRadius: 5,
+          border: "1px solid rgba(255, 255, 255, 0.1)",
+          backgroundImage: "none",
+          p: 1,
+        },
+      }}
+    >
+      <DialogTitle sx={{ fontWeight: 800, fontSize: "1.25rem" }}>
+        Confirmation
+      </DialogTitle>
+      <DialogContent sx={{ pb: 1 }}>
+        <Typography sx={{ opacity: 0.9 }}>{message}</Typography>
+      </DialogContent>
+      <DialogActions sx={{ p: 2, gap: 1 }}>
+        <Button
+          onClick={onCancel}
+          variant="outlined"
+          sx={{
+            color: "rgba(255,255,255,0.6)",
+            borderColor: "rgba(255,255,255,0.2)",
+            borderRadius: 2,
+          }}
+        >
+          {cancelText}
+        </Button>
+        <Button
+          onClick={onConfirm}
+          variant="contained"
+          color="error"
+          sx={{ fontWeight: 700, borderRadius: 2 }}
+        >
+          {confirmText}
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 };
 

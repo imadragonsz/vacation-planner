@@ -12,13 +12,27 @@ export function useVacations(fetchVacations: () => void, pushUndo: () => void) {
     setError(null);
     const { data, error } = await supabase
       .from("vacations")
-      .select("*")
+      .select(
+        `
+        *,
+        profiles (
+          display_name
+        ),
+        vacation_participants (
+          user_id
+        )
+      `
+      )
       .order("id", { ascending: false });
 
     if (!error && data) {
+      const vacationsWithProfiles = data.map((vac) => ({
+        ...vac,
+        owner_name: vac.profiles?.display_name,
+      }));
       const filteredData = includeArchived
-        ? data
-        : data.filter((vacation) => !vacation.archived);
+        ? vacationsWithProfiles
+        : vacationsWithProfiles.filter((vacation) => !vacation.archived);
       setVacations(filteredData as Vacation[]);
     } else {
       setError(error?.message || "Failed to fetch vacations");
@@ -84,11 +98,13 @@ export function useAddVacation(
     destination,
     startDate,
     endDate,
+    userId,
   }: {
     name: string;
     destination: string;
     startDate: string;
     endDate: string;
+    userId?: string;
   }) {
     if (!name || !destination || !startDate || !endDate) {
       console.error("All fields are required to add a vacation.");
@@ -96,14 +112,6 @@ export function useAddVacation(
     }
 
     setLoading(true);
-
-    console.log("Adding vacation:", {
-      name,
-      destination,
-      start_date: startDate,
-      end_date: endDate,
-      archived: false,
-    });
 
     try {
       const { error } = await supabase.from("vacations").insert([
@@ -113,6 +121,7 @@ export function useAddVacation(
           start_date: startDate,
           end_date: endDate,
           archived: false,
+          user_id: userId,
         },
       ]);
 

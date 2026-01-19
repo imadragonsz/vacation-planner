@@ -8,11 +8,15 @@
 // You can also remove this file if you'd prefer not to use a
 // service worker, and the Workbox build step will be skipped.
 
-import { clientsClaim } from 'workbox-core';
-import { ExpirationPlugin } from 'workbox-expiration';
-import { precacheAndRoute, createHandlerBoundToURL } from 'workbox-precaching';
-import { registerRoute } from 'workbox-routing';
-import { StaleWhileRevalidate } from 'workbox-strategies';
+import { clientsClaim } from "workbox-core";
+import { ExpirationPlugin } from "workbox-expiration";
+import { precacheAndRoute, createHandlerBoundToURL } from "workbox-precaching";
+import { registerRoute } from "workbox-routing";
+import {
+  StaleWhileRevalidate,
+  CacheFirst,
+  NetworkFirst,
+} from "workbox-strategies";
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -27,17 +31,17 @@ precacheAndRoute(self.__WB_MANIFEST);
 // Set up App Shell-style routing, so that all navigation requests
 // are fulfilled with your index.html shell. Learn more at
 // https://developers.google.com/web/fundamentals/architecture/app-shell
-const fileExtensionRegexp = new RegExp('/[^/?]+\\.[^/]+$');
+const fileExtensionRegexp = new RegExp("/[^/?]+\\.[^/]+$");
 registerRoute(
   // Return false to exempt requests from being fulfilled by index.html.
   ({ request, url }: { request: Request; url: URL }) => {
     // If this isn't a navigation, skip.
-    if (request.mode !== 'navigate') {
+    if (request.mode !== "navigate") {
       return false;
     }
 
     // If this is a URL that starts with /_, skip.
-    if (url.pathname.startsWith('/_')) {
+    if (url.pathname.startsWith("/_")) {
       return false;
     }
 
@@ -50,17 +54,18 @@ registerRoute(
     // Return true to signal that we want to use the handler.
     return true;
   },
-  createHandlerBoundToURL(process.env.PUBLIC_URL + '/index.html')
+  createHandlerBoundToURL(process.env.PUBLIC_URL + "/index.html")
 );
 
 // An example runtime caching route for requests that aren't handled by the
 // precache, in this case same-origin .png requests like those from in public/
 registerRoute(
   // Add in any other file extensions or routing criteria as needed.
-  ({ url }) => url.origin === self.location.origin && url.pathname.endsWith('.png'),
+  ({ url }) =>
+    url.origin === self.location.origin && url.pathname.endsWith(".png"),
   // Customize this strategy as needed, e.g., by changing to CacheFirst.
   new StaleWhileRevalidate({
-    cacheName: 'images',
+    cacheName: "images",
     plugins: [
       // Ensure that once this runtime cache reaches a maximum size the
       // least-recently used images are removed.
@@ -71,10 +76,62 @@ registerRoute(
 
 // This allows the web app to trigger skipWaiting via
 // registration.waiting.postMessage({type: 'SKIP_WAITING'})
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
     self.skipWaiting();
   }
 });
 
 // Any other custom service worker logic can go here.
+
+// Cache Supabase API requests - NetworkFirst
+// This ensures travelers see their latest data if online,
+// but can still access their itinerary offline.
+registerRoute(
+  ({ url }) =>
+    url.hostname.includes("supabase.co") &&
+    url.pathname.startsWith("/rest/v1/"),
+  new NetworkFirst({
+    cacheName: "supabase-api-data",
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 100,
+        maxAgeSeconds: 7 * 24 * 60 * 60, // 1 week
+      }),
+    ],
+  })
+);
+
+// Cache Map Tiles - CacheFirst
+// Map tiles are static and shouldn't change often.
+registerRoute(
+  ({ url }) =>
+    url.hostname.includes("tile.openstreetmap.org") ||
+    url.hostname.includes("basemaps.cartocdn.com"),
+  new CacheFirst({
+    cacheName: "map-tiles",
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 500,
+        maxAgeSeconds: 30 * 24 * 60 * 60, // 30 Days
+      }),
+    ],
+  })
+);
+
+// Cache Geocoding and Weather Data - StaleWhileRevalidate
+// Helpful for showing recent weather/location info even when signal is spotty.
+registerRoute(
+  ({ url }) =>
+    url.hostname.includes("nominatim.openstreetmap.org") ||
+    url.hostname.includes("api.open-meteo.com"),
+  new StaleWhileRevalidate({
+    cacheName: "location-and-weather",
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 50,
+        maxAgeSeconds: 24 * 60 * 60, // 1 Day
+      }),
+    ],
+  })
+);

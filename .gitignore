@@ -11,6 +11,8 @@
 # production
 /build
 /dist
+/out
+/.next/
 
 # misc
 .DS_Store
@@ -21,7 +23,11 @@
 .env
 
 # IDE-specific files
-.vscode/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
 .idea/
 *.sublime-workspace
 
@@ -39,8 +45,8 @@ Thumbs.db
 .env
 .env.*
 
-# Package manager files
-package-lock.json
+# Allow package-lock.json (Recommended for teams/consistency)
+# package-lock.json
 
 # Additional exclusions
 *.tmp

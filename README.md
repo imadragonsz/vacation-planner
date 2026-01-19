@@ -1,27 +1,45 @@
-# Vacation Planner
+# 🏖️ Vacation Planner Pro
 
-Vacation Planner is a modern web application designed to help users plan, organize, and manage their vacations efficiently. With an intuitive interface and powerful features, it ensures a seamless vacation planning experience.
+Vacation Planner is a high-performance, professional travel orchestration suite. It features a modern **Glassmorphic UI**, real-time collaboration, and a comprehensive set of tools to ensure your next trip is planned to perfection.
 
-![Vacation Planner Screenshot](https://via.placeholder.com/800x400.png?text=Vacation+Planner+Screenshot)
-
----
-
-## 🌟 Features
-
-- **🔒 User Authentication**: Secure login and registration.
-- **📅 Vacation Management**: Create, edit, and delete vacation plans.
-- **🗺️ Interactive Map**: Visualize vacation locations using Leaflet.
-- **📝 Agenda Planning**: Organize daily activities and schedules.
-- **📱 Responsive Design**: Works seamlessly on desktop and mobile devices.
+![Vacation Planner Screenshot](https://via.placeholder.com/800x400.png?text=Vacation+Planner+Pro+Dashboard)
 
 ---
 
-## 🛠️ Technologies Used
+## 🌟 Key Features
 
-- **Frontend**: React, TypeScript
-- **Mapping**: Leaflet, React-Leaflet
-- **Backend**: Supabase (for authentication and database)
-- **Build Tool**: Create React App with TypeScript template
+### 📅 Advanced Trip Planning
+
+- **Interactive Dashboard**: A unified view of your itinerary, map, and collaborative widgets.
+- **Dynamic Agenda**: Drag-and-drop support for reordering activities.
+- **Live Maps**: Visualize your journey with custom markers for every destination.
+
+### 💰 Smart Budgeting & Expenses
+
+- **Multi-Currency Support**: Add expenses in USD, GBP, JPY, CHF, or HUF.
+- **Real-time Conversion**: Automatic conversion to **Euro (€)** using live exchange rates.
+- **Shared Tracker**: See who paid for what and track the total trip cost.
+
+### 💬 Real-time Collaboration
+
+- **Trip Chat**: Instant messaging for all trip participants.
+- **Shared Packing List**: Collaborative checklist with progress tracking and contributor avatars.
+- **Role-based Access**: Securely share trips with friends via participant invites.
+
+### 🛠️ Professional Utility
+
+- **Weather Forecast**: Live weather data for every destination.
+- **iCal Export**: Sync your trip agenda directly to your Google, Apple, or Outlook calendar.
+- **PWA Ready**: Offline support and installable as a mobile/desktop app.
+
+---
+
+## 🛠️ Tech Stack
+
+- **Frontend**: React 19, TypeScript, Material UI (MUI)
+- **Real-time/Database**: Supabase (PostgreSQL, Realtime, Auth, Storage)
+- **Mapping**: Leaflet & OpenStreetMap
+- **State/DND**: `@dnd-kit` for drag-and-drop, React Hooks for state.
 
 ---
 
@@ -90,39 +108,17 @@ This project requires a Supabase database for authentication and data storage. F
      ```
      Replace `your-supabase-url` and `your-anon-key` with the values from your Supabase project.
 
-5. **Set Up Database Tables**:
+5. **Set Up Database Schema**:
 
-   - Use the following SQL commands in the Supabase SQL editor to create the necessary tables:
+   - Use the Supabase SQL editor to initialize your database.
+   - **Important**: This project uses a `bigint` based primary key system for legacy compatibility in several tables. Ensure you enable **Realtime** for `vacation_comments`, `trip_expenses`, and `packing_items` to enable collaborative features.
 
-     ```sql
-     -- Users table
-     CREATE TABLE users (
-         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-         email TEXT UNIQUE NOT NULL,
-         password TEXT NOT NULL,
-         created_at TIMESTAMP DEFAULT now()
-     );
-
-     -- Vacations table
-     CREATE TABLE vacations (
-         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-         user_id UUID REFERENCES users(id),
-         title TEXT NOT NULL,
-         start_date DATE NOT NULL,
-         end_date DATE NOT NULL,
-         created_at TIMESTAMP DEFAULT now()
-     );
-
-     -- Locations table
-     CREATE TABLE locations (
-         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-         vacation_id UUID REFERENCES vacations(id),
-         name TEXT NOT NULL,
-         latitude FLOAT NOT NULL,
-         longitude FLOAT NOT NULL,
-         created_at TIMESTAMP DEFAULT now()
-     );
-     ```
+   ```sql
+   -- Enable Realtime
+   ALTER PUBLICATION supabase_realtime ADD TABLE vacation_comments;
+   ALTER PUBLICATION supabase_realtime ADD TABLE trip_expenses;
+   ALTER PUBLICATION supabase_realtime ADD TABLE packing_items;
+   ```
 
 6. **Test the Connection**:
    - Start the development server and ensure the application connects to Supabase successfully.

@@ -1,174 +1,226 @@
 import React from "react";
 import { Vacation } from "./vacation";
-import { supabase } from "./supabaseClient"; // Adjust the import based on your project structure
+import { IconButton, Typography, Box, Tooltip, Chip } from "@mui/material";
+import {
+  Edit as EditIcon,
+  Archive as ArchiveIcon,
+  Restore as RestoreIcon,
+  Delete as DeleteIcon,
+  Person as PersonIcon,
+} from "@mui/icons-material";
+import { supabase } from "./supabaseClient";
 
 interface VacationListItemProps {
   vacation: Vacation;
   selected: boolean;
-  themeVars: any;
   disabled?: boolean;
+  user?: any;
   onSelect?: (vac: Vacation) => void;
   onEdit?: (vac: Vacation) => void;
   onDelete?: (id: number) => void;
-  onRestore?: (id: number) => void; // Added onRestore prop
+  onRestore?: (id: number) => void;
+  onDeletedPermanently?: () => void;
 }
 
 const VacationListItem: React.FC<VacationListItemProps> = ({
   vacation,
   selected,
-  themeVars,
   disabled = false,
+  user,
   onSelect,
   onEdit,
   onDelete,
-  onRestore, // Destructure onRestore prop
+  onRestore,
+  onDeletedPermanently,
 }) => {
-  const handleDelete = async (vacationId: number) => {
-    try {
-      const { error } = await supabase
-        .from("vacations")
-        .delete()
-        .eq("id", vacationId);
+  const isOwner = user && vacation.user_id === user.id;
 
+  const handleDelete = async (id: number) => {
+    if (window.confirm("Are you sure you want to permanently delete this vacation? This action cannot be undone.")) {
+      const { error } = await supabase.from("vacations").delete().eq("id", id);
       if (error) {
         console.error("Error deleting vacation:", error);
       } else {
-        console.log("Vacation deleted successfully.");
-        // Notify parent to update the vacation list
-        onDelete && onDelete(vacationId);
+        onDeletedPermanently?.();
       }
-    } catch (error) {
-      console.error("Unexpected error deleting vacation:", error);
     }
   };
 
   return (
-    <li
-      style={{
-        marginBottom: 14,
-        background: selected ? themeVars.accent : themeVars.accent2,
-        color: themeVars.text,
-        padding: "16px 18px",
-        borderRadius: 10,
-        cursor: disabled ? "not-allowed" : "pointer",
-        boxShadow: selected ? themeVars.shadow : "none",
-        border: selected ? `2px solid ${themeVars.accent}` : "none",
-        transition: "all 0.15s",
+    <Box
+      component="li"
+      sx={{
         opacity: disabled ? 0.6 : 1,
         pointerEvents: disabled ? "none" : "auto",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        gap: 8,
+        padding: "12px 16px",
+        borderRadius: "12px",
+        transition: "all 0.2s",
+        mb: 0.5,
+        cursor: "pointer",
+        position: "relative",
+        bgcolor: selected ? "rgba(25, 118, 210, 0.15)" : "transparent",
+        "&:hover": {
+          bgcolor: selected ? "rgba(25, 118, 210, 0.2)" : "rgba(255, 255, 255, 0.05)",
+          "& .vac-actions": { opacity: 1 },
+        },
+        "&::before": {
+          content: '""',
+          position: "absolute",
+          left: 0,
+          top: "20%",
+          bottom: "20%",
+          width: 3,
+          bgcolor: "primary.main",
+          borderRadius: "0 4px 4px 0",
+          opacity: selected ? 1 : 0,
+          transition: "opacity 0.2s",
+        },
       }}
       onClick={() => {
         if (!disabled && onSelect) onSelect(vacation);
       }}
     >
-      <div>
-        <div style={{ fontWeight: 700, fontSize: 18 }}>{vacation.name}</div>
-        <div style={{ fontSize: 15, opacity: 0.85 }}>
-          {vacation.start_date} to {vacation.end_date}
-        </div>
+      <Box sx={{ flex: 1, minWidth: 0, mr: 1 }}>
+        <Typography
+          variant="body1"
+          sx={{
+            fontWeight: selected ? 800 : 700,
+            color: selected ? "primary.main" : "rgba(255,255,255,0.8)",
+            fontSize: "0.95rem",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {vacation.name}
+        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Typography
+            variant="caption"
+            sx={{
+              color: "rgba(255, 255, 255, 0.4)",
+              fontWeight: 600,
+              display: "block",
+            }}
+          >
+            {new Date(vacation.start_date).toLocaleDateString(undefined, {
+              month: "short",
+              day: "numeric",
+            })}
+            {" - "}
+            {new Date(vacation.end_date).toLocaleDateString(undefined, {
+              month: "short",
+              day: "numeric",
+            })}
+          </Typography>
+          {isOwner && (
+            <Chip
+              label="YOU"
+              size="small"
+              sx={{
+                height: 16,
+                fontSize: "0.6rem",
+                fontWeight: 900,
+                bgcolor: "primary.main",
+                color: "white",
+                borderRadius: 1,
+                "& .MuiChip-label": { px: 0.5 },
+              }}
+            />
+          )}
+          {!isOwner && vacation.user_id && (
+            <Tooltip
+              title={`Shared by: ${vacation.owner_name || "Anonymous"}`}
+            >
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                <PersonIcon
+                  sx={{ fontSize: 14, color: "rgba(255,255,255,0.4)" }}
+                />
+                <Typography
+                  variant="caption"
+                  sx={{ color: "rgba(255,255,255,0.4)", fontWeight: 700 }}
+                >
+                  {vacation.owner_name || "Anonymous"}
+                </Typography>
+              </Box>
+            </Tooltip>
+          )}
+        </Box>
         {vacation.archived && (
-          <div
-            style={{
-              fontSize: 14,
-              fontStyle: "italic",
-              color: "#856404",
+          <Typography
+            variant="caption"
+            sx={{
+              color: "#ff9800",
+              fontWeight: 800,
+              fontSize: "0.65rem",
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              display: "block",
+              mt: 0.2,
             }}
           >
             Archived
-          </div>
+          </Typography>
         )}
-      </div>
-      <div
-        style={{ display: "flex", gap: 4 }}
+      </Box>
+
+      <Box 
+        className="vac-actions"
+        sx={{ 
+          display: isOwner ? "flex" : "none", 
+          gap: 0.5,
+          opacity: selected ? 1 : 0, 
+          transition: "opacity 0.2s" 
+        }}
         onClick={(e) => e.stopPropagation()}
       >
-        <button
-          title="Edit"
-          onClick={() => onEdit && onEdit(vacation)}
-          style={{
-            background: "none",
-            border: "none",
-            color: selected ? themeVars.text : "#fff",
-            cursor: "pointer",
-            fontSize: 18,
-            opacity: 0.7,
-            padding: 2,
-          }}
-          tabIndex={-1}
-        >
-          ✏️
-        </button>
+        <Tooltip title="Edit">
+          <IconButton
+            size="small"
+            onClick={() => onEdit && onEdit(vacation)}
+            sx={{ color: "rgba(255,255,255,0.4)", "&:hover": { color: "white" } }}
+          >
+            <EditIcon sx={{ fontSize: "1.1rem" }} />
+          </IconButton>
+        </Tooltip>
+
         {vacation.archived ? (
           <>
-            <button
-              title="Restore"
-              onClick={() => onRestore && onRestore(vacation.id)} // Pass only the vacation ID
-              style={{
-                background: "none",
-                border: "none",
-                color: selected ? themeVars.text : "#fff",
-                cursor: "pointer",
-                fontSize: 18,
-                opacity: 0.7,
-                padding: 2,
-              }}
-              tabIndex={-1}
-            >
-              ⏪
-            </button>
-            <button
-              title="Delete"
-              onClick={async () => {
-                if (vacation.archived) {
-                  await handleDelete(vacation.id);
-                } else {
-                  onDelete && onDelete(vacation.id); // Archive logic handled in App.tsx without confirmation here
-                }
-              }}
-              style={{
-                background: "none",
-                border: "none",
-                color: selected ? themeVars.text : "#fff",
-                cursor: "pointer",
-                fontSize: 18,
-                opacity: 0.7,
-                padding: 2,
-              }}
-              tabIndex={-1}
-            >
-              🗑️
-            </button>
+            <Tooltip title="Restore">
+              <IconButton
+                size="small"
+                onClick={() => onRestore && onRestore(vacation.id)}
+                sx={{ color: "#2ecc71", "&:hover": { color: "#45e68d" } }}
+              >
+                <RestoreIcon sx={{ fontSize: "1.1rem" }} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Delete Permanently">
+              <IconButton
+                size="small"
+                onClick={() => handleDelete(vacation.id)}
+                sx={{ color: "#ff4444", "&:hover": { color: "#ff6666" } }}
+              >
+                <DeleteIcon sx={{ fontSize: "1.1rem" }} />
+              </IconButton>
+            </Tooltip>
           </>
         ) : (
-          <button
-            title="Delete"
-            onClick={async () => {
-              if (vacation.archived) {
-                await handleDelete(vacation.id);
-              } else {
-                onDelete && onDelete(vacation.id); // Archive logic handled in App.tsx without confirmation here
-              }
-            }}
-            style={{
-              background: "none",
-              border: "none",
-              color: selected ? themeVars.text : "#fff",
-              cursor: "pointer",
-              fontSize: 18,
-              opacity: 0.7,
-              padding: 2,
-            }}
-            tabIndex={-1}
-          >
-            🗑️
-          </button>
+          <Tooltip title="Archive">
+            <IconButton
+              size="small"
+              onClick={() => onDelete && onDelete(vacation.id)}
+              sx={{ color: "rgba(255,255,255,0.4)", "&:hover": { color: "#ff4444" } }}
+            >
+              <ArchiveIcon sx={{ fontSize: "1.1rem" }} />
+            </IconButton>
+          </Tooltip>
         )}
-      </div>
-    </li>
+      </Box>
+    </Box>
   );
 };
 

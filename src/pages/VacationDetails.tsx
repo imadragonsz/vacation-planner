@@ -1,24 +1,96 @@
-import React, { useState, Suspense } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useLocations, VacationLocation } from "../hooks/useLocations";
 import { useAgendas } from "../hooks/useAgendas";
-import { supabase } from "../../src/supabaseClient";
-import { Vacation } from "../../src/vacation";
-import { StyledInput, StyledButton } from "../../src/ui";
-import ConfirmDialog from "../../src/ConfirmDialog";
-import { darkTheme, lightTheme } from "../../src/styles/theme";
+import { useParticipants, Participant } from "../hooks/useParticipants";
+import { useItemParticipants } from "../hooks/useItemParticipants";
+import { supabase } from "../supabaseClient";
+import { Vacation } from "../vacation";
+import ConfirmDialog from "../ConfirmDialog";
+import {
+  Box,
+  Button,
+  TextField,
+  Typography,
+  IconButton,
+  Paper,
+  Divider,
+  Chip,
+  Fade,
+  Avatar,
+  AvatarGroup,
+  Tooltip,
+  ToggleButton,
+  ToggleButtonGroup,
+} from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
+import LocationOnIcon from "@mui/icons-material/LocationOn";
+import EventNoteIcon from "@mui/icons-material/EventNote";
+import MapIcon from "@mui/icons-material/Map";
+import EditIcon from "@mui/icons-material/Edit";
+import AddIcon from "@mui/icons-material/Add";
+import PersonIcon from "@mui/icons-material/Person";
+import GroupIcon from "@mui/icons-material/Group";
+import FlightIcon from "@mui/icons-material/Flight";
+import TrainIcon from "@mui/icons-material/Train";
+import DirectionsBusIcon from "@mui/icons-material/DirectionsBus";
+import HotelIcon from "@mui/icons-material/Hotel";
+import NoteIcon from "@mui/icons-material/Note";
+import { DatePicker, TimePicker } from "@mui/x-date-pickers";
+import dayjs from "dayjs";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
+import { SortableAgendaItem } from "../components/SortableAgendaItem";
+import WeatherForecast from "../components/WeatherForecast";
+import PackingList from "../components/PackingList";
+import TripChat from "../components/TripChat";
+import TripExpenses from "../components/TripExpenses";
 
-const VacationMap = React.lazy(() => import("../../src/VacationMap"));
+const VacationMap = React.lazy(() => import("../VacationMap"));
 
 export function VacationDetails({
-  vacationId,
-  theme = "dark",
+  vacation,
   user,
+  onRefresh,
 }: {
-  vacationId: number;
-  theme?: "dark" | "light";
+  vacation: Vacation;
   user: any;
+  onRefresh?: () => void;
 }) {
-  const themeVars = theme === "dark" ? darkTheme : lightTheme;
+  const isOwner = user && vacation.user_id === user.id;
+  const { participants, joinVacation, leaveVacation } = useParticipants(
+    vacation.id
+  );
+  const {
+    participants: locationParticipants,
+    joinItem: joinLocation,
+    leaveItem: leaveLocation,
+    fetchParticipants: fetchLocationParticipants,
+  } = useItemParticipants("location");
+  const {
+    participants: agendaParticipants,
+    joinItem: joinAgenda,
+    leaveItem: leaveAgenda,
+    fetchParticipants: fetchAgendaParticipants,
+  } = useItemParticipants("agenda");
+
+  const isParticipant = user && participants.some((p) => p.user_id === user.id);
+  const canEdit = isOwner || isParticipant;
+
+  const vacationId = vacation.id;
   const { locations, addLocation, updateLocation, removeLocation } =
     useLocations(vacationId);
 
@@ -29,9 +101,11 @@ export function VacationDetails({
     async function geocodeAll() {
       const results = await Promise.all(
         locations.map(async (loc) => {
-          if (!loc.address) return { ...loc };
+          const query = loc.address || loc.name;
+          if (!query) return { ...loc };
+
           const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(
-            loc.address
+            query
           )}`;
           try {
             const res = await fetch(url);
@@ -44,10 +118,9 @@ export function VacationDetails({
               };
             }
           } catch (error) {
-            console.error("Error fetching geocode data:", error);
-          } finally {
-            return { ...loc };
+            console.error("Error fetching geocode data:", error, query);
           }
+          return { ...loc };
         })
       );
       if (!cancelled) setGeoLocations(results);
@@ -75,20 +148,20 @@ export function VacationDetails({
     }
   }, [locations, selectedLocation]);
 
-  const [editingLocationId, setEditingLocationId] = useState<number | null>(
-    null
-  );
-  const [editLocName, setEditLocName] = useState("");
-  const [editLocAddr, setEditLocAddr] = useState("");
   const [confirmDeleteLocId, setConfirmDeleteLocId] = useState<number | null>(
     null
   );
+  const [editingLocId, setEditingLocId] = useState<number | null>(null);
+  const [editLocName, setEditLocName] = useState("");
+  const [editLocAddr, setEditLocAddr] = useState("");
   const [locationSearch, setLocationSearch] = useState(""); // eslint-disable-line @typescript-eslint/no-unused-vars
 
   // Agenda state
   const [editingAgendaId, setEditingAgendaId] = useState<number | null>(null);
   const [editAgendaDate, setEditAgendaDate] = useState("");
+  const [editAgendaTime, setEditAgendaTime] = useState("");
   const [editAgendaDesc, setEditAgendaDesc] = useState("");
+  const [editAgendaType, setEditAgendaType] = useState<string>("activity");
   const [agendaAddr, setAgendaAddr] = useState("");
   const [confirmDeleteAgendaId, setConfirmDeleteAgendaId] = useState<
     number | null
@@ -96,7 +169,42 @@ export function VacationDetails({
 
   // Agendas for selected location
   const locationId = selectedLocation?.id ?? 0;
-  const { agendas, addAgenda, updateAgenda } = useAgendas(locationId);
+  const { agendas, addAgenda, updateAgenda, updateAgendasOrder } =
+    useAgendas(locationId);
+
+  // Drag & Drop Sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = agendas.findIndex((a) => a.id === active.id);
+      const newIndex = agendas.findIndex((a) => a.id === over.id);
+
+      const newOrder = arrayMove(agendas, oldIndex, newIndex);
+      await updateAgendasOrder(newOrder);
+    }
+  };
+
+  const selectedGeoLocation = geoLocations.find(
+    (g) => g.id === selectedLocation?.id
+  );
+
+  // Fetch participants for items
+  useEffect(() => {
+    if (locations.length > 0)
+      fetchLocationParticipants(locations.map((l) => l.id));
+  }, [locations, fetchLocationParticipants]);
+
+  useEffect(() => {
+    if (agendas.length > 0) fetchAgendaParticipants(agendas.map((a) => a.id));
+  }, [agendas, fetchAgendaParticipants]);
 
   // Add location handler
   async function handleAddLocation(e: React.FormEvent) {
@@ -105,6 +213,17 @@ export function VacationDetails({
       await addLocation(newLocName, newLocAddr);
       setNewLocName("");
       setNewLocAddr("");
+    }
+  }
+
+  // Update location handler
+  async function handleUpdateLocation(e: React.FormEvent) {
+    e.preventDefault();
+    if (editingLocId && editLocName.trim()) {
+      await updateLocation(editingLocId, editLocName, editLocAddr);
+      setEditingLocId(null);
+      setEditLocName("");
+      setEditLocAddr("");
     }
   }
 
@@ -118,15 +237,25 @@ export function VacationDetails({
           editingAgendaId,
           editAgendaDate,
           editAgendaDesc,
-          agendaAddr
+          agendaAddr,
+          editAgendaTime,
+          editAgendaType
         );
       } else {
         // Add new agenda
-        await addAgenda(editAgendaDate, editAgendaDesc, agendaAddr);
+        await addAgenda(
+          editAgendaDate,
+          editAgendaDesc,
+          agendaAddr,
+          editAgendaTime,
+          editAgendaType
+        );
       }
       // Clear form fields after submission
       setEditAgendaDate("");
+      setEditAgendaTime("");
       setEditAgendaDesc("");
+      setEditAgendaType("activity");
       setAgendaAddr("");
       setEditingAgendaId(null);
     }
@@ -139,458 +268,762 @@ export function VacationDetails({
   }
 
   return (
-    <div>
-      <div style={{ marginTop: 24 }}>
-        <h2 style={{ margin: 0 }}>Locations</h2>
-        <div style={{ display: "flex", gap: 8 }}>
-          {selectedLocation && (
-            <StyledButton
-              type="button"
-              themeVars={themeVars}
-              style={{
-                fontSize: 14,
-                padding: "6px 14px",
-                background: themeVars.accent2,
-                color: themeVars.text,
-                borderRadius: 6,
-              }}
-              onClick={() => setSelectedLocation(null)}
-            >
-              Clear Selection
-            </StyledButton>
-          )}
-        </div>
-      </div>
-
-      <div style={{ marginBottom: 12 }}>
-        {true && (
-          <form
-            onSubmit={handleAddLocation}
-            style={{
-              display: "flex",
-              gap: 8,
-              marginBottom: 16,
-              alignItems: "center",
+    <Box sx={{ py: 2, px: { xs: 2, md: 4 } }}>
+      <VacationEditor
+        vacation={vacation}
+        onVacationUpdated={onRefresh || (() => {})}
+        user={user}
+        canEdit={canEdit}
+        joinVacation={joinVacation}
+        leaveVacation={leaveVacation}
+        participants={participants}
+      />
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "1fr", lg: "1fr 340px" },
+          gap: 3,
+          alignItems: "start",
+        }}
+      >
+        {/* Left Column: Map and Agendas */}
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          {/* Map Section */}
+          <Paper
+            elevation={0}
+            sx={{
+              p: 2,
+              borderRadius: 4,
+              bgcolor: "rgba(255,255,255,0.03)",
+              backdropFilter: "blur(10px)",
+              border: "1px solid rgba(255,255,255,0.05)",
+              overflow: "hidden",
             }}
           >
-            <StyledInput
-              type="text"
-              value={newLocName}
-              onChange={(e) => setNewLocName(e.target.value)}
-              placeholder="Location Name"
-              themeVars={themeVars}
-              style={{ minWidth: 120 }}
-            />
-            <StyledInput
-              type="text"
-              value={newLocAddr}
-              onChange={(e) => setNewLocAddr(e.target.value)}
-              placeholder="Address (optional)"
-              themeVars={themeVars}
-              style={{ minWidth: 120 }}
-            />
-            <StyledButton
-              type="submit"
-              accent
-              themeVars={themeVars}
-              disabled={!true}
+            <Box
+              sx={{
+                mb: 2,
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                px: 1,
+              }}
             >
-              Add
-            </StyledButton>
-          </form>
-        )}
-        <div style={{ maxHeight: 260, overflowY: "auto", marginBottom: 8 }}>
-          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-            {(locationSearch.trim()
-              ? locations.filter(
-                  (loc) =>
-                    loc.name
-                      .toLowerCase()
-                      .includes(locationSearch.toLowerCase()) ||
-                    (loc.address || "")
-                      .toLowerCase()
-                      .includes(locationSearch.toLowerCase())
-                )
-              : locations
-            ).map((loc) => (
-              <li
-                key={loc.id}
-                style={{
-                  background: themeVars.card,
-                  color: themeVars.text,
-                  borderRadius: 8,
-                  marginBottom: 4,
-                  padding: 8,
-                  cursor: "pointer",
-                  border:
-                    selectedLocation?.id === loc.id
-                      ? `2px solid ${themeVars.accent}`
-                      : "none",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 8,
-                  fontSize: 15,
-                }}
-                onClick={() => setSelectedLocation(loc)}
-              >
-                {editingLocationId === loc.id ? (
-                  <form
-                    onSubmit={async (e) => {
-                      e.preventDefault();
-                      await updateLocation(loc.id, editLocName, editLocAddr);
-                      setEditingLocationId(null);
+              <MapIcon color="primary" />
+              <Typography variant="h6" sx={{ fontWeight: 800 }}>
+                Trip Map
+              </Typography>
+            </Box>
+            <Box
+              sx={{
+                height: 500,
+                borderRadius: 3,
+                overflow: "hidden",
+                bgcolor: "rgba(0,0,0,0.2)",
+              }}
+            >
+              <Suspense
+                fallback={
+                  <Box
+                    sx={{
+                      height: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
                     }}
-                    style={{ display: "flex", gap: 8, flex: 1 }}
-                    onClick={(e) => e.stopPropagation()}
                   >
-                    <StyledInput
-                      type="text"
-                      value={editLocName}
-                      onChange={(e) => setEditLocName(e.target.value)}
-                      required
-                      themeVars={themeVars}
-                      style={{ minWidth: 80 }}
-                    />
-                    <StyledInput
-                      type="text"
-                      value={editLocAddr}
-                      onChange={(e) => setEditLocAddr(e.target.value)}
-                      themeVars={themeVars}
-                      style={{ minWidth: 80 }}
-                    />
-                    <StyledButton
-                      type="submit"
-                      accent
-                      themeVars={themeVars}
-                      disabled={!true}
-                    >
-                      Save
-                    </StyledButton>
-                    <StyledButton
-                      type="button"
-                      danger
-                      themeVars={themeVars}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEditingLocationId(null);
-                      }}
-                    >
-                      Cancel
-                    </StyledButton>
-                  </form>
-                ) : (
-                  <>
-                    <span
-                      style={{
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        maxWidth: 180,
-                      }}
-                    >
-                      <strong>{loc.name}</strong>
-                      {loc.address && (
-                        <span style={{ marginLeft: 8, opacity: 0.7 }}>
-                          {loc.address}
-                        </span>
+                    <Typography sx={{ opacity: 0.5 }}>
+                      Loading map...
+                    </Typography>
+                  </Box>
+                }
+              >
+                <VacationMap locations={geoLocations} agendas={agendas} />
+              </Suspense>
+            </Box>
+          </Paper>
+
+          {/* Agendas Section */}
+          <Fade in={!!selectedLocation}>
+            <Box>
+              {selectedLocation && (
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 4,
+                    borderRadius: 4,
+                    bgcolor: "rgba(255,255,255,0.03)",
+                    backdropFilter: "blur(10px)",
+                    border: "1px solid rgba(255,255,255,0.05)",
+                  }}
+                >
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      mb: 4,
+                    }}
+                  >
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                      <EventNoteIcon color="primary" sx={{ fontSize: 32 }} />
+                      <Typography variant="h5" sx={{ fontWeight: 900 }}>
+                        Agendas for {selectedLocation.name}
+                      </Typography>
+                      {selectedGeoLocation?.lat && selectedGeoLocation?.lng && (
+                        <WeatherForecast
+                          lat={selectedGeoLocation.lat}
+                          lng={selectedGeoLocation.lng}
+                        />
                       )}
-                    </span>
-                    {true && (
-                      <span
-                        style={{ display: "flex", gap: 4 }}
-                        onClick={(e) => e.stopPropagation()}
+                    </Box>
+                    <Button
+                      variant="text"
+                      size="small"
+                      onClick={() => setSelectedLocation(null)}
+                      sx={{ color: "rgba(255,255,255,0.4)" }}
+                    >
+                      Deselect
+                    </Button>
+                  </Box>
+
+                  {/* Add Agenda Form */}
+                  {canEdit && (
+                    <Box
+                      component="form"
+                      onSubmit={handleAddAgenda}
+                      sx={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 2.5,
+                        mb: 4,
+                        p: 3,
+                        borderRadius: 4,
+                        bgcolor: "rgba(255,255,255,0.03)",
+                        border: "1px solid rgba(255,255,255,0.05)",
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          display: "grid",
+                          gridTemplateColumns: {
+                            xs: "1fr",
+                            sm: "1fr 1fr",
+                          },
+                          gap: 2,
+                        }}
                       >
-                        <StyledButton
-                          title="Edit"
-                          onClick={() => {
-                            setEditingLocationId(loc.id);
+                        <Box sx={{ gridColumn: "1 / -1" }}>
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              opacity: 0.5,
+                              fontWeight: 800,
+                              textTransform: "uppercase",
+                              mb: 1,
+                              display: "block",
+                            }}
+                          >
+                            Activity Type
+                          </Typography>
+                          <ToggleButtonGroup
+                            value={editAgendaType}
+                            exclusive
+                            onChange={(_, val) => val && setEditAgendaType(val)}
+                            size="small"
+                            fullWidth
+                            sx={{
+                              bgcolor: "rgba(255,255,255,0.02)",
+                              "& .MuiToggleButton-root": {
+                                borderRadius: 2,
+                                border:
+                                  "1px solid rgba(255,255,255,0.05) !important",
+                                color: "rgba(255,255,255,0.4)",
+                                "&.Mui-selected": {
+                                  bgcolor: "primary.main",
+                                  color: "#fff",
+                                  "&:hover": { bgcolor: "primary.dark" },
+                                },
+                              },
+                            }}
+                          >
+                            <ToggleButton value="activity">
+                              <Tooltip title="Activity">
+                                <EventNoteIcon fontSize="small" />
+                              </Tooltip>
+                            </ToggleButton>
+                            <ToggleButton value="flight">
+                              <Tooltip title="Flight">
+                                <FlightIcon fontSize="small" />
+                              </Tooltip>
+                            </ToggleButton>
+                            <ToggleButton value="train">
+                              <Tooltip title="Train">
+                                <TrainIcon fontSize="small" />
+                              </Tooltip>
+                            </ToggleButton>
+                            <ToggleButton value="bus">
+                              <Tooltip title="Bus">
+                                <DirectionsBusIcon fontSize="small" />
+                              </Tooltip>
+                            </ToggleButton>
+                            <ToggleButton value="hotel">
+                              <Tooltip title="Accommodation">
+                                <HotelIcon fontSize="small" />
+                              </Tooltip>
+                            </ToggleButton>
+                            <ToggleButton value="note">
+                              <Tooltip title="Note">
+                                <NoteIcon fontSize="small" />
+                              </Tooltip>
+                            </ToggleButton>
+                          </ToggleButtonGroup>
+                        </Box>
+                        <DatePicker
+                          label="Date"
+                          value={editAgendaDate ? dayjs(editAgendaDate) : null}
+                          onChange={(newValue) =>
+                            setEditAgendaDate(
+                              newValue ? newValue.format("YYYY-MM-DD") : ""
+                            )
+                          }
+                          sx={{
+                            "& .MuiOutlinedInput-root": {
+                              bgcolor: "rgba(0,0,0,0.1)",
+                              borderRadius: 2.5,
+                            },
+                          }}
+                        />
+                        <TimePicker
+                          label="Time"
+                          value={
+                            editAgendaTime
+                              ? dayjs(`2000-01-01T${editAgendaTime}`)
+                              : null
+                          }
+                          onChange={(newValue) =>
+                            setEditAgendaTime(
+                              newValue ? newValue.format("HH:mm:ss") : ""
+                            )
+                          }
+                          sx={{
+                            "& .MuiOutlinedInput-root": {
+                              bgcolor: "rgba(0,0,0,0.1)",
+                              borderRadius: 2.5,
+                            },
+                          }}
+                        />
+                      </Box>
+
+                      <TextField
+                        label="Description"
+                        placeholder="e.g. Visit Akihabara"
+                        size="medium"
+                        fullWidth
+                        value={editAgendaDesc}
+                        onChange={(e) => setEditAgendaDesc(e.target.value)}
+                        required
+                        sx={{
+                          "& .MuiOutlinedInput-root": {
+                            bgcolor: "rgba(0,0,0,0.1)",
+                            borderRadius: 2.5,
+                          },
+                        }}
+                      />
+
+                      <Box
+                        sx={{ display: "flex", gap: 2, alignItems: "center" }}
+                      >
+                        <TextField
+                          label="Address (optional)"
+                          placeholder="Google Maps link or address"
+                          size="medium"
+                          fullWidth
+                          value={agendaAddr}
+                          onChange={(e) => setAgendaAddr(e.target.value)}
+                          sx={{
+                            "& .MuiOutlinedInput-root": {
+                              bgcolor: "rgba(0,0,0,0.1)",
+                              borderRadius: 2.5,
+                            },
+                          }}
+                        />
+                        <Box sx={{ display: "flex", gap: 1 }}>
+                          <Button
+                            type="submit"
+                            variant="contained"
+                            sx={{
+                              fontWeight: 800,
+                              borderRadius: 2.5,
+                              px: 3,
+                              height: 56, // Match medium TextField height
+                              minWidth: 100,
+                            }}
+                          >
+                            {editingAgendaId ? "Update" : "Add"}
+                          </Button>
+                          {editingAgendaId && (
+                            <IconButton
+                              onClick={() => {
+                                setEditingAgendaId(null);
+                                setEditAgendaDate("");
+                                setEditAgendaTime("");
+                                setEditAgendaDesc("");
+                                setAgendaAddr("");
+                              }}
+                              sx={{
+                                bgcolor: "rgba(255,255,255,0.05)",
+                                borderRadius: 2.5,
+                                width: 56,
+                                height: 56,
+                              }}
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          )}
+                        </Box>
+                      </Box>
+                    </Box>
+                  )}
+
+                  <Box
+                    sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+                  >
+                    {agendas.length === 0 ? (
+                      <Box sx={{ textAlign: "center", py: 8, px: 2 }}>
+                        <EventNoteIcon
+                          sx={{
+                            fontSize: 48,
+                            mb: 1,
+                            color: "secondary.main",
+                            opacity: 0.2,
+                          }}
+                        />
+                        <Typography
+                          variant="body1"
+                          sx={{ opacity: 0.4, fontWeight: 700 }}
+                        >
+                          Fresh start!
+                        </Typography>
+                        <Typography variant="body2" sx={{ opacity: 0.2 }}>
+                          {canEdit
+                            ? "Add your first activity or event for this destination above."
+                            : "No activities have been scheduled here yet."}
+                        </Typography>
+                      </Box>
+                    ) : (
+                      <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
+                        modifiers={[restrictToVerticalAxis]}
+                      >
+                        <SortableContext
+                          items={agendas.map((a) => a.id)}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          {agendas.map((ag) => (
+                            <SortableAgendaItem
+                              key={ag.id}
+                              ag={ag}
+                              canEdit={canEdit}
+                              user={user}
+                              participants={agendaParticipants[ag.id] || []}
+                              onEdit={(item) => {
+                                setEditingAgendaId(item.id);
+                                setEditAgendaDate(item.agenda_date);
+                                setEditAgendaTime(item.Time || "");
+                                setEditAgendaDesc(item.description);
+                                setEditAgendaType(item.type || "activity");
+                                setAgendaAddr(item.address || "");
+                              }}
+                              onDelete={handleDeleteAgenda}
+                              onJoin={joinAgenda}
+                              onLeave={leaveAgenda}
+                              isConfirmingDelete={
+                                confirmDeleteAgendaId === ag.id
+                              }
+                              setConfirmDeleteId={setConfirmDeleteAgendaId}
+                            />
+                          ))}
+                        </SortableContext>
+                      </DndContext>
+                    )}
+                  </Box>
+                </Paper>
+              )}
+            </Box>
+          </Fade>
+        </Box>
+
+        {/* Right Column: Locations List */}
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 4,
+            position: { lg: "sticky" },
+            top: { lg: 32 },
+          }}
+        >
+          <Paper
+            elevation={0}
+            sx={{
+              p: 3,
+              borderRadius: 4,
+              bgcolor: "rgba(255,255,255,0.03)",
+              backdropFilter: "blur(10px)",
+              border: "1px solid rgba(255,255,255,0.05)",
+            }}
+          >
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                mb: 3,
+              }}
+            >
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                <LocationOnIcon color="primary" />
+                <Typography variant="h6" sx={{ fontWeight: 800 }}>
+                  Destinations
+                </Typography>
+              </Box>
+              <Chip
+                label={locations.length}
+                size="small"
+                sx={{ bgcolor: "rgba(255,255,255,0.1)", fontWeight: 800 }}
+              />
+            </Box>
+
+            {/* Add Location Form */}
+            {canEdit && (
+              <Box
+                component="form"
+                onSubmit={handleAddLocation}
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 2,
+                  mb: 4,
+                  p: 2,
+                  borderRadius: 3,
+                  bgcolor: "rgba(0,0,0,0.1)",
+                }}
+              >
+                <TextField
+                  label="Location Name"
+                  placeholder="e.g. Tokyo"
+                  size="medium"
+                  fullWidth
+                  value={newLocName}
+                  onChange={(e) => setNewLocName(e.target.value)}
+                  required
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: 2,
+                    },
+                  }}
+                />
+                <TextField
+                  label="Address (optional)"
+                  placeholder="City, Country"
+                  size="medium"
+                  fullWidth
+                  value={newLocAddr}
+                  onChange={(e) => setNewLocAddr(e.target.value)}
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: 2,
+                    },
+                  }}
+                />
+                <Button
+                  type="submit"
+                  variant="contained"
+                  fullWidth
+                  startIcon={<AddIcon />}
+                  disabled={!newLocName.trim()}
+                  sx={{ py: 1.5, fontWeight: 800, borderRadius: 2 }}
+                >
+                  Add Location
+                </Button>
+              </Box>
+            )}
+
+            <Divider sx={{ mb: 3, opacity: 0.1 }} />
+
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 1.5,
+                maxHeight: "calc(100vh - 500px)",
+                overflowY: "auto",
+                pr: 1,
+              }}
+            >
+              {locations.length === 0 ? (
+                <Typography
+                  sx={{
+                    opacity: 0.3,
+                    fontStyle: "italic",
+                    textAlign: "center",
+                    py: 4,
+                  }}
+                >
+                  No destinations added.
+                </Typography>
+              ) : (
+                locations.map((loc) =>
+                  editingLocId === loc.id ? (
+                    <Box
+                      key={loc.id}
+                      component="form"
+                      onSubmit={handleUpdateLocation}
+                      sx={{
+                        p: 2,
+                        borderRadius: 3,
+                        bgcolor: "rgba(25, 118, 210, 0.08)",
+                        border: "1px solid",
+                        borderColor: "primary.main",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 1.5,
+                      }}
+                    >
+                      <TextField
+                        label="Location Name"
+                        size="small"
+                        fullWidth
+                        value={editLocName}
+                        onChange={(e) => setEditLocName(e.target.value)}
+                        required
+                        autoFocus
+                      />
+                      <TextField
+                        label="Address"
+                        size="small"
+                        fullWidth
+                        value={editLocAddr}
+                        onChange={(e) => setEditLocAddr(e.target.value)}
+                      />
+                      <Box sx={{ display: "flex", gap: 1 }}>
+                        <Button
+                          type="submit"
+                          variant="contained"
+                          size="small"
+                          fullWidth
+                          sx={{ fontWeight: 800 }}
+                        >
+                          Save
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          fullWidth
+                          onClick={() => setEditingLocId(null)}
+                          sx={{ fontWeight: 800 }}
+                        >
+                          Cancel
+                        </Button>
+                      </Box>
+                    </Box>
+                  ) : (
+                    <Box
+                      key={loc.id}
+                      onClick={() => setSelectedLocation(loc)}
+                      sx={{
+                        p: 1.5,
+                        borderRadius: 2,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        bgcolor:
+                          selectedLocation?.id === loc.id
+                            ? "rgba(25, 118, 210, 0.1)"
+                            : "transparent",
+                        border: "1px solid",
+                        borderColor:
+                          selectedLocation?.id === loc.id
+                            ? "rgba(25, 118, 210, 0.3)"
+                            : "transparent",
+                        transition: "all 0.2s",
+                        "&:hover": {
+                          bgcolor: "rgba(255, 255, 255, 0.03)",
+                          "& .loc-actions": { opacity: 1 },
+                        },
+                      }}
+                    >
+                      <Box sx={{ flex: 1, minWidth: 0, mr: 1 }}>
+                        <Typography
+                          sx={{
+                            fontWeight:
+                              selectedLocation?.id === loc.id ? 800 : 700,
+                            fontSize: "0.9rem",
+                            color:
+                              selectedLocation?.id === loc.id
+                                ? "primary.main"
+                                : "white",
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                        >
+                          {loc.name}
+                        </Typography>
+                        {loc.address && (
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              opacity: 0.4,
+                              display: "block",
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                            }}
+                          >
+                            {loc.address}
+                          </Typography>
+                        )}
+                        {/* Location Participants */}
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            mt: 0.5,
+                          }}
+                        >
+                          <AvatarGroup
+                            max={3}
+                            sx={{
+                              "& .MuiAvatar-root": {
+                                width: 22,
+                                height: 22,
+                                fontSize: "0.6rem",
+                              },
+                            }}
+                          >
+                            {(locationParticipants[loc.id] || []).map((p) => (
+                              <Tooltip key={p.user_id} title={p.display_name}>
+                                <Avatar>{p.display_name?.charAt(0)}</Avatar>
+                              </Tooltip>
+                            ))}
+                          </AvatarGroup>
+                        </Box>
+                      </Box>
+                      <Box
+                        className="loc-actions"
+                        sx={{
+                          display: canEdit ? "flex" : "none",
+                          alignItems: "center",
+                          gap: 0.5,
+                          opacity: 0,
+                          transition: "opacity 0.2s",
+                        }}
+                      >
+                        {user && canEdit && (
+                          <Button
+                            size="small"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const isJoined = locationParticipants[
+                                loc.id
+                              ]?.some((p) => p.user_id === user.id);
+                              if (isJoined) leaveLocation(loc.id, user.id);
+                              else joinLocation(loc.id, user.id);
+                            }}
+                            sx={{
+                              fontSize: "0.65rem",
+                              minWidth: "auto",
+                              px: 1,
+                              py: 0.2,
+                              fontWeight: 800,
+                              borderRadius: 1,
+                              color: locationParticipants[loc.id]?.some(
+                                (p) => p.user_id === user.id
+                              )
+                                ? "secondary.main"
+                                : "primary.main",
+                            }}
+                          >
+                            {locationParticipants[loc.id]?.some(
+                              (p) => p.user_id === user.id
+                            )
+                              ? "Leave"
+                              : "Join"}
+                          </Button>
+                        )}
+                        <IconButton
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingLocId(loc.id);
                             setEditLocName(loc.name);
                             setEditLocAddr(loc.address || "");
                           }}
-                          themeVars={themeVars}
-                          style={{
-                            background: "none",
-                            color: "#fff",
-                            fontSize: 16,
-                            opacity: 0.7,
-                            padding: 2,
+                          sx={{
+                            color: "rgba(255,255,255,0.4)",
+                            "&:hover": { color: "primary.main" },
                           }}
-                          disabled={!true}
                         >
-                          ✏️
-                        </StyledButton>
-                        <StyledButton
-                          title="Delete"
-                          onClick={() => setConfirmDeleteLocId(loc.id)}
-                          themeVars={themeVars}
-                          style={{
-                            background: "none",
-                            color: "#fff",
-                            fontSize: 16,
-                            opacity: 0.7,
-                            padding: 2,
+                          <EditIcon sx={{ fontSize: "1rem" }} />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setConfirmDeleteLocId(loc.id);
                           }}
-                          disabled={!true}
+                          sx={{
+                            color: "rgba(255,255,255,0.4)",
+                            "&:hover": { color: "error.main" },
+                          }}
                         >
-                          🗑️
-                        </StyledButton>
-                      </span>
-                    )}
-                    <ConfirmDialog
-                      open={confirmDeleteLocId === loc.id}
-                      message="Delete this location?"
-                      onConfirm={async () => {
-                        await removeLocation(loc.id);
-                        setConfirmDeleteLocId(null);
-                        if (selectedLocation?.id === loc.id)
-                          setSelectedLocation(null);
-                      }}
-                      onCancel={() => setConfirmDeleteLocId(null)}
-                      themeVars={themeVars}
-                    />
-                  </>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-
-      <Suspense fallback={<div>Loading map...</div>}>
-        <VacationMap locations={geoLocations} agendas={agendas} />
-      </Suspense>
-
-      {selectedLocation && (
-        <div style={{ marginTop: 32 }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 8,
-            }}
-          >
-            <h3 style={{ margin: 0 }}>Agendas for {selectedLocation.name}</h3>
-            <StyledButton
-              type="button"
-              themeVars={themeVars}
-              style={{
-                fontSize: 14,
-                padding: "6px 14px",
-                background: themeVars.accent2,
-                color: themeVars.text,
-                borderRadius: 6,
-              }}
-              onClick={() => setEditingAgendaId(null)}
-              disabled={editingAgendaId === null || !true}
-            >
-              Clear Edit
-            </StyledButton>
-          </div>
-          {true && (
-            <form
-              onSubmit={handleAddAgenda}
-              style={{
-                display: "flex",
-                gap: 8,
-                marginBottom: 16,
-                alignItems: "center",
-              }}
-            >
-              <StyledInput
-                type="date"
-                value={editAgendaDate}
-                onChange={(e) => setEditAgendaDate(e.target.value)}
-                themeVars={themeVars}
-                style={{ minWidth: 120 }}
-              />
-              <StyledInput
-                type="text"
-                value={editAgendaDesc}
-                onChange={(e) => setEditAgendaDesc(e.target.value)}
-                placeholder="Description"
-                themeVars={themeVars}
-                style={{ minWidth: 120 }}
-              />
-              <StyledInput
-                type="text"
-                value={agendaAddr}
-                onChange={(e) => setAgendaAddr(e.target.value)}
-                placeholder="Address (optional)"
-                themeVars={themeVars}
-                style={{ minWidth: 120 }}
-              />
-              <StyledButton
-                type="submit"
-                accent
-                themeVars={themeVars}
-                disabled={!true}
-              >
-                {editingAgendaId ? "Update Agenda" : "Add Agenda"}
-              </StyledButton>
-            </form>
-          )}
-          <div
-            style={{
-              maxHeight: 320,
-              overflowY: "auto",
-              marginTop: 8,
-              borderRadius: 8,
-              border: `1px solid ${themeVars.border}`,
-              background: themeVars.card,
-            }}
-          >
-            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-              {agendas.length > 0 && (
-                <li
-                  style={{
-                    position: "sticky",
-                    top: 0,
-                    background: themeVars.card,
-                    zIndex: 1,
-                    fontWeight: 700,
-                    color: themeVars.accent,
-                    padding: "6px 8px",
-                    borderBottom: `1px solid ${themeVars.border}`,
-                    display: "flex",
-                    alignItems: "center",
-                    fontSize: 15,
-                  }}
-                >
-                  <span style={{ flex: 2 }}>Date</span>
-                  <span style={{ flex: 4 }}>Description</span>
-                  <span style={{ flex: 3 }}>Address</span>
-                  <span style={{ flex: 1, textAlign: "right" }}>Actions</span>
-                </li>
+                          <DeleteIcon sx={{ fontSize: "1rem" }} />
+                        </IconButton>
+                      </Box>
+                    </Box>
+                  )
+                )
               )}
-              {agendas.map((ag) => (
-                <li
-                  key={ag.id}
-                  style={{
-                    marginBottom: 0,
-                    display: "flex",
-                    alignItems: "center",
-                    background:
-                      editingAgendaId === ag.id ? themeVars.accent2 : undefined,
-                    borderRadius: 0,
-                    padding: "6px 8px",
-                    fontSize: 15,
-                    borderBottom: `1px solid ${themeVars.border}`,
-                  }}
-                >
-                  <span
-                    style={{
-                      flex: 2,
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                    }}
-                  >
-                    {ag.agenda_date}
-                  </span>
-                  <span
-                    style={{
-                      flex: 4,
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                    }}
-                  >
-                    {ag.description}
-                  </span>
-                  <span
-                    style={{
-                      flex: 3,
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                    }}
-                  >
-                    {ag.address}
-                  </span>
-                  <span
-                    style={{
-                      flex: 1,
-                      textAlign: "right",
-                      display: "flex",
-                      gap: 4,
-                      justifyContent: "flex-end",
-                    }}
-                  >
-                    <StyledButton
-                      title="Edit"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEditingAgendaId(ag.id);
-                        setEditAgendaDate(ag.agenda_date);
-                        setEditAgendaDesc(ag.description);
-                        setAgendaAddr(ag.address || "");
-                      }}
-                      themeVars={themeVars}
-                      style={{
-                        background: "none",
-                        color: "#fff",
-                        fontSize: 16,
-                        opacity: 0.7,
-                        padding: 2,
-                      }}
-                    >
-                      ✏️
-                    </StyledButton>
-                    <StyledButton
-                      title="Delete"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setConfirmDeleteAgendaId(ag.id);
-                      }}
-                      themeVars={themeVars}
-                      style={{
-                        background: "none",
-                        color: "#fff",
-                        fontSize: 16,
-                        opacity: 0.7,
-                        padding: 2,
-                      }}
-                    >
-                      🗑️
-                    </StyledButton>
-                    {ag.address && (
-                      <StyledButton
-                        title="Get Route"
-                        onClick={() => {
-                          const routeUrl = `https://www.openstreetmap.org/directions?route=;${encodeURIComponent(
-                            ag.address || ""
-                          )}`;
-                          window.open(routeUrl, "_blank");
-                        }}
-                        themeVars={themeVars}
-                        style={{
-                          background: themeVars.accent,
-                          color: themeVars.text,
-                          fontSize: 14,
-                          padding: "4px 8px",
-                          borderRadius: 4,
-                        }}
-                      >
-                        Get Route
-                      </StyledButton>
-                    )}
-                  </span>
-                  <ConfirmDialog
-                    open={confirmDeleteAgendaId === ag.id}
-                    message="Delete this agenda?"
-                    onConfirm={() => handleDeleteAgenda(ag.id)}
-                    onCancel={() => setConfirmDeleteAgendaId(null)}
-                    themeVars={themeVars}
-                  />
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      )}
-    </div>
+            </Box>
+          </Paper>
+
+          {/* Packing List Section */}
+          <Box sx={{ flex: 1 }}>
+            <PackingList vacationId={vacation.id} user={user} />
+          </Box>
+
+          {/* Expenses Section */}
+          <Box sx={{ flex: 1 }}>
+            <TripExpenses vacationId={vacation.id} user={user} />
+          </Box>
+
+          {/* Chat Section */}
+          <Box sx={{ flex: 1 }}>
+            <TripChat vacationId={vacation.id} user={user} />
+          </Box>
+        </Box>
+      </Box>
+
+      {/* Confirm Dialogs */}
+      {locations.map((loc) => (
+        <ConfirmDialog
+          key={`confirm-loc-${loc.id}`}
+          open={confirmDeleteLocId === loc.id}
+          message={`Are you sure you want to delete "${loc.name}"?`}
+          onConfirm={async () => {
+            await removeLocation(loc.id);
+            setConfirmDeleteLocId(null);
+            if (selectedLocation?.id === loc.id) setSelectedLocation(null);
+          }}
+          onCancel={() => setConfirmDeleteLocId(null)}
+        />
+      ))}
+    </Box>
   );
 }
 
@@ -598,17 +1031,42 @@ export function VacationDetails({
 type VacationEditorProps = {
   vacation: Vacation;
   onVacationUpdated: () => void;
+  user: any;
+  canEdit: boolean;
+  joinVacation: (userId: string) => Promise<boolean>;
+  leaveVacation: (userId: string) => Promise<boolean>;
+  participants: Participant[];
 };
 
 export function VacationEditor({
   vacation,
   onVacationUpdated,
+  user,
+  canEdit,
+  joinVacation,
+  leaveVacation,
+  participants,
 }: VacationEditorProps) {
   const [editing, setEditing] = useState(false);
+  const [ownerProfile, setOwnerProfile] = useState<any>(null);
+
+  useEffect(() => {
+    async function fetchOwnerProfile() {
+      if (vacation.user_id) {
+        const { data } = await supabase
+          .from("profiles")
+          .select("display_name")
+          .eq("id", vacation.user_id)
+          .single();
+        if (data) setOwnerProfile(data);
+      }
+    }
+    fetchOwnerProfile();
+  }, [vacation.user_id]);
+
   const [name, setName] = useState(vacation.name);
   const [startDate, setStartDate] = useState(vacation.start_date);
   const [endDate, setEndDate] = useState(vacation.end_date);
-  const themeVars = darkTheme;
 
   async function handleUpdateVacation() {
     const { error } = await supabase
@@ -623,54 +1081,255 @@ export function VacationEditor({
   }
 
   return (
-    <div>
+    <Box sx={{ mb: 6 }}>
       {editing ? (
-        <div>
-          <StyledInput
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Vacation Name"
-            themeVars={themeVars}
-          />
-          <StyledInput
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            themeVars={themeVars}
-          />
-          <StyledInput
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            themeVars={themeVars}
-          />
-          <StyledButton
-            onClick={handleUpdateVacation}
-            accent
-            themeVars={themeVars}
+        <Paper
+          elevation={0}
+          sx={{
+            p: 3,
+            borderRadius: 3,
+            bgcolor: "rgba(255, 255, 255, 0.05)",
+            backdropFilter: "blur(20px)",
+            border: "1px solid rgba(255, 255, 255, 0.1)",
+          }}
+        >
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", md: "2fr 1fr 1fr auto" },
+              gap: 2,
+              alignItems: "end",
+            }}
           >
-            Save
-          </StyledButton>
-          <StyledButton onClick={() => setEditing(false)} themeVars={themeVars}>
-            Cancel
-          </StyledButton>
-        </div>
+            <TextField
+              label="Vacation Name"
+              size="small"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              fullWidth
+            />
+            <TextField
+              label="Start Date"
+              type="date"
+              size="small"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+            />
+            <TextField
+              label="End Date"
+              type="date"
+              size="small"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+            />
+            <Box sx={{ display: "flex", gap: 1 }}>
+              <Button
+                onClick={handleUpdateVacation}
+                variant="contained"
+                sx={{ px: 3, fontWeight: 800, borderRadius: 2 }}
+              >
+                Save
+              </Button>
+              <Button
+                onClick={() => setEditing(false)}
+                variant="outlined"
+                sx={{ px: 2, borderRadius: 2 }}
+              >
+                Cancel
+              </Button>
+            </Box>
+          </Box>
+        </Paper>
       ) : (
-        <div>
-          <h3>{vacation.name}</h3>
-          <p>
-            {vacation.start_date} - {vacation.end_date}
-          </p>
-          <StyledButton
-            onClick={() => setEditing(true)}
-            accent
-            themeVars={themeVars}
-          >
-            Edit
-          </StyledButton>
-        </div>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <Box>
+            <Typography
+              variant="h3"
+              sx={{
+                fontWeight: 900,
+                letterSpacing: "-1.5px",
+                mb: 0.5,
+                background:
+                  "linear-gradient(90deg, #fff 0%, rgba(255,255,255,0.7) 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}
+            >
+              {vacation.name}
+            </Typography>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+              <Typography
+                variant="overline"
+                sx={{
+                  fontWeight: 800,
+                  letterSpacing: 1.5,
+                  color: "primary.main",
+                }}
+              >
+                {new Date(vacation.start_date).toLocaleDateString(undefined, {
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                })}
+              </Typography>
+              <Typography
+                variant="overline"
+                sx={{ opacity: 0.3, fontWeight: 800 }}
+              >
+                —
+              </Typography>
+              <Typography
+                variant="overline"
+                sx={{
+                  fontWeight: 800,
+                  letterSpacing: 1.5,
+                  color: "primary.main",
+                }}
+              >
+                {new Date(vacation.end_date).toLocaleDateString(undefined, {
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                })}
+              </Typography>
+            </Box>
+
+            {/* Participants View */}
+            {/* Participants View */}
+            <Box sx={{ display: "flex", alignItems: "center", mt: 2, gap: 2 }}>
+              <AvatarGroup
+                max={5}
+                sx={{
+                  "& .MuiAvatar-root": {
+                    width: 32,
+                    height: 32,
+                    fontSize: "0.8rem",
+                    border: "2px solid #1a1d23",
+                  },
+                }}
+              >
+                {/* Owner */}
+                <Tooltip
+                  title={`Owner: ${ownerProfile?.display_name || "Anonymous"}`}
+                >
+                  <Avatar sx={{ bgcolor: "primary.main" }}>
+                    {ownerProfile?.display_name?.charAt(0) || (
+                      <PersonIcon sx={{ fontSize: 18 }} />
+                    )}
+                  </Avatar>
+                </Tooltip>
+                {/* Participants */}
+                {participants.map((p, idx) => (
+                  <Tooltip
+                    key={p.user_id}
+                    title={`Participant: ${p.display_name || "Anonymous"}`}
+                  >
+                    <Avatar sx={{ bgcolor: "rgba(255,255,255,0.1)" }}>
+                      {p.display_name?.charAt(0) || (
+                        <GroupIcon sx={{ fontSize: 16 }} />
+                      )}
+                    </Avatar>
+                  </Tooltip>
+                ))}
+              </AvatarGroup>
+              <Typography
+                variant="caption"
+                sx={{ color: "rgba(255,255,255,0.4)", fontWeight: 700 }}
+              >
+                {1 + participants.length}{" "}
+                {1 + participants.length === 1 ? "Person" : "People"} Planning
+              </Typography>
+            </Box>
+
+            {!canEdit && (
+              <Chip
+                label="READ ONLY - SHARED TRIP"
+                size="small"
+                sx={{
+                  mt: 2,
+                  bgcolor: "rgba(255,152,0,0.1)",
+                  color: "#ff9800",
+                  fontWeight: 900,
+                  borderRadius: 2,
+                  fontSize: "0.7rem",
+                  letterSpacing: 1,
+                  border: "1px solid rgba(255,152,0,0.2)",
+                  mr: 2,
+                }}
+              />
+            )}
+            {user && !canEdit && (
+              <Button
+                onClick={async () => {
+                  const isJoined = participants.some(
+                    (p) => p.user_id === user.id
+                  );
+                  const success = isJoined
+                    ? await leaveVacation(user.id)
+                    : await joinVacation(user.id);
+                  if (success) onVacationUpdated();
+                }}
+                variant={
+                  participants.some((p) => p.user_id === user.id)
+                    ? "outlined"
+                    : "contained"
+                }
+                size="small"
+                startIcon={
+                  participants.some((p) => p.user_id === user.id) ? (
+                    <AddIcon sx={{ transform: "rotate(45deg)" }} />
+                  ) : (
+                    <AddIcon />
+                  )
+                }
+                sx={{
+                  mt: 2,
+                  fontWeight: 800,
+                  borderRadius: 2,
+                }}
+              >
+                {participants.some((p) => p.user_id === user.id)
+                  ? "Leave Trip"
+                  : "Join Trip"}
+              </Button>
+            )}
+          </Box>
+          {canEdit && (
+            <Button
+              onClick={() => setEditing(true)}
+              variant="outlined"
+              startIcon={<EditIcon sx={{ fontSize: "1rem" }} />}
+              sx={{
+                color: "rgba(255,255,255,0.6)",
+                borderColor: "rgba(255,255,255,0.1)",
+                "&:hover": {
+                  bgcolor: "rgba(255,255,255,0.05)",
+                  borderColor: "rgba(255,255,255,0.2)",
+                },
+                borderRadius: 2,
+                px: 2,
+                py: 0.8,
+                fontWeight: 800,
+                fontSize: "0.85rem",
+                backdropFilter: "blur(10px)",
+                textTransform: "none",
+              }}
+            >
+              Edit Trip
+            </Button>
+          )}
+        </Box>
       )}
-    </div>
+    </Box>
   );
 }

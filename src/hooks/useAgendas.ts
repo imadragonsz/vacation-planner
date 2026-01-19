@@ -7,6 +7,9 @@ export type Agenda = {
   agenda_date: string;
   description: string;
   address?: string;
+  Time?: string;
+  type?: "activity" | "flight" | "train" | "bus" | "hotel" | "note";
+  position: number;
 };
 
 export function useAgendas(locationId: number) {
@@ -24,7 +27,9 @@ export function useAgendas(locationId: number) {
       .from("agendas")
       .select("*")
       .eq("location_id", locId)
-      .order("agenda_date", { ascending: true });
+      .order("agenda_date", { ascending: true })
+      .order("position", { ascending: true })
+      .order("Time", { ascending: true });
     if (!error && data) setAgendas(data as Agenda[]);
     setLoading(false);
   }
@@ -32,12 +37,27 @@ export function useAgendas(locationId: number) {
   async function addAgenda(
     agenda_date: string,
     description: string,
-    address?: string
+    address?: string,
+    Time?: string,
+    type: string = "activity"
   ) {
     setLoading(true);
-    const { error } = await supabase
-      .from("agendas")
-      .insert([{ location_id: locationId, agenda_date, description, address }]);
+    // Get max position for this date
+    const maxPos = agendas
+      .filter((a) => a.agenda_date === agenda_date)
+      .reduce((max, a) => Math.max(max, a.position || 0), -1);
+
+    const { error } = await supabase.from("agendas").insert([
+      {
+        location_id: locationId,
+        agenda_date,
+        description,
+        address,
+        Time,
+        type,
+        position: maxPos + 1,
+      },
+    ]);
     if (!error) fetchAgendas(locationId);
     setLoading(false);
   }
@@ -46,16 +66,41 @@ export function useAgendas(locationId: number) {
     id: number,
     agenda_date: string,
     description: string,
-    address?: string
+    address?: string,
+    Time?: string,
+    type?: string
   ) {
     setLoading(true);
     const { error } = await supabase
       .from("agendas")
-      .update({ agenda_date, description, address })
+      .update({ agenda_date, description, address, Time, type })
       .eq("id", id);
     if (!error) fetchAgendas(locationId);
     setLoading(false);
   }
 
-  return { agendas, loading, addAgenda, updateAgenda };
+  async function updateAgendasOrder(items: Agenda[]) {
+    // Optimistic update
+    setAgendas(items);
+
+    // Update positions in DB
+    const updates = items.map((item, index) => ({
+      id: item.id,
+      position: index,
+      location_id: item.location_id,
+      agenda_date: item.agenda_date,
+      description: item.description,
+      type: item.type,
+      Time: item.Time,
+      address: item.address,
+    }));
+
+    const { error } = await supabase.from("agendas").upsert(updates);
+    if (error) {
+      console.error("Error updating agenda order:", error);
+      fetchAgendas(locationId);
+    }
+  }
+
+  return { agendas, loading, addAgenda, updateAgenda, updateAgendasOrder };
 }

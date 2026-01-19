@@ -1,4 +1,5 @@
-import React, { useEffect } from "react";
+import React from "react";
+import { Snackbar, Alert } from "@mui/material";
 
 function Toast({
   message,
@@ -9,40 +10,17 @@ function Toast({
   onClose: () => void;
   type?: "info" | "success" | "error";
 }) {
-  useEffect(() => {
-    if (!message) return;
-    const timer = setTimeout(onClose, 3000);
-    return () => clearTimeout(timer);
-  }, [message, onClose]);
-
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      style={{
-        position: "fixed",
-        bottom: 32,
-        left: "50%",
-        transform: "translateX(-50%)",
-        background:
-          type === "error"
-            ? "#e74c3c"
-            : type === "success"
-            ? "#27ae60"
-            : "#222",
-        color: "#fff",
-        padding: "14px 32px",
-        borderRadius: 8,
-        fontSize: 18,
-        fontWeight: 600,
-        boxShadow: "0 4px 24px #0005",
-        zIndex: 2000,
-        minWidth: 220,
-        textAlign: "center",
-      }}
+    <Snackbar
+      open={!!message}
+      autoHideDuration={3000}
+      onClose={onClose}
+      anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
     >
-      {message}
-    </div>
+      <Alert onClose={onClose} severity={type} sx={{ width: "100%" }}>
+        {message}
+      </Alert>
+    </Snackbar>
   );
 }
 

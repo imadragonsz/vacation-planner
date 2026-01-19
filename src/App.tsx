@@ -6,22 +6,33 @@ import { VacationCalendar } from "./pages/VacationCalendar";
 import VacationEditModal from "./VacationEditModal";
 import { VacationDetails } from "./pages/VacationDetails";
 import AccountPage from "./pages/AccountPage";
+import MyItinerary from "./pages/MyItinerary";
 import "./styles/App.css";
-import { darkTheme, lightTheme } from "./styles/theme";
 import { useVacations, useAddVacation } from "./hooks/useVacations";
 import VacationListItem from "./VacationListItem";
 import AuthForm from "./components/AuthForm";
 import VacationAddModal from "./VacationAddModal";
 import { handleArchiveVacation, handleArchiveRestore } from "./utils/handlers";
+// @ts-ignore
+import ClipLoader from "react-spinners/ClipLoader";
+import Toast from "./components/Toast";
+import {
+  CssBaseline,
+  ThemeProvider,
+  createTheme,
+  Box,
+  Checkbox,
+  Typography,
+  TextField,
+  Button,
+  Divider,
+  Tabs,
+  Tab,
+} from "@mui/material";
+import MapIcon from "@mui/icons-material/Map";
+import AddIcon from "@mui/icons-material/Add";
 
-interface Vacation {
-  id: number;
-  name: string;
-  destination: string;
-  start_date: string;
-  end_date: string;
-  archived?: boolean;
-}
+import { Vacation } from "./vacation";
 
 interface AppProps {
   user: any;
@@ -29,6 +40,42 @@ interface AppProps {
 }
 
 function App({ user, setUser }: AppProps) {
+  const [themeMode, setThemeMode] = useState<"dark" | "light">("dark");
+
+  const theme = React.useMemo(
+    () =>
+      createTheme({
+        palette: {
+          mode: themeMode,
+          primary: {
+            main: "#1976d2",
+          },
+          secondary: {
+            main: "#dc004e",
+          },
+          background: {
+            default: themeMode === "dark" ? "#0f1115" : "#f5f5f7",
+            paper: themeMode === "dark" ? "#1a1d23" : "#ffffff",
+          },
+        },
+        typography: {
+          fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+        },
+        components: {
+          MuiButton: {
+            styleOverrides: {
+              root: {
+                borderRadius: 8,
+                textTransform: "none",
+                fontWeight: 600,
+              },
+            },
+          },
+        },
+      }),
+    [themeMode]
+  );
+
   const {
     vacations,
     loading: vacationsLoading,
@@ -38,7 +85,7 @@ function App({ user, setUser }: AppProps) {
     () => {}
   );
 
-  const { addVacation, loading: addVacationLoading } = useAddVacation(
+  const { loading: addVacationLoading } = useAddVacation(
     fetchVacations,
     () => {}
   );
@@ -49,23 +96,24 @@ function App({ user, setUser }: AppProps) {
   const [loadingUser, setLoadingUser] = useState(true);
   const [search, setSearch] = useState("");
   const [showArchived, setShowArchived] = useState(false);
+  const [activeTab, setActiveTab] = useState(0); // 0: My Trips, 1: Shared Trips
   const [showAccount, setShowAccount] = useState(false);
+  const [showItinerary, setShowItinerary] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [editingVacation, setEditingVacation] = useState<Vacation | null>(null);
-  const [editingVacationValues, setEditingVacationValues] =
-    useState<Vacation | null>(null);
   const [selectedVacation, setSelectedVacation] = useState<Vacation | null>(
     null
   );
   const [dbStatus, setDbStatus] = useState("checking");
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "register" | "reset">(
     "login"
   );
   const [showAddVacationModal, setShowAddVacationModal] = useState(false);
-
-  const themeVars = theme === "dark" ? darkTheme : lightTheme;
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<"info" | "success" | "error">(
+    "info"
+  );
 
   useEffect(() => {
     fetchVacations(showArchived);
@@ -98,91 +146,187 @@ function App({ user, setUser }: AppProps) {
       setUser(session?.user ?? null);
       setLoadingUser(false);
     });
+
     const { data: listener } = supabase.auth.onAuthStateChange(
       (_event, session) => {
-        setUser(session?.user ?? null);
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
         setLoadingUser(false);
+
+        // Auto-create profile if it doesn't exist
+        if (currentUser) {
+          supabase
+            .from("profiles")
+            .select("id")
+            .eq("id", currentUser.id)
+            .maybeSingle()
+            .then(({ data }) => {
+              if (!data) {
+                supabase
+                  .from("profiles")
+                  .insert([
+                    {
+                      id: currentUser.id,
+                      display_name:
+                        currentUser.user_metadata?.display_name ||
+                        currentUser.email?.split("@")[0] ||
+                        "New Traveler",
+                    },
+                  ])
+                  .then(() => {
+                    fetchVacations(showArchived);
+                  });
+              }
+            });
+        }
       }
     );
-    return () => listener?.subscription.unsubscribe();
-  }, [setUser]);
 
-  // Save vacation edits
-  function handleSaveVacation(e: React.FormEvent) {
-    e.preventDefault();
-    if (!editingVacation || !editingVacationValues) return;
+    return () => {
+      listener?.subscription.unsubscribe();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount to establish the listener
 
-    supabase
-      .from("vacations")
-      .update({
-        name: editingVacationValues.name,
-        destination: editingVacationValues.destination,
-        start_date: editingVacationValues.start_date,
-        end_date: editingVacationValues.end_date,
-      })
-      .eq("id", editingVacation.id)
-      .then(({ error }) => {
-        if (!error) fetchVacations();
-        else console.error("Error updating vacation:", error);
-        setEditingVacation(null);
-      });
-  }
+  // Load theme preference from localStorage
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme === "dark" || savedTheme === "light") {
+      setThemeMode(savedTheme as "dark" | "light");
+    }
+  }, []);
+
+  // Save theme preference to localStorage
+  useEffect(() => {
+    localStorage.setItem("theme", themeMode);
+  }, [themeMode]);
 
   // Open vacation edit modal
   function openEditVacationModal(vacation: Vacation) {
     setEditingVacation(vacation);
-    setEditingVacationValues({ ...vacation });
   }
 
   // Filter vacations
   const filteredVacations = vacations.filter((vacation) => {
     const query = search.toLowerCase();
-    return (
+    const matchesSearch =
       vacation.name.toLowerCase().includes(query) ||
-      vacation.destination.toLowerCase().includes(query)
-    );
+      vacation.destination.toLowerCase().includes(query);
+
+    if (!user) return matchesSearch; // For guests, show all (filtered by archive)
+
+    const isMine =
+      vacation.user_id === user.id ||
+      vacation.vacation_participants?.some((p) => p.user_id === user.id);
+
+    if (activeTab === 0) {
+      return matchesSearch && isMine;
+    } else {
+      return matchesSearch && !isMine;
+    }
   });
 
   const displayedVacations = filteredVacations.filter(
     (vacation) => showArchived || !vacation.archived
   );
 
+  // Toast notification function
+  const showToast = (message: string, type: "info" | "success" | "error") => {
+    setToastMessage(message);
+    setToastType(type);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  // Example usage of showToast
+  useEffect(() => {
+    if (dbStatus === "error") {
+      showToast("Error connecting to the database.", "error");
+    }
+  }, [dbStatus]);
+
   // Render loading states
-  if (loading || loadingUser) return <p>Loading...</p>;
+  if (loading || loadingUser) {
+    return (
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            height: "100vh",
+            background: themeMode === "dark" ? "#0f1115" : "#f5f5f7",
+          }}
+        >
+          <ClipLoader color="#1976d2" size={50} />
+        </div>
+      </ThemeProvider>
+    );
+  }
+
+  // Render personal itinerary page
+  if (showItinerary && user) {
+    return (
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <UserContext.Provider value={{ user }}>
+          <div className="vp-main">
+            <NavBar
+              onCalendarToggle={() => setShowCalendar((prev) => !prev)}
+              theme={themeMode}
+              setTheme={setThemeMode}
+              user={user}
+              setShowAccount={setShowAccount}
+              setShowItinerary={setShowItinerary}
+              setShowCalendar={setShowCalendar}
+              setShowAuthModal={setShowAuthModal}
+              handleLogout={async () => {
+                await supabase.auth.signOut();
+                setUser(null);
+                setShowAccount(false);
+                setShowItinerary(false);
+              }}
+              onBackToTrips={() => {
+                setShowItinerary(false);
+                setShowAccount(false);
+                setShowCalendar(false);
+              }}
+            />
+            <MyItinerary user={user} onHome={() => setShowItinerary(false)} />
+          </div>
+        </UserContext.Provider>
+      </ThemeProvider>
+    );
+  }
 
   // Render account page
   if (showAccount && user) {
     return (
-      <UserContext.Provider value={{ user }}>
-        <div className="vp-main">
-          <div
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              width: "100vw",
-              height: "100vh",
-              background: themeVars.background,
-              zIndex: -1,
-            }}
-            aria-hidden="true"
-          />
-          <NavBar
-            onCalendarToggle={() => setShowCalendar((prev) => !prev)}
-            themeVars={themeVars}
-            theme={theme}
-            setTheme={setTheme}
-            user={user}
-            setShowAccount={setShowAccount}
-            setShowCalendar={setShowCalendar}
-            setShowAuthModal={setShowAuthModal}
-            handleLogout={async () => {
-              await supabase.auth.signOut();
-              setUser(null);
-              setShowAccount(false);
-            }}
-          />
-          <div className="vp-content">
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <UserContext.Provider value={{ user }}>
+          <div className="vp-main">
+            <NavBar
+              onCalendarToggle={() => setShowCalendar((prev) => !prev)}
+              theme={themeMode}
+              setTheme={setThemeMode}
+              user={user}
+              setShowAccount={setShowAccount}
+              setShowItinerary={setShowItinerary}
+              setShowCalendar={setShowCalendar}
+              setShowAuthModal={setShowAuthModal}
+              handleLogout={async () => {
+                await supabase.auth.signOut();
+                setUser(null);
+                setShowAccount(false);
+                setShowItinerary(false);
+              }}
+              onBackToTrips={() => {
+                setShowItinerary(false);
+                setShowAccount(false);
+                setShowCalendar(false);
+              }}
+            />
             <AccountPage
               user={user}
               onLogout={async () => {
@@ -192,164 +336,365 @@ function App({ user, setUser }: AppProps) {
               }}
               onHome={() => {
                 setShowAccount(false);
-                setShowCalendar(true);
+                setShowCalendar(false);
+                setShowItinerary(false);
               }}
-              themeVars={themeVars}
             />
           </div>
-        </div>
-      </UserContext.Provider>
+        </UserContext.Provider>
+      </ThemeProvider>
     );
   }
 
   // Main application layout
   return (
-    <UserContext.Provider value={{ user }}>
-      <div className="vp-main">
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100vw",
-            height: "100vh",
-            background: themeVars.background,
-            zIndex: -1,
-          }}
-          aria-hidden="true"
-        />
-        <NavBar
-          onCalendarToggle={() => setShowCalendar((prev) => !prev)}
-          themeVars={themeVars}
-          theme={theme}
-          setTheme={setTheme}
-          user={user}
-          setShowAccount={setShowAccount}
-          setShowCalendar={setShowCalendar}
-          setShowAuthModal={setShowAuthModal} // Pass the setShowAuthModal prop
-          handleLogout={async () => {
-            await supabase.auth.signOut();
-            setUser(null);
-            setShowAccount(false);
-          }}
-        />
-        {dbStatus === "error" && (
-          <div style={{ color: "red" }}>
-            Error connecting to the database. Some features may not work.
-          </div>
-        )}
-        {showCalendar && (
-          <VacationCalendar
-            vacations={vacations}
-            onVacationClick={setEditingVacation}
-            onEditVacation={() => {}} // Replaced `pushUndo` with an empty function
-          />
-        )}
-        {editingVacation && (
-          <VacationEditModal
-            vacation={editingVacation}
-            values={editingVacationValues}
-            onChange={(values) => setEditingVacationValues(values)}
-            onSave={handleSaveVacation}
-            onClose={() => setEditingVacation(null)}
-            themeVars={themeVars}
-          />
-        )}
-        {showAddVacationModal && (
-          <VacationAddModal
-            onClose={() => setShowAddVacationModal(false)}
-            onSubmit={addVacation}
-            themeVars={themeVars}
-            style={{
-              maxWidth: "500px",
-              maxHeight: "80%",
-              overflowY: "auto",
-              borderRadius: "8px",
-              boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <UserContext.Provider value={{ user }}>
+        <div className="vp-main">
+          <NavBar
+            onCalendarToggle={() => setShowCalendar((prev) => !prev)}
+            theme={themeMode}
+            setTheme={setThemeMode}
+            user={user}
+            setShowAccount={setShowAccount}
+            setShowItinerary={setShowItinerary}
+            setShowCalendar={setShowCalendar}
+            setShowAuthModal={setShowAuthModal}
+            handleLogout={async () => {
+              await supabase.auth.signOut();
+              setUser(null);
+              setShowAccount(false);
+              setShowItinerary(false);
+            }}
+            onBackToTrips={() => {
+              setShowItinerary(false);
+              setShowAccount(false);
+              setShowCalendar(false);
             }}
           />
-        )}
-        <div className="vp-content">
-          <aside className="vp-sidebar">
-            <h2>Your Vacations</h2>
-            <button
-              onClick={() => setShowAddVacationModal(true)}
-              className="vp-button"
-            >
-              Add Vacation
-            </button>
-            <input
-              type="text"
-              placeholder="Search vacations..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="vp-input"
+          {dbStatus === "error" && (
+            <div style={{ color: "red" }}>
+              Error connecting to the database. Some features may not work.
+            </div>
+          )}
+          <VacationCalendar
+            open={showCalendar}
+            onClose={() => setShowCalendar(false)}
+            vacations={vacations}
+            onVacationClick={(vac) => {
+              setSelectedVacation(vac);
+              setShowCalendar(false);
+            }}
+          />
+          {editingVacation && (
+            <VacationEditModal
+              open={!!editingVacation}
+              vacation={editingVacation}
+              onSave={async (updatedVacation) => {
+                const { error } = await supabase
+                  .from("vacations")
+                  .update(updatedVacation)
+                  .eq("id", updatedVacation.id);
+                if (!error) {
+                  fetchVacations(showArchived);
+                  setEditingVacation(null);
+                }
+              }}
+              onClose={() => setEditingVacation(null)}
             />
-            <label>
-              <input
-                type="checkbox"
-                checked={showArchived}
-                onChange={(e) => setShowArchived(e.target.checked)}
-              />
-              Show Archived Vacations
-            </label>
-            <ul>
-              {displayedVacations.map((vacation) => (
-                <VacationListItem
-                  key={vacation.id}
-                  vacation={vacation}
-                  selected={selectedVacation?.id === vacation.id}
-                  themeVars={themeVars}
-                  onSelect={() => setSelectedVacation(vacation)}
-                  onEdit={openEditVacationModal}
-                  onDelete={() =>
-                    handleArchiveVacation(
-                      vacation,
-                      () => {}, // Placeholder for pushUndo
-                      fetchVacations,
-                      (toast) => console.log(toast) // Placeholder for setToast
-                    )
-                  }
-                  onRestore={() =>
-                    handleArchiveRestore(
-                      vacation, // Pass the entire vacation object
-                      fetchVacations,
-                      (toast) => console.log(toast) // Placeholder for setToast
-                    )
-                  }
-                />
-              ))}
-            </ul>
-          </aside>
-          <main className="vp-main-content">
-            {selectedVacation && (
-              <div className="vp-details">
-                <VacationDetails
-                  vacationId={selectedVacation.id}
-                  theme={theme}
-                  user={user}
-                />
-              </div>
-            )}
-          </main>
-        </div>
-        <footer className="vp-footer">© 2025 Vacation Planner</footer>
-
-        {showAuthModal && (
-          <div className="auth-modal-wrapper">
-            <AuthForm
-              themeVars={themeVars}
-              mode={authMode}
-              setMode={setAuthMode}
-              errorMsg={null}
-              onAuth={(err) => {
-                if (!err) setShowAuthModal(false);
+          )}
+          {showAddVacationModal && (
+            <VacationAddModal
+              open={showAddVacationModal}
+              onClose={() => setShowAddVacationModal(false)}
+              onSubmit={async (data) => {
+                const { error } = await supabase.from("vacations").insert([
+                  {
+                    name: data.name,
+                    destination: data.destination,
+                    start_date: data.startDate,
+                    end_date: data.endDate,
+                    user_id: user.id,
+                  },
+                ]);
+                if (!error) {
+                  fetchVacations(showArchived);
+                  setShowAddVacationModal(false);
+                }
               }}
             />
-          </div>
-        )}
-      </div>
-    </UserContext.Provider>
+          )}
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", lg: "300px 1fr" },
+              minHeight: "calc(100vh - 84px)", // Subtract navbar height
+              bgcolor: "rgba(0,0,0,0.2)",
+            }}
+          >
+            <Box
+              component="aside"
+              sx={{
+                bgcolor: "rgba(255, 255, 255, 0.02)",
+                backdropFilter: "blur(20px)",
+                p: 3,
+                borderRight: "1px solid rgba(255, 255, 255, 0.05)",
+                display: "flex",
+                flexDirection: "column",
+                gap: 2,
+                position: "sticky",
+                top: 0,
+                height: "calc(100vh - 84px)",
+              }}
+            >
+              <Typography
+                variant="subtitle2"
+                sx={{
+                  fontWeight: 800,
+                  opacity: 0.5,
+                  textTransform: "uppercase",
+                  letterSpacing: 1,
+                  mb: 1,
+                }}
+              >
+                Your Vacations
+              </Typography>
+              <Button
+                variant="contained"
+                onClick={() => setShowAddVacationModal(true)}
+                fullWidth
+                disabled={!user}
+                startIcon={<AddIcon />}
+                sx={{
+                  py: 1.2,
+                  fontWeight: 800,
+                  borderRadius: 2,
+                  bgcolor: "primary.main",
+                  "&:hover": { bgcolor: "primary.dark" },
+                  ...(!user && { opacity: 0.5, cursor: "not-allowed" }),
+                }}
+              >
+                {user ? "New Trip" : "Login to Add Trip"}
+              </Button>
+
+              {user && (
+                <Tabs
+                  value={activeTab}
+                  onChange={(_, newValue) => setActiveTab(newValue)}
+                  variant="fullWidth"
+                  sx={{
+                    minHeight: 40,
+                    mt: 1,
+                    "& .MuiTab-root": {
+                      minHeight: 40,
+                      fontWeight: 700,
+                      fontSize: "0.75rem",
+                      borderRadius: 1.5,
+                      color: "rgba(255,255,255,0.4)",
+                    },
+                    "& .MuiTab-root.Mui-selected": {
+                      color: "#fff",
+                      bgcolor: "rgba(255,255,255,0.05)",
+                    },
+                    "& .MuiTabs-indicator": {
+                      display: "none",
+                    },
+                  }}
+                >
+                  <Tab label="My Trips" />
+                  <Tab label="Explore" />
+                </Tabs>
+              )}
+
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 1.5,
+                  mt: 1,
+                }}
+              >
+                <TextField
+                  size="small"
+                  placeholder="Search..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  fullWidth
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      bgcolor: "rgba(255, 255, 255, 0.03)",
+                      borderRadius: 2,
+                    },
+                  }}
+                />
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    px: 0.5,
+                  }}
+                >
+                  <Typography
+                    variant="caption"
+                    sx={{ opacity: 0.4, fontWeight: 700 }}
+                  >
+                    Include Archived
+                  </Typography>
+                  <Checkbox
+                    size="small"
+                    checked={showArchived}
+                    onChange={(e) => setShowArchived(e.target.checked)}
+                    sx={{ p: 0, color: "rgba(255,255,255,0.2)" }}
+                  />
+                </Box>
+              </Box>
+
+              <Divider sx={{ my: 1, opacity: 0.05 }} />
+
+              <Box
+                component="ul"
+                sx={{
+                  listStyle: "none",
+                  p: 0,
+                  m: 0,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 0.5,
+                  flex: 1,
+                  overflowY: "auto",
+                  "&::-webkit-scrollbar": { width: 4 },
+                  "&::-webkit-scrollbar-thumb": {
+                    bgcolor: "rgba(255,255,255,0.05)",
+                    borderRadius: 10,
+                  },
+                }}
+              >
+                {displayedVacations.length > 0 ? (
+                  displayedVacations.map((vacation) => (
+                    <VacationListItem
+                      key={vacation.id}
+                      vacation={vacation}
+                      selected={selectedVacation?.id === vacation.id}
+                      user={user}
+                      onSelect={() => setSelectedVacation(vacation)}
+                      onEdit={openEditVacationModal}
+                      onDelete={() =>
+                        handleArchiveVacation(
+                          vacation,
+                          () => {},
+                          fetchVacations,
+                          (toast) => showToast(toast.message, toast.type)
+                        )
+                      }
+                      onRestore={() =>
+                        handleArchiveRestore(
+                          vacation,
+                          fetchVacations,
+                          (toast) => showToast(toast.message, toast.type)
+                        )
+                      }
+                      onDeletedPermanently={() => {
+                        fetchVacations(showArchived);
+                        if (selectedVacation?.id === vacation.id) {
+                          setSelectedVacation(null);
+                        }
+                        showToast("Trip deleted permanently", "success");
+                      }}
+                    />
+                  ))
+                ) : (
+                  <Box sx={{ mt: 8, textAlign: "center", px: 2 }}>
+                    <MapIcon
+                      sx={{
+                        fontSize: 48,
+                        opacity: 0.1,
+                        mb: 2,
+                        color: "primary.main",
+                      }}
+                    />
+                    <Typography
+                      variant="body2"
+                      sx={{ opacity: 0.4, fontWeight: 700, mb: 1 }}
+                    >
+                      No trips found
+                    </Typography>
+                    <Typography variant="caption" sx={{ opacity: 0.2 }}>
+                      {search
+                        ? "Try a different search term"
+                        : "Start by creating your first adventure!"}
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+            </Box>
+
+            <Box
+              component="main"
+              sx={{
+                flex: 1,
+                height: "calc(100vh - 84px)",
+                overflowY: "auto",
+                bgcolor: "inherit",
+              }}
+            >
+              {selectedVacation ? (
+                <VacationDetails
+                  vacation={selectedVacation}
+                  user={user}
+                  onRefresh={() => fetchVacations(showArchived)}
+                />
+              ) : (
+                <Box
+                  sx={{
+                    height: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    opacity: 0.2,
+                    p: 4,
+                    textAlign: "center",
+                  }}
+                >
+                  <MapIcon sx={{ fontSize: 80, mb: 2 }} />
+                  <Typography variant="h4" sx={{ fontWeight: 900, mb: 1 }}>
+                    Adventure Awaits
+                  </Typography>
+                  <Typography variant="body1">
+                    Select a trip from the sidebar to start planning your next
+                    getaway.
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+          </Box>
+          <footer className="vp-footer">© 2025 Vacation Planner</footer>
+
+          {showAuthModal && (
+            <div className="auth-modal-wrapper">
+              <AuthForm
+                mode={authMode}
+                setMode={setAuthMode}
+                errorMsg={null}
+                onAuth={(err) => {
+                  if (!err) setShowAuthModal(false);
+                }}
+              />
+            </div>
+          )}
+
+          {toastMessage && (
+            <Toast
+              message={toastMessage}
+              type={toastType}
+              onClose={() => setToastMessage(null)}
+            />
+          )}
+        </div>
+      </UserContext.Provider>
+    </ThemeProvider>
   );
 }
 
