@@ -12,6 +12,7 @@ import {
 import LogoutIcon from "@mui/icons-material/Logout";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 export interface NavBarProps {
   theme: "dark" | "light";
@@ -38,7 +39,7 @@ const NavBar: React.FC<NavBarProps> = ({
   onBackToTrips,
 }) => {
   const muiTheme = useTheme();
-  const isMobile = useMediaQuery(muiTheme.breakpoints.down("sm"));
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down("md"));
 
   return (
     <AppBar
@@ -52,7 +53,23 @@ const NavBar: React.FC<NavBarProps> = ({
       }}
     >
       <Toolbar sx={{ display: "flex", justifyContent: "space-between" }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: "16px" }}>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: { xs: "8px", md: "16px" },
+          }}
+        >
+          {isMobile && onBackToTrips && (
+            <IconButton
+              color="inherit"
+              onClick={onBackToTrips}
+              size="small"
+              sx={{ mr: 0.5 }}
+            >
+              <ArrowBackIcon fontSize="small" />
+            </IconButton>
+          )}
           <Typography
             variant="h6"
             component="div"

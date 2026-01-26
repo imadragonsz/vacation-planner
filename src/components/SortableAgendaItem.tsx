@@ -203,6 +203,7 @@ export function SortableAgendaItem({
                 alignItems: "center",
                 gap: 0.5,
                 mt: 0.2,
+                wordBreak: "break-all",
               }}
             >
               <LocationOnIcon sx={{ fontSize: 13 }} />
@@ -235,6 +236,7 @@ export function SortableAgendaItem({
         sx={{
           display: "flex",
           alignItems: "center",
+          flexWrap: "wrap",
           gap: 0.5,
           opacity: { xs: 1, sm: 0.6 },
           transition: "opacity 0.2s",
@@ -269,7 +271,7 @@ export function SortableAgendaItem({
             variant="text"
             onClick={() => {
               const routeUrl = `https://www.openstreetmap.org/directions?route=;${encodeURIComponent(
-                ag.address || ""
+                ag.address || "",
               )}`;
               window.open(routeUrl, "_blank");
             }}

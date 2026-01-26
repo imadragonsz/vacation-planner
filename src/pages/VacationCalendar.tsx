@@ -11,6 +11,8 @@ import {
   DialogContent,
   DialogActions,
   FormControlLabel,
+  useTheme,
+  useMediaQuery,
 } from "@mui/material";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
@@ -37,6 +39,8 @@ export function VacationCalendar({
   onClose,
   onVacationClick,
 }: VacationCalendarProps) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -44,7 +48,7 @@ export function VacationCalendar({
   const daysInMonth = getDaysInMonth(year, month);
 
   const filteredVacations = vacations.filter(
-    (vac) => showArchived || !vac.archived
+    (vac) => showArchived || !vac.archived,
   );
 
   const dayVacations: { [day: number]: Vacation[] } = {};
@@ -58,17 +62,17 @@ export function VacationCalendar({
       const checkDate = new Date(
         date.getFullYear(),
         date.getMonth(),
-        date.getDate()
+        date.getDate(),
       );
       const startDate = new Date(
         start.getFullYear(),
         start.getMonth(),
-        start.getDate()
+        start.getDate(),
       );
       const endDate = new Date(
         end.getFullYear(),
         end.getMonth(),
-        end.getDate()
+        end.getDate(),
       );
 
       if (checkDate >= startDate && checkDate <= endDate) {
@@ -119,12 +123,13 @@ export function VacationCalendar({
       onClose={onClose}
       fullWidth
       maxWidth="lg"
+      fullScreen={isMobile}
       PaperProps={{
         sx: {
           bgcolor: "rgba(15, 20, 25, 0.9)",
           backdropFilter: "blur(20px)",
-          borderRadius: 4,
-          border: "1px solid rgba(255, 255, 255, 0.1)",
+          borderRadius: isMobile ? 0 : 4,
+          border: isMobile ? "none" : "1px solid rgba(255, 255, 255, 0.1)",
           backgroundImage: "none",
           color: "#fff",
         },
@@ -135,12 +140,14 @@ export function VacationCalendar({
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          p: 3,
+          p: isMobile ? 2 : 3,
         }}
       >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-          <Typography variant="h5" sx={{ fontWeight: 800 }}>
-            Vacation Calendar
+        <Box
+          sx={{ display: "flex", alignItems: "center", gap: isMobile ? 1 : 2 }}
+        >
+          <Typography variant={isMobile ? "h6" : "h5"} sx={{ fontWeight: 800 }}>
+            Calendar
           </Typography>
           <FormControlLabel
             control={
@@ -152,8 +159,8 @@ export function VacationCalendar({
               />
             }
             label={
-              <Typography variant="body2" sx={{ opacity: 0.7 }}>
-                Show Archived
+              <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                {isMobile ? "Archived" : "Show Archived"}
               </Typography>
             }
           />
@@ -163,33 +170,45 @@ export function VacationCalendar({
         </IconButton>
       </DialogTitle>
 
-      <DialogContent sx={{ p: 3 }}>
+      <DialogContent sx={{ p: isMobile ? 1 : 3 }}>
         <Box
           sx={{
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            gap: 4,
-            mb: 4,
+            gap: isMobile ? 2 : 4,
+            mb: isMobile ? 2 : 4,
           }}
         >
           <IconButton
             onClick={prevMonth}
-            sx={{ color: "#fff", bgcolor: "rgba(255,255,255,0.05)" }}
+            sx={{
+              color: "#fff",
+              bgcolor: "rgba(255,255,255,0.05)",
+              p: isMobile ? 0.5 : 1,
+            }}
           >
-            <ArrowBackIosNewIcon />
+            <ArrowBackIosNewIcon fontSize={isMobile ? "small" : "medium"} />
           </IconButton>
           <Typography
-            variant="h4"
-            sx={{ fontWeight: 700, minWidth: 250, textAlign: "center" }}
+            variant={isMobile ? "h6" : "h4"}
+            sx={{
+              fontWeight: 700,
+              minWidth: isMobile ? 150 : 250,
+              textAlign: "center",
+            }}
           >
             {getMonthName(month)} {year}
           </Typography>
           <IconButton
             onClick={nextMonth}
-            sx={{ color: "#fff", bgcolor: "rgba(255,255,255,0.05)" }}
+            sx={{
+              color: "#fff",
+              bgcolor: "rgba(255,255,255,0.05)",
+              p: isMobile ? 0.5 : 1,
+            }}
           >
-            <ArrowForwardIosIcon />
+            <ArrowForwardIosIcon fontSize={isMobile ? "small" : "medium"} />
           </IconButton>
         </Box>
 
@@ -197,16 +216,21 @@ export function VacationCalendar({
           sx={{
             display: "grid",
             gridTemplateColumns: "repeat(7, 1fr)",
-            gap: 1,
+            gap: isMobile ? 0.5 : 1,
           }}
         >
           {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
             <Typography
               key={d}
               align="center"
-              sx={{ fontWeight: 700, opacity: 0.5, mb: 1 }}
+              sx={{
+                fontWeight: 700,
+                opacity: 0.5,
+                mb: 1,
+                fontSize: isMobile ? "0.7rem" : "1rem",
+              }}
             >
-              {d}
+              {isMobile ? d.charAt(0) : d}
             </Typography>
           ))}
           {weeks.map((week, wi) =>
@@ -214,11 +238,11 @@ export function VacationCalendar({
               <Box
                 key={`${wi}-${di}`}
                 sx={{
-                  minHeight: 120,
+                  minHeight: isMobile ? 80 : 120,
                   bgcolor:
                     day === 0 ? "transparent" : "rgba(255, 255, 255, 0.03)",
-                  borderRadius: 2,
-                  p: 1,
+                  borderRadius: isMobile ? 1 : 2,
+                  p: isMobile ? 0.5 : 1,
                   border: "1px solid",
                   borderColor:
                     day === 0 ? "transparent" : "rgba(255, 255, 255, 0.05)",
@@ -239,7 +263,8 @@ export function VacationCalendar({
                       sx={{
                         fontWeight: 600,
                         opacity: 0.8,
-                        mb: 1,
+                        mb: 0.5,
+                        fontSize: isMobile ? "0.75rem" : "1rem",
                         color:
                           today.getDate() === day &&
                           today.getMonth() === month &&
@@ -255,6 +280,10 @@ export function VacationCalendar({
                         display: "flex",
                         flexDirection: "column",
                         gap: 0.5,
+                        maxHeight: isMobile ? 50 : "none",
+                        overflowY: "auto",
+                        overflowX: "hidden",
+                        "&::-webkit-scrollbar": { display: "none" },
                       }}
                     >
                       {dayVacations[day].map((vac) => (
@@ -265,10 +294,10 @@ export function VacationCalendar({
                             onClose();
                           }}
                           sx={{
-                            p: 0.5,
-                            pl: 1,
-                            borderRadius: 1,
-                            fontSize: "0.7rem",
+                            p: isMobile ? 0.2 : 0.5,
+                            pl: isMobile ? 0.5 : 1,
+                            borderRadius: 0.5,
+                            fontSize: isMobile ? "0.55rem" : "0.7rem",
                             fontWeight: 700,
                             bgcolor: vac.archived
                               ? "rgba(255, 255, 255, 0.1)"
@@ -276,7 +305,7 @@ export function VacationCalendar({
                             color: vac.archived
                               ? "rgba(255,255,255,0.5)"
                               : "#8ecdf8",
-                            borderLeft: "3px solid",
+                            borderLeft: isMobile ? "2px solid" : "3px solid",
                             borderColor: vac.archived
                               ? "rgba(255,255,255,0.2)"
                               : "#1da1f2",
@@ -296,15 +325,19 @@ export function VacationCalendar({
                   </>
                 )}
               </Box>
-            ))
+            )),
           )}
         </Box>
       </DialogContent>
-      <DialogActions sx={{ p: 3 }}>
+      <DialogActions sx={{ p: isMobile ? 2 : 3 }}>
         <Button
           onClick={onClose}
           variant="outlined"
-          sx={{ borderColor: "rgba(255,255,255,0.2)", color: "#fff" }}
+          sx={{
+            borderColor: "rgba(255,255,255,0.2)",
+            color: "#fff",
+            fontSize: isMobile ? "0.8rem" : "1rem",
+          }}
         >
           Close
         </Button>

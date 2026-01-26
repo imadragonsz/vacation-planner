@@ -28,25 +28,32 @@ export function useItemParticipants(type: "location" | "agenda") {
         profiles (
           display_name
         )
-      `
+      `,
         )
         .in(idColumn, itemIds);
 
       if (!error && data) {
-        const grouped = data.reduce((acc: any, curr: any) => {
-          const itemId = curr[idColumn];
-          if (!acc[itemId]) acc[itemId] = [];
-          acc[itemId].push({
-            item_id: itemId,
-            user_id: curr.profile_id,
-            display_name: curr.profiles?.display_name || null,
+        setParticipants((prev) => {
+          const next = { ...prev };
+          // Clear current IDs we're fetching so we don't have duplicates or stale data
+          itemIds.forEach((id) => {
+            next[id] = [];
           });
-          return acc;
-        }, {});
-        setParticipants(grouped);
+
+          data.forEach((curr: any) => {
+            const itemId = curr[idColumn];
+            if (!next[itemId]) next[itemId] = [];
+            next[itemId].push({
+              item_id: itemId,
+              user_id: curr.profile_id,
+              display_name: curr.profiles?.display_name || null,
+            });
+          });
+          return next;
+        });
       }
     },
-    [tableName, idColumn]
+    [tableName, idColumn],
   );
 
   const joinItem = async (itemId: number, userId: string) => {

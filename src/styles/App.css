@@ -19,17 +19,19 @@ body {
 
 body {
   background-color: #0f1115;
-  background-image: radial-gradient(
-      at 0% 0%,
-      rgba(25, 118, 210, 0.1) 0,
-      transparent 50%
-    ),
+  background-image:
+    radial-gradient(at 0% 0%, rgba(25, 118, 210, 0.1) 0, transparent 50%),
     radial-gradient(at 100% 100%, rgba(220, 0, 78, 0.05) 0, transparent 50%);
   background-attachment: fixed;
   background-size: cover;
   background-repeat: no-repeat;
   color: #fff;
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
     sans-serif;
   -webkit-font-smoothing: antialiased;
 }
@@ -213,7 +215,9 @@ body {
   font-weight: 600;
   font-size: 16px;
   cursor: pointer;
-  transition: background 0.2s, transform 0.2s;
+  transition:
+    background 0.2s,
+    transform 0.2s;
 }
 
 .vp-button:hover {
@@ -301,6 +305,43 @@ body {
   }
 }
 
+/* Mobile Optimizations */
+@media (max-width: 600px) {
+  .vp-main {
+    padding: 8px 8px 90px 8px;
+    gap: 12px;
+  }
+
+  button,
+  .MuiButton-root,
+  .MuiIconButton-root {
+    min-height: 44px; /* Better touch target */
+  }
+
+  .MuiTab-root {
+    min-height: 48px;
+  }
+}
+
+/* Custom Scrollbar for modern look */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
 /* Leaflet adjustments */
 .leaflet-popup-content-wrapper {
   background: #1e2130 !important;
@@ -347,6 +388,7 @@ body {
   margin: 0;
   background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   letter-spacing: -0.02em;
 }

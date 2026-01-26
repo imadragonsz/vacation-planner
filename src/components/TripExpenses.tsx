@@ -105,7 +105,7 @@ export default function TripExpenses({ vacationId, user }: TripExpensesProps) {
         },
         () => {
           fetchExpenses();
-        }
+        },
       )
       .subscribe();
 
@@ -406,6 +406,7 @@ export default function TripExpenses({ vacationId, user }: TripExpensesProps) {
                     "& .MuiListItemText-primary": {
                       fontWeight: 700,
                       fontSize: "0.95rem",
+                      wordBreak: "break-word",
                     },
                     "& .MuiListItemText-secondary": {
                       fontSize: "0.75rem",

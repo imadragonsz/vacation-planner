@@ -42,7 +42,7 @@ export default function MyItinerary({ user, onHome }: MyItineraryProps) {
         if (lpError) {
           console.error(
             "[MyItinerary] Error fetching location_participants:",
-            lpError
+            lpError,
           );
         }
 
@@ -57,7 +57,7 @@ export default function MyItinerary({ user, onHome }: MyItineraryProps) {
         if (apError) {
           console.error(
             "[MyItinerary] Error fetching agenda_participants:",
-            apError
+            apError,
           );
         }
 
@@ -79,16 +79,19 @@ export default function MyItinerary({ user, onHome }: MyItineraryProps) {
               locationGroups[loc.id] = {
                 id: loc.id,
                 name: loc.name,
+                startDate: loc.start_date,
+                endDate: loc.end_date,
                 vacation: (loc.vacations as any)?.name || "Shared Trip",
                 type: "Destination",
                 activities: [],
               };
 
-              // Fetch all activities for this joined destination
+              // Fetch only activities the user has joined for this destination
               const { data: locAgendas } = await supabase
                 .from("agendas")
                 .select("*")
-                .eq("location_id", loc.id);
+                .eq("location_id", loc.id)
+                .in("id", joinedAgIds);
 
               if (locAgendas) {
                 locAgendas.forEach((ag: any) => {
@@ -107,7 +110,7 @@ export default function MyItinerary({ user, onHome }: MyItineraryProps) {
 
         // Step 4: Fetch Explicit Agenda Details for activities where destination NOT joined
         const remainingAgIds = joinedAgIds.filter(
-          (id) => !seenAgendaIds.has(id)
+          (id) => !seenAgendaIds.has(id),
         );
         if (remainingAgIds.length > 0) {
           const { data: agendas } = await supabase
@@ -124,6 +127,8 @@ export default function MyItinerary({ user, onHome }: MyItineraryProps) {
                 locationGroups[loc.id] = {
                   id: loc.id,
                   name: loc.name,
+                  startDate: loc.start_date,
+                  endDate: loc.end_date,
                   vacation: loc.vacations?.name || "Shared Trip",
                   type: "Destination",
                   activities: [],
@@ -167,14 +172,22 @@ export default function MyItinerary({ user, onHome }: MyItineraryProps) {
           return group;
         });
 
-        // Sort groups by their earliest activity date
+        // Sort groups by their destination start date
         processedGroups.sort((a, b) => {
-          if (!a.earliestDate && !b.earliestDate) return 0;
-          if (!a.earliestDate) return 1;
-          if (!b.earliestDate) return -1;
+          if (!a.startDate && !b.startDate) {
+            // Fallback to earliest activity if no location start date
+            if (!a.earliestDate && !b.earliestDate) return 0;
+            if (!a.earliestDate) return 1;
+            if (!b.earliestDate) return -1;
+            return (
+              new Date(a.earliestDate).getTime() -
+              new Date(b.earliestDate).getTime()
+            );
+          }
+          if (!a.startDate) return 1;
+          if (!b.startDate) return -1;
           return (
-            new Date(a.earliestDate).getTime() -
-            new Date(b.earliestDate).getTime()
+            new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
           );
         });
 
@@ -313,6 +326,31 @@ export default function MyItinerary({ user, onHome }: MyItineraryProps) {
                   <Typography variant="h6" sx={{ fontWeight: 800 }}>
                     {group.name}
                   </Typography>
+                  {(group.startDate || group.endDate) && (
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: "secondary.main",
+                        fontWeight: 800,
+                        display: "block",
+                        mt: -0.5,
+                      }}
+                    >
+                      {group.startDate
+                        ? new Date(group.startDate).toLocaleDateString(
+                            undefined,
+                            { month: "short", day: "numeric" },
+                          )
+                        : "???"}{" "}
+                      -{" "}
+                      {group.endDate
+                        ? new Date(group.endDate).toLocaleDateString(
+                            undefined,
+                            { month: "short", day: "numeric" },
+                          )
+                        : "???"}
+                    </Typography>
+                  )}
                 </Box>
               </Box>
 

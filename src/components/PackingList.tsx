@@ -14,6 +14,8 @@ import {
   LinearProgress,
   Tooltip,
   Avatar,
+  useTheme,
+  useMediaQuery,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -36,6 +38,8 @@ interface PackingListProps {
 }
 
 export default function PackingList({ vacationId, user }: PackingListProps) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [items, setItems] = useState<PackingItem[]>([]);
   const [newItemName, setNewItemName] = useState("");
 
@@ -79,7 +83,7 @@ export default function PackingList({ vacationId, user }: PackingListProps) {
         },
         () => {
           fetchItems();
-        }
+        },
       )
       .subscribe();
 
@@ -291,7 +295,7 @@ export default function PackingList({ vacationId, user }: PackingListProps) {
                 "&:hover": {
                   bgcolor: "rgba(255,255,255,0.04)",
                   borderColor: "rgba(255,255,255,0.08)",
-                  "& .item-delete": { opacity: 0.6 },
+                  "& .item-delete": { opacity: 1 },
                 },
               }}
             >
@@ -323,6 +327,7 @@ export default function PackingList({ vacationId, user }: PackingListProps) {
                     textDecoration: item.is_packed ? "line-through" : "none",
                     opacity: item.is_packed ? 0.3 : 1,
                     transition: "all 0.2s",
+                    wordBreak: "break-word",
                   },
                 }}
               />
@@ -352,7 +357,7 @@ export default function PackingList({ vacationId, user }: PackingListProps) {
                   onClick={() => deleteItem(item.id)}
                   sx={{
                     color: "error.main",
-                    opacity: 0,
+                    opacity: isMobile ? 0.6 : 0,
                     transition: "opacity 0.2s",
                     "&:hover": { opacity: "1 !important" },
                   }}

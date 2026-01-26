@@ -35,14 +35,14 @@ const LocationPopup: React.FC<LocationPopupProps> = ({
   lng,
 }) => {
   const [englishAddress, setEnglishAddress] = React.useState<string | null>(
-    null
+    null,
   );
 
   React.useEffect(() => {
     if (!address) return;
     // Using global geocode queue to prevent rate limiting
     addToGeocodeQueue(
-      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=en`
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=en`,
     )
       .then((data) => {
         if (data && data.display_name) setEnglishAddress(data.display_name);
@@ -93,8 +93,8 @@ const AgendaMarker: React.FC<AgendaMarkerProps> = ({ agenda }) => {
       try {
         const data = await addToGeocodeQueue(
           `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(
-            agenda.address || ""
-          )}`
+            agenda.address || "",
+          )}`,
         );
         if (!cancelled && data && data.length > 0) {
           setCoords({
@@ -132,7 +132,11 @@ const AgendaMarker: React.FC<AgendaMarkerProps> = ({ agenda }) => {
             <div className="vp-popup-header">
               <h3
                 className="vp-popup-title"
-                style={{ background: "#ff6b6b", WebkitBackgroundClip: "text" }}
+                style={{
+                  background: "#ff6b6b",
+                  WebkitBackgroundClip: "text",
+                  backgroundClip: "text",
+                }}
               >
                 Location Not Found
               </h3>

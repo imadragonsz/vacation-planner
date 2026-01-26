@@ -9,6 +9,7 @@ import {
   Person as PersonIcon,
 } from "@mui/icons-material";
 import { supabase } from "./supabaseClient";
+import dayjs from "dayjs";
 
 interface VacationListItemProps {
   vacation: Vacation;
@@ -35,8 +36,31 @@ const VacationListItem: React.FC<VacationListItemProps> = ({
 }) => {
   const isOwner = user && vacation.user_id === user.id;
 
+  const getCountdown = () => {
+    const start = dayjs(vacation.start_date);
+    const now = dayjs().startOf("day");
+    const diff = start.diff(now, "day");
+
+    if (diff === 0) return { label: "Today!", color: "#4caf50" };
+    if (diff === 1) return { label: "Tomorrow", color: "#81c784" };
+    if (diff > 0) return { label: `${diff} days left`, color: "#1976d2" };
+
+    // Check if ongoing
+    const end = dayjs(vacation.end_date);
+    if (now.isBefore(end) || now.isSame(end)) {
+      return { label: "Ongoing", color: "#ff9800" };
+    }
+    return null; // Past
+  };
+
+  const countdown = getCountdown();
+
   const handleDelete = async (id: number) => {
-    if (window.confirm("Are you sure you want to permanently delete this vacation? This action cannot be undone.")) {
+    if (
+      window.confirm(
+        "Are you sure you want to permanently delete this vacation? This action cannot be undone.",
+      )
+    ) {
       const { error } = await supabase.from("vacations").delete().eq("id", id);
       if (error) {
         console.error("Error deleting vacation:", error);
@@ -63,7 +87,9 @@ const VacationListItem: React.FC<VacationListItemProps> = ({
         position: "relative",
         bgcolor: selected ? "rgba(25, 118, 210, 0.15)" : "transparent",
         "&:hover": {
-          bgcolor: selected ? "rgba(25, 118, 210, 0.2)" : "rgba(255, 255, 255, 0.05)",
+          bgcolor: selected
+            ? "rgba(25, 118, 210, 0.2)"
+            : "rgba(255, 255, 255, 0.05)",
           "& .vac-actions": { opacity: 1 },
         },
         "&::before": {
@@ -93,17 +119,27 @@ const VacationListItem: React.FC<VacationListItemProps> = ({
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis",
+            mb: 0.2,
           }}
         >
           {vacation.name}
         </Typography>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            flexWrap: "wrap",
+            rowGap: 0.5,
+          }}
+        >
           <Typography
             variant="caption"
             sx={{
               color: "rgba(255, 255, 255, 0.4)",
               fontWeight: 600,
               display: "block",
+              whiteSpace: "nowrap",
             }}
           >
             {new Date(vacation.start_date).toLocaleDateString(undefined, {
@@ -116,6 +152,42 @@ const VacationListItem: React.FC<VacationListItemProps> = ({
               day: "numeric",
             })}
           </Typography>
+          {countdown && (
+            <Box
+              sx={{
+                px: 0.6,
+                py: 0.1,
+                borderRadius: "4px",
+                bgcolor: `${countdown.color}22`,
+                border: `1px solid ${countdown.color}44`,
+                color: countdown.color,
+                fontSize: "0.6rem",
+                fontWeight: 800,
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
+                flexShrink: 0,
+                whiteSpace: "nowrap",
+              }}
+            >
+              {countdown.label}
+            </Box>
+          )}
+          {vacation.archived && (
+            <Chip
+              label="ARCHIVED"
+              size="small"
+              sx={{
+                height: 16,
+                fontSize: "0.55rem",
+                fontWeight: 900,
+                bgcolor: "rgba(255, 152, 0, 0.1)",
+                color: "#ff9800",
+                border: "1px solid rgba(255, 152, 0, 0.2)",
+                borderRadius: 1,
+                "& .MuiChip-label": { px: 0.5 },
+              }}
+            />
+          )}
           {isOwner && (
             <Chip
               label="YOU"
@@ -132,9 +204,7 @@ const VacationListItem: React.FC<VacationListItemProps> = ({
             />
           )}
           {!isOwner && vacation.user_id && (
-            <Tooltip
-              title={`Shared by: ${vacation.owner_name || "Anonymous"}`}
-            >
+            <Tooltip title={`Shared by: ${vacation.owner_name || "Anonymous"}`}>
               <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
                 <PersonIcon
                   sx={{ fontSize: 14, color: "rgba(255,255,255,0.4)" }}
@@ -149,31 +219,15 @@ const VacationListItem: React.FC<VacationListItemProps> = ({
             </Tooltip>
           )}
         </Box>
-        {vacation.archived && (
-          <Typography
-            variant="caption"
-            sx={{
-              color: "#ff9800",
-              fontWeight: 800,
-              fontSize: "0.65rem",
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-              display: "block",
-              mt: 0.2,
-            }}
-          >
-            Archived
-          </Typography>
-        )}
       </Box>
 
-      <Box 
+      <Box
         className="vac-actions"
-        sx={{ 
-          display: isOwner ? "flex" : "none", 
+        sx={{
+          display: isOwner ? "flex" : "none",
           gap: 0.5,
-          opacity: selected ? 1 : 0, 
-          transition: "opacity 0.2s" 
+          opacity: selected ? 1 : 0,
+          transition: "opacity 0.2s",
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -181,7 +235,10 @@ const VacationListItem: React.FC<VacationListItemProps> = ({
           <IconButton
             size="small"
             onClick={() => onEdit && onEdit(vacation)}
-            sx={{ color: "rgba(255,255,255,0.4)", "&:hover": { color: "white" } }}
+            sx={{
+              color: "rgba(255,255,255,0.4)",
+              "&:hover": { color: "white" },
+            }}
           >
             <EditIcon sx={{ fontSize: "1.1rem" }} />
           </IconButton>
@@ -213,7 +270,10 @@ const VacationListItem: React.FC<VacationListItemProps> = ({
             <IconButton
               size="small"
               onClick={() => onDelete && onDelete(vacation.id)}
-              sx={{ color: "rgba(255,255,255,0.4)", "&:hover": { color: "#ff4444" } }}
+              sx={{
+                color: "rgba(255,255,255,0.4)",
+                "&:hover": { color: "#ff4444" },
+              }}
             >
               <ArchiveIcon sx={{ fontSize: "1.1rem" }} />
             </IconButton>

@@ -7,6 +7,8 @@ import {
   TextField,
   Button,
   Box,
+  useTheme,
+  useMediaQuery,
 } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers";
 import dayjs from "dayjs";
@@ -29,6 +31,8 @@ const VacationAddModal: React.FC<VacationAddModalProps> = ({
   onClose,
   onSubmit,
 }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [name, setName] = useState("");
   const [destination, setDestination] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -52,14 +56,15 @@ const VacationAddModal: React.FC<VacationAddModalProps> = ({
       onClose={onClose}
       maxWidth="sm"
       fullWidth
+      fullScreen={isMobile}
       PaperProps={{
         sx: {
-          bgcolor: "rgba(255, 255, 255, 0.05)",
+          bgcolor: "rgba(15, 20, 25, 0.95)",
           backdropFilter: "blur(20px)",
-          borderRadius: 6,
-          border: "1px solid rgba(255, 255, 255, 0.1)",
+          borderRadius: isMobile ? 0 : 6,
+          border: isMobile ? "none" : "1px solid rgba(255, 255, 255, 0.1)",
           backgroundImage: "none",
-          p: 2,
+          p: isMobile ? 1 : 2,
         },
       }}
     >

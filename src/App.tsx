@@ -80,7 +80,7 @@ function App({ user, setUser }: AppProps) {
           },
         },
       }),
-    [themeMode]
+    [themeMode],
   );
 
   const {
@@ -89,17 +89,17 @@ function App({ user, setUser }: AppProps) {
     fetchVacations,
   } = useVacations(
     () => {},
-    () => {}
+    () => {},
   );
 
   const { loading: addVacationLoading } = useAddVacation(
     fetchVacations,
-    () => {}
+    () => {},
   );
 
   const loading = vacationsLoading || addVacationLoading;
 
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   // State variables
   const [loadingUser, setLoadingUser] = useState(true);
@@ -111,17 +111,17 @@ function App({ user, setUser }: AppProps) {
   const [showCalendar, setShowCalendar] = useState(false);
   const [editingVacation, setEditingVacation] = useState<Vacation | null>(null);
   const [selectedVacation, setSelectedVacation] = useState<Vacation | null>(
-    null
+    null,
   );
   const [dbStatus, setDbStatus] = useState("checking");
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "register" | "reset">(
-    "login"
+    "login",
   );
   const [showAddVacationModal, setShowAddVacationModal] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastType, setToastType] = useState<"info" | "success" | "error">(
-    "info"
+    "info",
   );
 
   useEffect(() => {
@@ -135,7 +135,7 @@ function App({ user, setUser }: AppProps) {
         { event: "*", schema: "public", table: "vacations" },
         () => {
           fetchVacations(showArchived);
-        }
+        },
       )
       .subscribe();
 
@@ -204,7 +204,7 @@ function App({ user, setUser }: AppProps) {
               }
             });
         }
-      }
+      },
     );
 
     return () => {
@@ -220,6 +220,30 @@ function App({ user, setUser }: AppProps) {
       setThemeMode(savedTheme as "dark" | "light");
     }
   }, []);
+
+  // Sync selected vacation with localStorage and vacations list
+  useEffect(() => {
+    if (vacations.length > 0) {
+      const savedId = localStorage.getItem("selectedVacationId");
+      if (savedId) {
+        const found = vacations.find((v) => v.id === parseInt(savedId));
+        if (found) {
+          setSelectedVacation(found);
+        }
+      }
+    }
+  }, [vacations]);
+
+  useEffect(() => {
+    if (selectedVacation) {
+      localStorage.setItem(
+        "selectedVacationId",
+        selectedVacation.id.toString(),
+      );
+    } else {
+      localStorage.removeItem("selectedVacationId");
+    }
+  }, [selectedVacation]);
 
   // Save theme preference to localStorage
   useEffect(() => {
@@ -252,7 +276,7 @@ function App({ user, setUser }: AppProps) {
   });
 
   const displayedVacations = filteredVacations.filter(
-    (vacation) => showArchived || !vacation.archived
+    (vacation) => showArchived || !vacation.archived,
   );
 
   // Toast notification function
@@ -289,88 +313,6 @@ function App({ user, setUser }: AppProps) {
     );
   }
 
-  // Render personal itinerary page
-  if (showItinerary && user) {
-    return (
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <UserContext.Provider value={{ user }}>
-          <div className="vp-main">
-            <NavBar
-              onCalendarToggle={() => setShowCalendar((prev) => !prev)}
-              theme={themeMode}
-              setTheme={setThemeMode}
-              user={user}
-              setShowAccount={setShowAccount}
-              setShowItinerary={setShowItinerary}
-              setShowCalendar={setShowCalendar}
-              setShowAuthModal={setShowAuthModal}
-              handleLogout={async () => {
-                await supabase.auth.signOut();
-                setUser(null);
-                setShowAccount(false);
-                setShowItinerary(false);
-              }}
-              onBackToTrips={() => {
-                setShowItinerary(false);
-                setShowAccount(false);
-                setShowCalendar(false);
-              }}
-            />
-            <MyItinerary user={user} onHome={() => setShowItinerary(false)} />
-          </div>
-        </UserContext.Provider>
-      </ThemeProvider>
-    );
-  }
-
-  // Render account page
-  if (showAccount && user) {
-    return (
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <UserContext.Provider value={{ user }}>
-          <div className="vp-main">
-            <NavBar
-              onCalendarToggle={() => setShowCalendar((prev) => !prev)}
-              theme={themeMode}
-              setTheme={setThemeMode}
-              user={user}
-              setShowAccount={setShowAccount}
-              setShowItinerary={setShowItinerary}
-              setShowCalendar={setShowCalendar}
-              setShowAuthModal={setShowAuthModal}
-              handleLogout={async () => {
-                await supabase.auth.signOut();
-                setUser(null);
-                setShowAccount(false);
-                setShowItinerary(false);
-              }}
-              onBackToTrips={() => {
-                setShowItinerary(false);
-                setShowAccount(false);
-                setShowCalendar(false);
-              }}
-            />
-            <AccountPage
-              user={user}
-              onLogout={async () => {
-                await supabase.auth.signOut();
-                setUser(null);
-                setShowAccount(false);
-              }}
-              onHome={() => {
-                setShowAccount(false);
-                setShowCalendar(false);
-                setShowItinerary(false);
-              }}
-            />
-          </div>
-        </UserContext.Provider>
-      </ThemeProvider>
-    );
-  }
-
   // Main application layout
   return (
     <ThemeProvider theme={theme}>
@@ -391,12 +333,21 @@ function App({ user, setUser }: AppProps) {
               setUser(null);
               setShowAccount(false);
               setShowItinerary(false);
+              setSelectedVacation(null);
             }}
-            onBackToTrips={() => {
-              setShowItinerary(false);
-              setShowAccount(false);
-              setShowCalendar(false);
-            }}
+            onBackToTrips={
+              showItinerary || showAccount || showCalendar
+                ? () => {
+                    setShowItinerary(false);
+                    setShowAccount(false);
+                    setShowCalendar(false);
+                  }
+                : selectedVacation
+                  ? () => {
+                      setSelectedVacation(null);
+                    }
+                  : undefined
+            }
           />
           {dbStatus === "error" && (
             <div style={{ color: "red" }}>
@@ -453,7 +404,7 @@ function App({ user, setUser }: AppProps) {
           <Box
             sx={{
               display: "grid",
-              gridTemplateColumns: { xs: "1fr", lg: "300px 1fr" },
+              gridTemplateColumns: { xs: "1fr", md: "300px 1fr" },
               minHeight: "calc(100vh - 84px)", // Subtract navbar height
               bgcolor: "rgba(0,0,0,0.2)",
             }}
@@ -610,21 +561,25 @@ function App({ user, setUser }: AppProps) {
                       vacation={vacation}
                       selected={selectedVacation?.id === vacation.id}
                       user={user}
-                      onSelect={() => setSelectedVacation(vacation)}
+                      onSelect={() => {
+                        setSelectedVacation(vacation);
+                        setShowAccount(false);
+                        setShowItinerary(false);
+                      }}
                       onEdit={openEditVacationModal}
                       onDelete={() =>
                         handleArchiveVacation(
                           vacation,
                           () => {},
                           fetchVacations,
-                          (toast) => showToast(toast.message, toast.type)
+                          (toast) => showToast(toast.message, toast.type),
                         )
                       }
                       onRestore={() =>
                         handleArchiveRestore(
                           vacation,
                           fetchVacations,
-                          (toast) => showToast(toast.message, toast.type)
+                          (toast) => showToast(toast.message, toast.type),
                         )
                       }
                       onDeletedPermanently={() => {
@@ -666,13 +621,28 @@ function App({ user, setUser }: AppProps) {
               component="main"
               sx={{
                 flex: 1,
-                height: "calc(100vh - 84px)",
+                minHeight: "calc(100vh - 84px)",
                 overflowY: "auto",
                 bgcolor: "inherit",
-                p: { xs: 1.5, sm: 2, md: 3 }, // Added padding here
+                p: { xs: 1.5, sm: 2, md: 3 },
               }}
             >
-              {selectedVacation ? (
+              {showAccount && user ? (
+                <AccountPage
+                  user={user}
+                  onLogout={async () => {
+                    await supabase.auth.signOut();
+                    setUser(null);
+                    setShowAccount(false);
+                  }}
+                  onHome={() => setShowAccount(false)}
+                />
+              ) : showItinerary && user ? (
+                <MyItinerary
+                  user={user}
+                  onHome={() => setShowItinerary(false)}
+                />
+              ) : selectedVacation ? (
                 <VacationDetails
                   vacation={selectedVacation}
                   user={user}
