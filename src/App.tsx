@@ -1,17 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, lazy, Suspense } from "react";
 import { UserContext } from "./context";
 import { supabase } from "./supabaseClient";
 import NavBar from "./components/NavBar";
-import { VacationCalendar } from "./pages/VacationCalendar";
-import VacationEditModal from "./VacationEditModal";
-import { VacationDetails } from "./pages/VacationDetails";
-import AccountPage from "./pages/AccountPage";
-import MyItinerary from "./pages/MyItinerary";
+
 import "./styles/App.css";
 import { useVacations, useAddVacation } from "./hooks/useVacations";
 import VacationListItem from "./VacationListItem";
-import AuthForm from "./components/AuthForm";
-import VacationAddModal from "./VacationAddModal";
 import { handleArchiveVacation, handleArchiveRestore } from "./utils/handlers";
 // @ts-ignore
 import ClipLoader from "react-spinners/ClipLoader";
@@ -32,14 +26,34 @@ import {
   BottomNavigationAction,
   Paper,
   useMediaQuery,
+  CircularProgress,
 } from "@mui/material";
 import MapIcon from "@mui/icons-material/Map";
+import ExploreIcon from "@mui/icons-material/Explore";
 import HomeIcon from "@mui/icons-material/Home";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import AddIcon from "@mui/icons-material/Add";
 
 import { Vacation } from "./vacation";
+import { HomeDashboard } from "./components/HomeDashboard";
+
+// Lazy load pages for performance
+const VacationCalendar = lazy(() =>
+  import("./pages/VacationCalendar").then((module) => ({
+    default: module.VacationCalendar,
+  })),
+);
+const VacationDetails = lazy(() =>
+  import("./pages/VacationDetails").then((module) => ({
+    default: module.VacationDetails,
+  })),
+);
+const AccountPage = lazy(() => import("./pages/AccountPage"));
+const MyItinerary = lazy(() => import("./pages/MyItinerary"));
+const AuthForm = lazy(() => import("./components/AuthForm"));
+const VacationAddModal = lazy(() => import("./VacationAddModal"));
+const VacationEditModal = lazy(() => import("./VacationEditModal"));
 
 interface AppProps {
   user: any;
@@ -56,25 +70,69 @@ function App({ user, setUser }: AppProps) {
           mode: themeMode,
           primary: {
             main: "#1976d2",
+            light: "#42a5f5",
+            dark: "#1565c0",
           },
           secondary: {
             main: "#dc004e",
           },
           background: {
-            default: themeMode === "dark" ? "#0f1115" : "#f5f5f7",
+            default: themeMode === "dark" ? "#0f1115" : "#f8f9fa",
             paper: themeMode === "dark" ? "#1a1d23" : "#ffffff",
           },
+          text: {
+            primary: themeMode === "dark" ? "#ffffff" : "#1a1a1a",
+            secondary:
+              themeMode === "dark"
+                ? "rgba(255,255,255,0.7)"
+                : "rgba(0,0,0,0.6)",
+          },
+          divider:
+            themeMode === "dark"
+              ? "rgba(255,255,255,0.08)"
+              : "rgba(0,0,0,0.08)",
         },
         typography: {
           fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+          h1: { fontWeight: 900 },
+          h2: { fontWeight: 900 },
+          h3: { fontWeight: 900 },
+          h4: { fontWeight: 900 },
+          h5: { fontWeight: 800 },
+          h6: { fontWeight: 800 },
         },
         components: {
           MuiButton: {
             styleOverrides: {
               root: {
-                borderRadius: 8,
+                borderRadius: 10,
                 textTransform: "none",
-                fontWeight: 600,
+                fontWeight: 700,
+                boxShadow: "none",
+                "&:hover": {
+                  boxShadow: "none",
+                },
+              },
+            },
+          },
+          MuiPaper: {
+            styleOverrides: {
+              root: {
+                backgroundImage: "none",
+                borderRadius: 12,
+                border:
+                  themeMode === "dark"
+                    ? "1px solid rgba(255, 255, 255, 0.05)"
+                    : "1px solid rgba(0, 0, 0, 0.05)",
+                boxShadow:
+                  themeMode === "dark" ? "none" : "0 2px 12px rgba(0,0,0,0.03)",
+              },
+            },
+          },
+          MuiTab: {
+            styleOverrides: {
+              root: {
+                fontWeight: 700,
               },
             },
           },
@@ -149,10 +207,16 @@ function App({ user, setUser }: AppProps) {
     async function checkDbConnection() {
       setDbStatus("checking");
       try {
-        const { error } = await supabase
-          .from("vacations")
-          .select("id")
-          .limit(1);
+        // Simple timeout-protected check
+        const fetchPromise = supabase.from("vacations").select("id").limit(1);
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("DB timeout")), 5000),
+        );
+
+        const { error } = await (Promise.race([
+          fetchPromise,
+          timeoutPromise,
+        ]) as any);
         if (error) {
           setDbStatus("error");
         } else {
@@ -167,48 +231,82 @@ function App({ user, setUser }: AppProps) {
 
   // Authentication state listener
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
+    let mounted = true;
+
+    const checkInitialAuth = async () => {
+      try {
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Auth timeout")), 5000),
+        );
+
+        const result = await Promise.race([sessionPromise, timeoutPromise]);
+        const session = (result as any)?.data?.session;
+
+        if (!mounted) return;
+
+        if (session?.user) {
+          setUser(session.user);
+          supabase.auth
+            .getUser()
+            .then(({ data: { user: verifiedUser } }) => {
+              if (mounted && verifiedUser) {
+                setUser(verifiedUser);
+              }
+            })
+            .catch(console.error);
+        } else {
+          setUser(null);
+        }
+      } catch (err) {
+        console.error("Auth initialization error:", err);
+      } finally {
+        if (mounted) setLoadingUser(false);
+      }
+    };
+
+    checkInitialAuth();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted) return;
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
       setLoadingUser(false);
+
+      // Auto-create profile if it doesn't exist
+      if (currentUser) {
+        supabase
+          .from("profiles")
+          .select("id")
+          .eq("id", currentUser.id)
+          .maybeSingle()
+          .then(({ data }) => {
+            if (mounted && !data) {
+              supabase
+                .from("profiles")
+                .insert([
+                  {
+                    id: currentUser.id,
+                    display_name:
+                      currentUser.user_metadata?.display_name ||
+                      currentUser.email?.split("@")[0] ||
+                      "New Traveler",
+                    avatar_url: currentUser.user_metadata?.avatar_url || null,
+                  },
+                ])
+                .then(() => {
+                  if (mounted) fetchVacations(showArchived);
+                });
+            }
+          });
+      }
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        const currentUser = session?.user ?? null;
-        setUser(currentUser);
-        setLoadingUser(false);
-
-        // Auto-create profile if it doesn't exist
-        if (currentUser) {
-          supabase
-            .from("profiles")
-            .select("id")
-            .eq("id", currentUser.id)
-            .maybeSingle()
-            .then(({ data }) => {
-              if (!data) {
-                supabase
-                  .from("profiles")
-                  .insert([
-                    {
-                      id: currentUser.id,
-                      display_name:
-                        currentUser.user_metadata?.display_name ||
-                        currentUser.email?.split("@")[0] ||
-                        "New Traveler",
-                    },
-                  ])
-                  .then(() => {
-                    fetchVacations(showArchived);
-                  });
-              }
-            });
-        }
-      },
-    );
-
     return () => {
-      listener?.subscription.unsubscribe();
+      mounted = false;
+      subscription.unsubscribe();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount to establish the listener
@@ -271,7 +369,9 @@ function App({ user, setUser }: AppProps) {
     if (activeTab === 0) {
       return matchesSearch && isMine;
     } else {
-      return matchesSearch && !isMine;
+      // In explore tab, show public trips that OR trips I'm invited to but don't own?
+      // Actually let's show all public trips that AREN'T mine for "Discovery"
+      return matchesSearch && vacation.is_public && !isMine;
     }
   });
 
@@ -364,85 +464,117 @@ function App({ user, setUser }: AppProps) {
             }}
           />
           {editingVacation && (
-            <VacationEditModal
-              open={!!editingVacation}
-              vacation={editingVacation}
-              onSave={async (updatedVacation) => {
-                const { error } = await supabase
-                  .from("vacations")
-                  .update(updatedVacation)
-                  .eq("id", updatedVacation.id);
-                if (!error) {
-                  fetchVacations(showArchived);
-                  setEditingVacation(null);
-                }
-              }}
-              onClose={() => setEditingVacation(null)}
-            />
+            <Suspense fallback={<CircularProgress />}>
+              <VacationEditModal
+                open={!!editingVacation}
+                vacation={editingVacation}
+                onSave={async (updatedVacation) => {
+                  // Only update actual database columns
+                  const { error } = await supabase
+                    .from("vacations")
+                    .update({
+                      name: updatedVacation.name,
+                      destination: updatedVacation.destination,
+                      start_date: updatedVacation.start_date,
+                      end_date: updatedVacation.end_date,
+                      is_public: updatedVacation.is_public,
+                      archived: updatedVacation.archived,
+                    })
+                    .eq("id", updatedVacation.id);
+                  if (!error) {
+                    fetchVacations(showArchived);
+                    setEditingVacation(null);
+                  }
+                }}
+                onClose={() => setEditingVacation(null)}
+              />
+            </Suspense>
           )}
           {showAddVacationModal && (
-            <VacationAddModal
-              open={showAddVacationModal}
-              onClose={() => setShowAddVacationModal(false)}
-              onSubmit={async (data) => {
-                const { error } = await supabase.from("vacations").insert([
-                  {
-                    name: data.name,
-                    destination: data.destination,
-                    start_date: data.startDate,
-                    end_date: data.endDate,
-                    user_id: user.id,
-                  },
-                ]);
-                if (!error) {
-                  fetchVacations(showArchived);
-                  setShowAddVacationModal(false);
-                }
-              }}
-            />
+            <Suspense fallback={<CircularProgress />}>
+              <VacationAddModal
+                open={showAddVacationModal}
+                onClose={() => setShowAddVacationModal(false)}
+                onSubmit={async (data) => {
+                  const { error } = await supabase.from("vacations").insert([
+                    {
+                      name: data.name,
+                      destination: data.destination,
+                      start_date: data.startDate,
+                      end_date: data.endDate,
+                      user_id: user.id,
+                      is_public: data.isPublic,
+                    },
+                  ]);
+                  if (!error) {
+                    fetchVacations(showArchived);
+                    setShowAddVacationModal(false);
+                  }
+                }}
+              />
+            </Suspense>
           )}
           <Box
             sx={{
               display: "grid",
-              gridTemplateColumns: { xs: "1fr", md: "300px 1fr" },
-              minHeight: "calc(100vh - 84px)", // Subtract navbar height
-              bgcolor: "rgba(0,0,0,0.2)",
+              gridTemplateColumns: {
+                xs: "1fr",
+                md: "320px 1fr",
+                lg: "350px 1fr",
+                xl: "380px 1fr",
+              },
+              minHeight: "calc(100vh - 64px)", // Standard navbar height
+              bgcolor: (theme) =>
+                theme.palette.mode === "dark"
+                  ? "rgba(0,0,0,0.1)"
+                  : "transparent",
             }}
           >
             <Box
               component="aside"
               sx={{
-                bgcolor: "rgba(255, 255, 255, 0.02)",
+                bgcolor:
+                  themeMode === "dark"
+                    ? "rgba(255, 255, 255, 0.01)"
+                    : "rgba(0, 0, 0, 0.01)",
                 backdropFilter: "blur(20px)",
                 p: 3,
-                borderRight: "1px solid rgba(255, 255, 255, 0.05)",
-                display:
-                  isMobile &&
-                  (selectedVacation ||
-                    showAccount ||
-                    showCalendar ||
-                    showItinerary)
-                    ? "none"
-                    : "flex",
+                borderRight:
+                  themeMode === "dark"
+                    ? "1px solid rgba(255, 255, 255, 0.05)"
+                    : "1px solid rgba(0, 0, 0, 0.05)",
+                display: isMobile ? "none" : "flex", // Sidebar hidden on mobile in favor of Home Dashboard / Bottom Nav
                 flexDirection: "column",
                 gap: 2,
                 position: "sticky",
                 top: 0,
-                height: isMobile ? "auto" : "calc(100vh - 84px)",
+                height: isMobile ? "auto" : "calc(100vh - 64px)",
               }}
             >
-              <Typography
-                variant="subtitle2"
+              <Box
                 sx={{
-                  fontWeight: 800,
-                  opacity: 0.5,
-                  textTransform: "uppercase",
-                  letterSpacing: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1.5,
                   mb: 1,
+                  px: 0.5,
                 }}
               >
-                Your Vacations
-              </Typography>
+                <ExploreIcon sx={{ color: "primary.main", fontSize: 28 }} />
+                <Typography
+                  variant="h6"
+                  sx={{
+                    fontWeight: 900,
+                    letterSpacing: -0.5,
+                    background:
+                      "linear-gradient(45deg, #1976d2 30%, #42a5f5 90%)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                  }}
+                >
+                  My Expeditions
+                </Typography>
+              </Box>
               <Button
                 variant="contained"
                 onClick={() => setShowAddVacationModal(true)}
@@ -474,11 +606,14 @@ function App({ user, setUser }: AppProps) {
                       fontWeight: 700,
                       fontSize: "0.75rem",
                       borderRadius: 1.5,
-                      color: "rgba(255,255,255,0.4)",
+                      color: "text.secondary",
                     },
                     "& .MuiTab-root.Mui-selected": {
-                      color: "#fff",
-                      bgcolor: "rgba(255,255,255,0.05)",
+                      color: "primary.main",
+                      bgcolor: (theme) =>
+                        theme.palette.mode === "dark"
+                          ? "rgba(255,255,255,0.05)"
+                          : "rgba(0,0,0,0.04)",
                     },
                     "& .MuiTabs-indicator": {
                       display: "none",
@@ -506,7 +641,10 @@ function App({ user, setUser }: AppProps) {
                   fullWidth
                   sx={{
                     "& .MuiOutlinedInput-root": {
-                      bgcolor: "rgba(255, 255, 255, 0.03)",
+                      bgcolor: (theme) =>
+                        theme.palette.mode === "dark"
+                          ? "rgba(255, 255, 255, 0.03)"
+                          : "rgba(0, 0, 0, 0.02)",
                       borderRadius: 2,
                     },
                   }}
@@ -621,70 +759,84 @@ function App({ user, setUser }: AppProps) {
               component="main"
               sx={{
                 flex: 1,
-                minHeight: "calc(100vh - 84px)",
+                minHeight: "calc(100vh - 64px)",
                 overflowY: "auto",
-                bgcolor: "inherit",
-                p: { xs: 1.5, sm: 2, md: 3 },
+                bgcolor: themeMode === "dark" ? "#0f1115" : "#f5f5f7",
+                backgroundImage:
+                  themeMode === "dark"
+                    ? "radial-gradient(circle at 50% 50%, rgba(25, 118, 210, 0.05) 0%, rgba(0,0,0,0) 100%)"
+                    : "radial-gradient(circle at 50% 50%, rgba(25, 118, 210, 0.02) 0%, rgba(255,255,255,0) 100%)",
+                p: { xs: 2, sm: 3, md: 4, lg: 5, xl: 6 },
               }}
             >
-              {showAccount && user ? (
-                <AccountPage
-                  user={user}
-                  onLogout={async () => {
-                    await supabase.auth.signOut();
-                    setUser(null);
-                    setShowAccount(false);
-                  }}
-                  onHome={() => setShowAccount(false)}
-                />
-              ) : showItinerary && user ? (
-                <MyItinerary
-                  user={user}
-                  onHome={() => setShowItinerary(false)}
-                />
-              ) : selectedVacation ? (
-                <VacationDetails
-                  vacation={selectedVacation}
-                  user={user}
-                  onRefresh={() => fetchVacations(showArchived)}
-                />
-              ) : (
-                <Box
-                  sx={{
-                    height: "100%",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    opacity: 0.2,
-                    p: 4,
-                    textAlign: "center",
-                  }}
-                >
-                  <MapIcon sx={{ fontSize: 80, mb: 2 }} />
-                  <Typography variant="h4" sx={{ fontWeight: 900, mb: 1 }}>
-                    Adventure Awaits
-                  </Typography>
-                  <Typography variant="body1">
-                    Select a trip from the sidebar to start planning your next
-                    getaway.
-                  </Typography>
-                </Box>
-              )}
+              <Suspense
+                fallback={
+                  <Box
+                    sx={{
+                      height: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <CircularProgress />
+                  </Box>
+                }
+              >
+                {showAccount && user ? (
+                  <AccountPage
+                    user={user}
+                    onLogout={async () => {
+                      await supabase.auth.signOut();
+                      setUser(null);
+                      setShowAccount(false);
+                    }}
+                    onHome={() => setShowAccount(false)}
+                  />
+                ) : showItinerary && user ? (
+                  <MyItinerary
+                    user={user}
+                    onHome={() => setShowItinerary(false)}
+                  />
+                ) : selectedVacation ? (
+                  <VacationDetails
+                    vacation={selectedVacation}
+                    user={user}
+                    onRefresh={() => fetchVacations(showArchived)}
+                  />
+                ) : (
+                  <HomeDashboard
+                    user={user}
+                    vacations={vacations}
+                    onSelectVacation={setSelectedVacation}
+                    onNewTrip={() => setShowAddVacationModal(true)}
+                    isMobile={isMobile}
+                    search={search}
+                    onSearchChange={setSearch}
+                    activeTab={activeTab}
+                    onActiveTabChange={setActiveTab}
+                    displayedVacations={displayedVacations}
+                    showArchived={showArchived}
+                    onShowArchivedChange={setShowArchived}
+                  />
+                )}
+              </Suspense>
             </Box>
           </Box>
           <footer className="vp-footer">© 2025 Vacation Planner</footer>
 
           {showAuthModal && (
             <div className="auth-modal-wrapper">
-              <AuthForm
-                mode={authMode}
-                setMode={setAuthMode}
-                errorMsg={null}
-                onAuth={(err) => {
-                  if (!err) setShowAuthModal(false);
-                }}
-              />
+              <Suspense fallback={<CircularProgress />}>
+                <AuthForm
+                  mode={authMode}
+                  setMode={setAuthMode}
+                  errorMsg={null}
+                  onAuth={(err) => {
+                    if (!err) setShowAuthModal(false);
+                  }}
+                />
+              </Suspense>
             </div>
           )}
 

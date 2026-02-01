@@ -10,34 +10,55 @@ export function useVacations(fetchVacations: () => void, pushUndo: () => void) {
   const fetchAllVacations = useCallback(async (includeArchived = false) => {
     setLoading(true);
     setError(null);
-    const { data, error } = await supabase
-      .from("vacations")
-      .select(
-        `
-        *,
-        profiles (
-          display_name
-        ),
-        vacation_participants (
-          user_id
+    try {
+      const fetchPromise = supabase
+        .from("vacations")
+        .select(
+          `
+          *,
+          profiles!user_id (
+            display_name,
+            avatar_url
+          ),
+          vacation_participants (
+            user_id
+          )
+        `,
         )
-      `
-      )
-      .order("id", { ascending: false });
+        .order("id", { ascending: false });
 
-    if (!error && data) {
-      const vacationsWithProfiles = data.map((vac) => ({
-        ...vac,
-        owner_name: vac.profiles?.display_name,
-      }));
-      const filteredData = includeArchived
-        ? vacationsWithProfiles
-        : vacationsWithProfiles.filter((vacation) => !vacation.archived);
-      setVacations(filteredData as Vacation[]);
-    } else {
-      setError(error?.message || "Failed to fetch vacations");
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Database timeout")), 8000),
+      );
+
+      const { data, error } = await (Promise.race([
+        fetchPromise,
+        timeoutPromise,
+      ]) as any);
+
+      if (error) {
+        throw error;
+      }
+
+      if (data) {
+        const vacationsWithProfiles = data.map((vac: any) => ({
+          ...vac,
+          owner_name: vac.profiles?.display_name,
+          owner_avatar: vac.profiles?.avatar_url,
+        }));
+
+        const filteredData = includeArchived
+          ? vacationsWithProfiles
+          : vacationsWithProfiles.filter((vacation: any) => !vacation.archived);
+
+        setVacations(filteredData as Vacation[]);
+      }
+    } catch (err: any) {
+      console.error("Fetch vacations failed:", err);
+      setError(err.message || "Failed to fetch vacations");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -85,7 +106,7 @@ export function useVacations(fetchVacations: () => void, pushUndo: () => void) {
 }
 export function useAddVacation(
   fetchVacations: () => void,
-  pushUndo: () => void
+  pushUndo: () => void,
 ) {
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState("");

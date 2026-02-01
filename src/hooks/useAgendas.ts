@@ -10,6 +10,7 @@ export type Agenda = {
   Time?: string;
   type?: "activity" | "flight" | "train" | "bus" | "hotel" | "note";
   position: number;
+  price?: number;
 };
 
 export function useAgendas(locationId: number) {
@@ -39,7 +40,8 @@ export function useAgendas(locationId: number) {
     description: string,
     address?: string,
     Time?: string,
-    type: string = "activity"
+    type: string = "activity",
+    price?: number,
   ) {
     setLoading(true);
     // Get max position for this date
@@ -56,9 +58,12 @@ export function useAgendas(locationId: number) {
         Time,
         type,
         position: maxPos + 1,
+        price,
       },
     ]);
-    if (!error) fetchAgendas(locationId);
+    if (!error) {
+      setTimeout(() => fetchAgendas(locationId), 100);
+    }
     setLoading(false);
   }
 
@@ -68,15 +73,33 @@ export function useAgendas(locationId: number) {
     description: string,
     address?: string,
     Time?: string,
-    type?: string
+    type?: string,
+    price?: number,
   ) {
-    setLoading(true);
+    // Optimistic update
+    setAgendas((prev) =>
+      prev.map((a) =>
+        a.id === id
+          ? {
+              ...a,
+              agenda_date,
+              description,
+              address,
+              Time,
+              type: type as any,
+              price,
+            }
+          : a,
+      ),
+    );
+
     const { error } = await supabase
       .from("agendas")
-      .update({ agenda_date, description, address, Time, type })
+      .update({ agenda_date, description, address, Time, type, price })
       .eq("id", id);
-    if (!error) fetchAgendas(locationId);
-    setLoading(false);
+    if (!error) {
+      setTimeout(() => fetchAgendas(locationId), 100);
+    }
   }
 
   async function updateAgendasOrder(items: Agenda[]) {

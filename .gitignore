@@ -1,68 +1,64 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# dependencies
+# Dependencies
 /node_modules
 /.pnp
 .pnp.js
 
-# testing
+# Testing
 /coverage
 
-# production
+# Production
 /build
 /dist
 /out
 /.next/
 
-# sensitive and environment
-.env
-.env.*
-package-lock.json
+# User Uploads (Galleries, etc)
+/uploads
+/uploads/original
+/uploads/large
+/uploads/medium
+/uploads/thumbnail
 
-# misc
-.DS_Store
+# Sensitive and Environment
+.env
+.env.local
+.env.development.local
 .env.test.local
 .env.production.local
-.env
+*.env
 
-# IDE-specific files
+# IDE - VS Code
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
+
+# IDE - Others
 .idea/
 *.sublime-workspace
+*.swp
+*.swo
 
-# Log files
+# Logs
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Temporary system files
-Thumbs.db
+# OS specific files
 .DS_Store
+.DS_Store?
+._*
+Thumbs.db
 
-# Sensitive environment files
-.env
-.env.*
-
-# Allow package-lock.json (Recommended for teams/consistency)
-# package-lock.json
-
-# Additional exclusions
+# Misc
 *.tmp
 *.bak
-*.swp
-*.swo
 *.orig
+*.generated.*
 
-# Ignore generated files
-*.generated.js
-*.generated.ts
-
-# Ignore TypeScript build artifacts
-*.d.ts
-*.js.map
+# TypeScript
 *.tsbuildinfo

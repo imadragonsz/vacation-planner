@@ -15,11 +15,15 @@ let isProcessing = false;
 // Basic LocalStorage cache to prevent repeated lookups for the same query
 const CACHE_KEY = "vp_geocoding_cache";
 const cache: Record<string, any> = JSON.parse(
-  localStorage.getItem(CACHE_KEY) || "{}"
+  localStorage.getItem(CACHE_KEY) || "{}",
 );
 
 function saveCache() {
   localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+}
+
+export function getCachedGeocode(url: string): any | null {
+  return cache[url] || null;
 }
 
 async function fetchWithTimeout(url: string, timeout = 10000) {
@@ -118,7 +122,6 @@ async function processQueue() {
         continue;
       }
 
-      console.info(`[Geocoder] Trying Photon: ${photonUrl}`);
       const res = await fetchWithTimeout(photonUrl, 8000);
       if (res.ok) {
         const data = await res.json();
@@ -132,7 +135,7 @@ async function processQueue() {
       }
     } catch (err: any) {
       console.warn(
-        `[Geocoder] Error processing ${request.url}. Retries: ${request.retries}`
+        `[Geocoder] Error processing ${request.url}. Retries: ${request.retries}`,
       );
       if (request.retries < 2) {
         queue.push({ ...request, retries: request.retries + 1 });
@@ -148,6 +151,27 @@ async function processQueue() {
 }
 
 export function addToGeocodeQueue(url: string): Promise<any> {
+  // Performance optimization: If the query is just coordinates, resolve immediately
+  try {
+    const urlObj = new URL(url);
+    const q = urlObj.searchParams.get("q");
+    if (q) {
+      // Handle "lat, lng" or "lat lng"
+      const match = q.match(/^([-+]?\d+\.\d+)\s*[\s,]\s*([-+]?\d+\.\d+)$/);
+      if (match) {
+        return Promise.resolve([
+          {
+            lat: match[1],
+            lon: match[2],
+            display_name: q,
+          },
+        ]);
+      }
+    }
+  } catch (e) {
+    // Ignore URL parsing errors
+  }
+
   return new Promise((resolve, reject) => {
     queue.push({ url, resolve, reject, retries: 0 });
     processQueue();

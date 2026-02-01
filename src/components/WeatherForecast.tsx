@@ -1,12 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {
-  Box,
-  Typography,
-  Card,
-  CircularProgress,
-  Tooltip,
-  Stack,
-} from "@mui/material";
+import { Box, Typography, CircularProgress, Tooltip } from "@mui/material";
 import WbSunnyIcon from "@mui/icons-material/WbSunny";
 import CloudIcon from "@mui/icons-material/Cloud";
 import GrainIcon from "@mui/icons-material/Grain";
@@ -60,7 +53,7 @@ const WeatherForecast: React.FC<WeatherForecastProps> = ({ lat, lng }) => {
       try {
         setLoading(true);
         const response = await fetch(
-          `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true&daily=temperature_2m_max,temperature_2m_min&timezone=auto`
+          `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true&daily=temperature_2m_max,temperature_2m_min&timezone=auto`,
         );
         const result = await response.json();
 
@@ -89,32 +82,72 @@ const WeatherForecast: React.FC<WeatherForecastProps> = ({ lat, lng }) => {
 
   return (
     <Tooltip title={getWeatherDescription(data.weatherCode)}>
-      <Card
+      <Box
         sx={{
-          bgcolor: "rgba(255, 255, 255, 0.05)",
-          backdropFilter: "blur(10px)",
-          border: "1px solid rgba(255, 255, 255, 0.1)",
-          borderRadius: 3,
-          px: 2,
-          py: 0.5,
+          bgcolor: (theme) =>
+            theme.palette.mode === "dark"
+              ? "rgba(255, 255, 255, 0.05)"
+              : "rgba(0, 0, 0, 0.02)",
+          backdropFilter: "blur(20px)",
+          border: (theme) =>
+            `1px solid ${
+              theme.palette.mode === "dark"
+                ? "rgba(255, 255, 255, 0.08)"
+                : "rgba(0, 0, 0, 0.05)"
+            }`,
+          borderRadius: 4,
+          px: 2.5,
+          py: 1.5,
           display: "flex",
           alignItems: "center",
-          gap: 1.5,
+          gap: 2,
           cursor: "default",
+          transition: "all 0.2s",
+          "&:hover": {
+            bgcolor: (theme) =>
+              theme.palette.mode === "dark"
+                ? "rgba(255, 255, 255, 0.08)"
+                : "rgba(0, 0, 0, 0.04)",
+            transform: "translateY(-1px)",
+          },
         }}
       >
-        <Box sx={{ display: "flex", alignItems: "center" }}>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 32,
+            height: 32,
+            borderRadius: 2,
+            bgcolor: (theme) =>
+              theme.palette.mode === "dark"
+                ? "rgba(255,255,255,0.05)"
+                : "rgba(0,0,0,0.03)",
+          }}
+        >
           {getWeatherIcon(data.weatherCode)}
         </Box>
-        <Stack spacing={-0.5}>
-          <Typography variant="body2" sx={{ fontWeight: 800, color: "#fff" }}>
-            {data.currentTemp}°C
+        <Box>
+          <Typography
+            variant="body1"
+            sx={{ fontWeight: 900, color: "text.primary", lineHeight: 1 }}
+          >
+            {Math.round(data.currentTemp)}°C
           </Typography>
-          <Typography variant="caption" sx={{ opacity: 0.5, fontWeight: 700 }}>
-            {data.minTemp}° / {data.maxTemp}°
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+              fontWeight: 800,
+              fontSize: "0.7rem",
+              textTransform: "uppercase",
+            }}
+          >
+            {Math.round(data.minTemp)}° / {Math.round(data.maxTemp)}°
           </Typography>
-        </Stack>
-      </Card>
+        </Box>
+      </Box>
     </Tooltip>
   );
 };

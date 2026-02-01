@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Box,
   Typography,
@@ -6,13 +6,25 @@ import {
   Container,
   IconButton,
   Button,
+  Avatar,
+  Chip,
+  Skeleton,
+  Grid,
+  TextField,
+  InputAdornment,
 } from "@mui/material";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import EventNoteIcon from "@mui/icons-material/EventNote";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
+import TravelExploreIcon from "@mui/icons-material/TravelExplore";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import TripOriginIcon from "@mui/icons-material/TripOrigin";
+import SearchIcon from "@mui/icons-material/Search";
+import FilterListIcon from "@mui/icons-material/FilterList";
 import { supabase } from "../supabaseClient";
 import { generateICal } from "../utils/ical";
+import dayjs from "dayjs";
 
 type MyItineraryProps = {
   user: any;
@@ -22,6 +34,29 @@ type MyItineraryProps = {
 export default function MyItinerary({ user, onHome }: MyItineraryProps) {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedLocationId, setSelectedLocationId] = useState<number | null>(
+    null,
+  );
+
+  const filteredItems = useMemo(() => {
+    if (!searchQuery) return items;
+    const q = searchQuery.toLowerCase();
+    return items.filter(
+      (item) =>
+        item.name.toLowerCase().includes(q) ||
+        item.vacation.toLowerCase().includes(q) ||
+        item.activities.some((ag: any) => ag.name.toLowerCase().includes(q)),
+    );
+  }, [items, searchQuery]);
+
+  const selectedItem = useMemo(() => {
+    return (
+      filteredItems.find((item) => item.id === selectedLocationId) ||
+      filteredItems[0] ||
+      null
+    );
+  }, [filteredItems, selectedLocationId]);
 
   useEffect(() => {
     async function fetchMyItinerary() {
@@ -192,6 +227,9 @@ export default function MyItinerary({ user, onHome }: MyItineraryProps) {
         });
 
         setItems(processedGroups);
+        if (processedGroups.length > 0 && selectedLocationId === null) {
+          setSelectedLocationId(processedGroups[0].id);
+        }
       } catch (err) {
         console.error("[MyItinerary] Critical error:", err);
       } finally {
@@ -200,7 +238,7 @@ export default function MyItinerary({ user, onHome }: MyItineraryProps) {
     }
 
     fetchMyItinerary();
-  }, [user]);
+  }, [user, selectedLocationId]);
 
   const handleExportCalendar = () => {
     const events: any[] = [];
@@ -228,213 +266,579 @@ export default function MyItinerary({ user, onHome }: MyItineraryProps) {
   };
 
   return (
-    <Container maxWidth="md" sx={{ py: 6 }}>
+    <Container maxWidth="xl" sx={{ py: { xs: 4, md: 6 } }}>
       <Box
         sx={{
           mb: 4,
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: 3,
         }}
       >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-          <IconButton onClick={onHome} sx={{ color: "rgba(255,255,255,0.6)" }}>
-            <ArrowBackIcon />
-          </IconButton>
-          <Typography variant="h4" sx={{ fontWeight: 900 }}>
-            My Itinerary
-          </Typography>
-        </Box>
-        {items.length > 0 && (
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<CalendarTodayIcon />}
-            onClick={handleExportCalendar}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 3 }}>
+          <IconButton
+            onClick={onHome}
             sx={{
-              borderRadius: 2,
-              borderColor: "rgba(255,255,255,0.1)",
-              color: "rgba(255,255,255,0.7)",
+              bgcolor: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.05)",
+              color: "#fff",
+              p: 1.5,
               "&:hover": {
-                borderColor: "primary.main",
-                bgcolor: "rgba(25, 118, 210, 0.05)",
+                bgcolor: "rgba(255,255,255,0.1)",
+                transform: "translateX(-4px)",
               },
+              transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
             }}
           >
-            Export to Calendar
-          </Button>
-        )}
-      </Box>
-
-      {loading ? (
-        <Typography sx={{ opacity: 0.5 }}>Loading your plan...</Typography>
-      ) : items.length === 0 ? (
-        <Paper
-          sx={{
-            p: 6,
-            textAlign: "center",
-            bgcolor: "rgba(255,255,255,0.02)",
-            borderRadius: 4,
-          }}
-        >
-          <EventNoteIcon sx={{ fontSize: 64, opacity: 0.1, mb: 2 }} />
-          <Typography variant="h6" sx={{ opacity: 0.5 }}>
-            You haven't joined any activities yet.
-          </Typography>
-          <Typography variant="body2" sx={{ opacity: 0.3 }}>
-            Go to a trip and click "Join" on specific destinations or agenda
-            items!
-          </Typography>
-        </Paper>
-      ) : (
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-          {items.map((group) => (
-            <Paper
-              key={`group-${group.id}`}
-              elevation={0}
+            <ArrowBackIcon />
+          </IconButton>
+          <Box>
+            <Typography
+              variant="h3"
               sx={{
-                p: 0,
-                borderRadius: 4,
-                bgcolor: "rgba(255,255,255,0.02)",
-                border: "1px solid rgba(255,255,255,0.05)",
-                overflow: "hidden",
+                fontWeight: 900,
+                letterSpacing: -1,
+                background:
+                  "linear-gradient(90deg, #fff 0%, rgba(255,255,255,0.5) 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
               }}
             >
-              <Box
-                sx={{
-                  p: 3,
-                  bgcolor: "rgba(25, 118, 210, 0.05)",
-                  borderBottom: "1px solid rgba(255,255,255,0.05)",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 2,
-                }}
-              >
-                <LocationOnIcon color="primary" />
-                <Box sx={{ flex: 1 }}>
-                  <Typography
-                    variant="caption"
+              My Plan
+            </Typography>
+            <Typography
+              variant="body1"
+              sx={{ opacity: 0.4, fontWeight: 700, mt: -0.5 }}
+            >
+              Your personal itinerary across all trips
+            </Typography>
+          </Box>
+        </Box>
+
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+          {items.length > 0 && (
+            <Button
+              variant="contained"
+              startIcon={<CalendarTodayIcon />}
+              onClick={handleExportCalendar}
+              sx={{
+                borderRadius: 3,
+                px: 3,
+                py: 1.2,
+                fontWeight: 900,
+                textTransform: "none",
+                boxShadow: "0 8px 32px rgba(33, 150, 243, 0.3)",
+                background: "linear-gradient(45deg, #2196f3 30%, #21cbf3 90%)",
+                "&:hover": {
+                  transform: "translateY(-2px)",
+                  boxShadow: "0 12px 40px rgba(33, 150, 243, 0.4)",
+                },
+                transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+              }}
+            >
+              Sync to Calendar
+            </Button>
+          )}
+        </Box>
+      </Box>
+
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "1fr", lg: "320px 1fr" },
+          gap: 6,
+          alignItems: "start",
+        }}
+      >
+        {/* Sidebar */}
+        <Box
+          sx={{
+            position: { lg: "sticky" },
+            top: { lg: 32 },
+            display: "flex",
+            flexDirection: "column",
+            gap: 3,
+          }}
+        >
+          <TextField
+            fullWidth
+            placeholder="Search activities..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon sx={{ color: "primary.main", opacity: 0.5 }} />
+                </InputAdornment>
+              ),
+              sx: {
+                borderRadius: 4,
+                bgcolor: "rgba(255,255,255,0.03)",
+                border: "1px solid rgba(255,255,255,0.05)",
+                "&:hover": { bgcolor: "rgba(255,255,255,0.05)" },
+                "& fieldset": { border: "none" },
+              },
+            }}
+          />
+
+          <Paper
+            sx={{
+              p: 3,
+              borderRadius: 6,
+              bgcolor: "rgba(255,255,255,0.02)",
+              backdropFilter: "blur(20px)",
+              border: "1px solid rgba(255,255,255,0.05)",
+            }}
+          >
+            <Typography
+              variant="overline"
+              sx={{ fontWeight: 900, opacity: 0.4, mb: 2, display: "block" }}
+            >
+              Locations Overview
+            </Typography>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+              {filteredItems.map((item: any) => {
+                const isActive = selectedItem?.id === item.id;
+                return (
+                  <Button
+                    key={`nav-${item.id}`}
+                    fullWidth
+                    onClick={() => setSelectedLocationId(item.id)}
                     sx={{
-                      fontWeight: 800,
-                      opacity: 0.4,
-                      textTransform: "uppercase",
-                      letterSpacing: 1,
+                      justifyContent: "flex-start",
+                      textAlign: "left",
+                      px: 2,
+                      py: 1.5,
+                      borderRadius: 3,
+                      color: isActive
+                        ? "primary.main"
+                        : "rgba(255,255,255,0.6)",
+                      bgcolor: isActive
+                        ? "rgba(33, 150, 243, 0.1)"
+                        : "transparent",
+                      border: isActive
+                        ? "1px solid rgba(33, 150, 243, 0.2)"
+                        : "1px solid transparent",
+                      textTransform: "none",
+                      "&:hover": {
+                        bgcolor: isActive
+                          ? "rgba(33, 150, 243, 0.15)"
+                          : "rgba(255,255,255,0.03)",
+                      },
+                      transition: "all 0.2s ease",
                     }}
                   >
-                    {group.vacation}
-                  </Typography>
-                  <Typography variant="h6" sx={{ fontWeight: 800 }}>
-                    {group.name}
-                  </Typography>
-                  {(group.startDate || group.endDate) && (
+                    <Box sx={{ overflow: "hidden" }}>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: isActive ? 900 : 700,
+                          whiteSpace: "nowrap",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {item.name}
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{ opacity: 0.5, display: "block", mt: -0.2 }}
+                      >
+                        {item.vacation}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ flex: 1 }} />
                     <Typography
                       variant="caption"
                       sx={{
-                        color: "secondary.main",
-                        fontWeight: 800,
-                        display: "block",
-                        mt: -0.5,
+                        fontWeight: 900,
+                        bgcolor: isActive
+                          ? "primary.main"
+                          : "rgba(255,255,255,0.05)",
+                        color: isActive ? "#fff" : "inherit",
+                        px: 1,
+                        borderRadius: 1,
+                        minWidth: 20,
+                        textAlign: "center",
                       }}
                     >
-                      {group.startDate
-                        ? new Date(group.startDate).toLocaleDateString(
-                            undefined,
-                            { month: "short", day: "numeric" },
-                          )
-                        : "???"}{" "}
-                      -{" "}
-                      {group.endDate
-                        ? new Date(group.endDate).toLocaleDateString(
-                            undefined,
-                            { month: "short", day: "numeric" },
-                          )
-                        : "???"}
+                      {item.activities.length}
                     </Typography>
-                  )}
-                </Box>
-              </Box>
+                  </Button>
+                );
+              })}
+              {filteredItems.length === 0 && (
+                <Typography
+                  variant="body2"
+                  sx={{ opacity: 0.3, fontStyle: "italic", p: 1 }}
+                >
+                  No matches found
+                </Typography>
+              )}
+            </Box>
+          </Paper>
 
-              <Box
-                sx={{ p: 2, display: "flex", flexDirection: "column", gap: 2 }}
+          <Box
+            sx={{
+              p: 3,
+              borderRadius: 6,
+              bgcolor: "primary.main",
+              color: "white",
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+              boxShadow: "0 10px 40px rgba(33, 150, 243, 0.2)",
+            }}
+          >
+            <FilterListIcon />
+            <Box>
+              <Typography variant="body2" sx={{ fontWeight: 900 }}>
+                {items.length} Destinations
+              </Typography>
+              <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                Total activities in your radar
+              </Typography>
+            </Box>
+          </Box>
+        </Box>
+
+        {/* Main Content */}
+        <Box>
+          {loading ? (
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              {[1, 2, 3].map((i) => (
+                <Skeleton
+                  key={i}
+                  variant="rectangular"
+                  height={300}
+                  sx={{ borderRadius: 6, bgcolor: "rgba(255,255,255,0.02)" }}
+                />
+              ))}
+            </Box>
+          ) : filteredItems.length === 0 ? (
+            <Paper
+              elevation={0}
+              sx={{
+                p: { xs: 6, md: 12 },
+                textAlign: "center",
+                bgcolor: "rgba(255,255,255,0.01)",
+                backdropFilter: "blur(20px)",
+                border: "1px dashed rgba(255,255,255,0.1)",
+                borderRadius: 8,
+              }}
+            >
+              <TravelExploreIcon
+                sx={{
+                  fontSize: 80,
+                  opacity: 0.1,
+                  mb: 3,
+                  color: "primary.main",
+                }}
+              />
+              <Typography variant="h5" sx={{ fontWeight: 800, mb: 1 }}>
+                {searchQuery
+                  ? "No matching plans found"
+                  : "No stops in your radar yet."}
+              </Typography>
+              <Typography
+                sx={{ opacity: 0.3, maxWidth: 400, mx: "auto", mb: 4 }}
               >
-                {Object.keys(group.dailyActivities).length > 0 ? (
-                  (
-                    Object.entries(group.dailyActivities) as [string, any[]][]
-                  ).map(([date, activities]) => (
-                    <Box
-                      key={date}
-                      sx={{ display: "flex", flexDirection: "column", gap: 1 }}
+                {searchQuery
+                  ? "Try adjusting your search query or clear it to see all your plans."
+                  : "Exploring is more fun together! Browse trips and join activities to build your master travel plan."}
+              </Typography>
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  if (searchQuery) setSearchQuery("");
+                  else onHome();
+                }}
+                sx={{
+                  borderRadius: 3,
+                  px: 4,
+                  fontWeight: 900,
+                  borderColor: "rgba(255,255,255,0.1)",
+                  color: "rgba(255,255,255,0.6)",
+                  "&:hover": {
+                    borderColor: "primary.main",
+                    color: "primary.main",
+                  },
+                }}
+              >
+                {searchQuery ? "Clear Search" : "Find a Trip"}
+              </Button>
+            </Paper>
+          ) : (
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {selectedItem && (
+                <Box key={`group-${selectedItem.id}`}>
+                  {/* Destination Header */}
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: 4,
+                      mb: 3,
+                      borderRadius: 6,
+                      bgcolor: "rgba(33, 150, 243, 0.03)",
+                      backdropFilter: "blur(40px)",
+                      border: "1px solid rgba(33, 150, 243, 0.1)",
+                      display: "flex",
+                      alignItems: { xs: "flex-start", sm: "center" },
+                      flexDirection: { xs: "column", sm: "row" },
+                      gap: 4,
+                      position: "relative",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <Avatar
+                      sx={{
+                        width: 80,
+                        height: 80,
+                        bgcolor: "rgba(33, 150, 243, 0.1)",
+                        border: "2px solid rgba(33, 150, 243, 0.2)",
+                        color: "primary.main",
+                      }}
                     >
-                      <Typography
-                        variant="caption"
+                      <LocationOnIcon sx={{ fontSize: 40 }} />
+                    </Avatar>
+
+                    <Box sx={{ flex: 1 }}>
+                      <Box
                         sx={{
-                          px: 1,
-                          fontWeight: 900,
-                          color: "secondary.main",
-                          opacity: 0.8,
-                          textTransform: "uppercase",
-                          letterSpacing: 0.5,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 2,
+                          mb: 1,
+                          flexWrap: "wrap",
                         }}
                       >
-                        {date !== "Unscheduled"
-                          ? new Date(date).toLocaleDateString(undefined, {
-                              weekday: "long",
-                              month: "short",
-                              day: "numeric",
-                            })
-                          : "Unscheduled Activities"}
-                      </Typography>
-                      {activities.map((ag: any) => (
-                        <Box
-                          key={`ag-${ag.id}`}
+                        <Typography
+                          variant="h4"
+                          sx={{ fontWeight: 900, letterSpacing: -1.5 }}
+                        >
+                          {selectedItem.name}
+                        </Typography>
+                        <Chip
+                          label={selectedItem.vacation}
                           sx={{
-                            p: 2,
-                            borderRadius: 2,
-                            bgcolor: "rgba(255,255,255,0.02)",
+                            bgcolor: "primary.main",
+                            fontWeight: 900,
+                            fontSize: "0.75rem",
+                            color: "#fff",
+                            px: 1,
+                          }}
+                        />
+                      </Box>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 3,
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        <Typography
+                          variant="subtitle1"
+                          sx={{
+                            opacity: 0.6,
+                            fontWeight: 700,
                             display: "flex",
                             alignItems: "center",
-                            gap: 2,
-                            "&:hover": { bgcolor: "rgba(255,255,255,0.04)" },
+                            gap: 1,
                           }}
                         >
-                          <EventNoteIcon
-                            sx={{ fontSize: 20, color: "secondary.main" }}
-                          />
-                          <Box sx={{ flex: 1 }}>
+                          <CalendarTodayIcon sx={{ fontSize: 18 }} />
+                          {selectedItem.startDate
+                            ? dayjs(selectedItem.startDate).format("MMMM D")
+                            : "???"}{" "}
+                          —{" "}
+                          {selectedItem.endDate
+                            ? dayjs(selectedItem.endDate).format("MMMM D, YYYY")
+                            : "???"}
+                        </Typography>
+                        <Box
+                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                        >
+                          <EventNoteIcon sx={{ fontSize: 18, opacity: 0.4 }} />
+                          <Typography
+                            variant="subtitle1"
+                            sx={{ color: "primary.main", fontWeight: 800 }}
+                          >
+                            {selectedItem.activities.length} Activities
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Box>
+                  </Paper>
+
+                  {/* Timeline */}
+                  <Box
+                    sx={{
+                      pl: { xs: 2, sm: 6 },
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 4,
+                    }}
+                  >
+                    {Object.keys(selectedItem.dailyActivities).length > 0 ? (
+                      (
+                        Object.entries(selectedItem.dailyActivities) as [
+                          string,
+                          any[],
+                        ][]
+                      ).map(([date, activities], idx) => (
+                        <Box
+                          key={date}
+                          sx={{
+                            position: "relative",
+                            "&::before": {
+                              content: '""',
+                              position: "absolute",
+                              left: -24,
+                              top: 12,
+                              bottom: -32,
+                              width: 2,
+                              bgcolor: "rgba(255,255,255,0.05)",
+                              display:
+                                idx ===
+                                Object.keys(selectedItem.dailyActivities)
+                                  .length -
+                                  1
+                                  ? "none"
+                                  : "block",
+                            },
+                          }}
+                        >
+                          {/* Day indicator */}
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 2,
+                              mb: 3,
+                            }}
+                          >
+                            <TripOriginIcon
+                              sx={{
+                                fontSize: 16,
+                                color: "primary.main",
+                                ml: -3.85,
+                                filter:
+                                  "drop-shadow(0 0 8px rgba(33, 150, 243, 0.5))",
+                                bgcolor: "#121212",
+                                zIndex: 1,
+                              }}
+                            />
                             <Typography
-                              variant="body1"
-                              sx={{ fontWeight: 700 }}
+                              variant="h6"
+                              sx={{
+                                fontWeight: 900,
+                                color: "primary.main",
+                                letterSpacing: 0.5,
+                                textTransform: "uppercase",
+                                fontSize: "0.9rem",
+                              }}
                             >
-                              {ag.name}
+                              {date !== "Unscheduled"
+                                ? dayjs(date).format("dddd, MMM D")
+                                : "Unscheduled"}
                             </Typography>
                           </Box>
-                          {ag.time && (
-                            <Box sx={{ textAlign: "right" }}>
-                              <Typography
-                                variant="caption"
-                                sx={{ fontWeight: 800, opacity: 0.6 }}
+
+                          <Grid container spacing={2}>
+                            {activities.map((ag: any) => (
+                              <Grid
+                                size={{ xs: 12, md: 6 }}
+                                key={`ag-${ag.id}`}
                               >
-                                {ag.time.slice(0, 5)}
-                              </Typography>
-                            </Box>
-                          )}
+                                <Paper
+                                  sx={{
+                                    p: 3,
+                                    borderRadius: 5,
+                                    bgcolor: "rgba(255,255,255,0.02)",
+                                    border: "1px solid rgba(255,255,255,0.05)",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 3,
+                                    transition:
+                                      "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                                    "&:hover": {
+                                      bgcolor: "rgba(255,255,255,0.06)",
+                                      transform: "translateY(-4px) scale(1.01)",
+                                      borderColor: "primary.main",
+                                      boxShadow: "0 12px 40px rgba(0,0,0,0.3)",
+                                    },
+                                  }}
+                                >
+                                  <Avatar
+                                    sx={{
+                                      width: 50,
+                                      height: 50,
+                                      bgcolor: "rgba(156, 39, 176, 0.1)",
+                                      color: "secondary.main",
+                                    }}
+                                  >
+                                    <EventNoteIcon sx={{ fontSize: 24 }} />
+                                  </Avatar>
+
+                                  <Box sx={{ flex: 1 }}>
+                                    <Typography
+                                      variant="subtitle1"
+                                      sx={{
+                                        fontWeight: 800,
+                                        lineHeight: 1.2,
+                                        mb: 0.5,
+                                      }}
+                                    >
+                                      {ag.name}
+                                    </Typography>
+                                    {ag.time && (
+                                      <Typography
+                                        variant="caption"
+                                        sx={{
+                                          display: "flex",
+                                          alignItems: "center",
+                                          gap: 0.5,
+                                          fontWeight: 700,
+                                          opacity: 0.5,
+                                          textTransform: "uppercase",
+                                        }}
+                                      >
+                                        <AccessTimeIcon sx={{ fontSize: 14 }} />
+                                        {ag.time.slice(0, 5)}
+                                      </Typography>
+                                    )}
+                                  </Box>
+                                </Paper>
+                              </Grid>
+                            ))}
+                          </Grid>
                         </Box>
-                      ))}
-                    </Box>
-                  ))
-                ) : (
-                  <Typography
-                    variant="body2"
-                    sx={{ p: 2, opacity: 0.3, fontStyle: "italic" }}
-                  >
-                    No scheduled activities for this destination.
-                  </Typography>
-                )}
-              </Box>
-            </Paper>
-          ))}
+                      ))
+                    ) : (
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          p: 4,
+                          opacity: 0.2,
+                          fontStyle: "italic",
+                          textAlign: "center",
+                          bgcolor: "rgba(255,255,255,0.01)",
+                          borderRadius: 4,
+                          border: "1px dashed rgba(255,255,255,0.1)",
+                        }}
+                      >
+                        No activities scheduled for this stop.
+                      </Typography>
+                    )}
+                  </Box>
+                </Box>
+              )}
+            </Box>
+          )}
         </Box>
-      )}
+      </Box>
     </Container>
   );
 }

@@ -5,11 +5,11 @@ export async function handleArchiveVacation(
   vacation: Vacation,
   pushUndo: () => void,
   fetchVacations: () => void,
-  setToast: (toast: { message: string; type: "success" | "error" }) => void
+  setToast: (toast: { message: string; type: "success" | "error" }) => void,
 ) {
   if (vacation.archived) {
     const confirmed = window.confirm(
-      "Are you sure you want to delete this vacation?"
+      "Are you sure you want to delete this vacation?",
     );
     if (confirmed) {
       const { error } = await supabase
@@ -29,18 +29,19 @@ export async function handleArchiveVacation(
   const { data: vacationData, error: fetchError } = await supabase
     .from("vacations")
     .select("archived")
-    .eq("id", Number(vacation.id));
+    .eq("id", Number(vacation.id))
+    .maybeSingle();
 
-  if (fetchError || !vacationData || vacationData.length === 0) {
+  if (fetchError || !vacationData) {
     setToast({ message: "Failed to fetch vacation status.", type: "error" });
     return;
   }
 
-  const isArchived = vacationData[0]?.archived ?? false;
+  const isArchived = vacationData.archived ?? false;
 
   if (!isArchived) {
     const confirmed = window.confirm(
-      "Are you sure you want to archive this vacation? You can restore it later from the archive."
+      "Are you sure you want to archive this vacation? You can restore it later from the archive.",
     );
     if (confirmed) {
       pushUndo();
@@ -61,10 +62,10 @@ export async function handleArchiveVacation(
 export async function handleArchiveRestore(
   vacation: Vacation,
   fetchVacations: () => void,
-  setToast: (toast: { message: string; type: "success" | "error" }) => void
+  setToast: (toast: { message: string; type: "success" | "error" }) => void,
 ) {
   const confirmed = window.confirm(
-    "Are you sure you want to restore this vacation?"
+    "Are you sure you want to restore this vacation?",
   );
 
   if (!confirmed) return;

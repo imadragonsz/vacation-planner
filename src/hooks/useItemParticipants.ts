@@ -5,6 +5,7 @@ export type ItemParticipant = {
   item_id: number;
   user_id: string;
   display_name: string | null;
+  avatar_url: string | null;
 };
 
 export function useItemParticipants(type: "location" | "agenda") {
@@ -25,8 +26,9 @@ export function useItemParticipants(type: "location" | "agenda") {
           `
         ${idColumn},
         profile_id,
-        profiles (
-          display_name
+        profiles!profile_id (
+          display_name,
+          avatar_url
         )
       `,
         )
@@ -47,6 +49,7 @@ export function useItemParticipants(type: "location" | "agenda") {
               item_id: itemId,
               user_id: curr.profile_id,
               display_name: curr.profiles?.display_name || null,
+              avatar_url: curr.profiles?.avatar_url || null,
             });
           });
           return next;

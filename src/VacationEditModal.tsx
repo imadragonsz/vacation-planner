@@ -10,9 +10,13 @@ import {
   Box,
   useTheme,
   useMediaQuery,
+  FormControlLabel,
+  Checkbox,
+  Typography,
 } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers";
 import dayjs from "dayjs";
+import PublicIcon from "@mui/icons-material/Public";
 
 interface VacationEditModalProps {
   open: boolean;
@@ -33,12 +37,14 @@ const VacationEditModal: React.FC<VacationEditModalProps> = ({
   const [destination, setDestination] = useState(vacation.destination);
   const [startDate, setStartDate] = useState(vacation.start_date);
   const [endDate, setEndDate] = useState(vacation.end_date);
+  const [isPublic, setIsPublic] = useState(vacation.is_public || false);
 
   useEffect(() => {
     setName(vacation.name);
     setDestination(vacation.destination);
     setStartDate(vacation.start_date);
     setEndDate(vacation.end_date);
+    setIsPublic(vacation.is_public || false);
   }, [vacation]);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -49,6 +55,7 @@ const VacationEditModal: React.FC<VacationEditModalProps> = ({
       destination,
       start_date: startDate,
       end_date: endDate,
+      is_public: isPublic,
     });
   };
 
@@ -61,10 +68,20 @@ const VacationEditModal: React.FC<VacationEditModalProps> = ({
       fullScreen={isMobile}
       PaperProps={{
         sx: {
-          bgcolor: "rgba(15, 20, 25, 0.95)",
+          bgcolor: (theme) =>
+            theme.palette.mode === "dark"
+              ? "rgba(15, 20, 25, 0.95)"
+              : "rgba(255, 255, 255, 0.95)",
           backdropFilter: "blur(20px)",
           borderRadius: isMobile ? 0 : 6,
-          border: isMobile ? "none" : "1px solid rgba(255, 255, 255, 0.1)",
+          border: (theme) =>
+            isMobile
+              ? "none"
+              : `1px solid ${
+                  theme.palette.mode === "dark"
+                    ? "rgba(255, 255, 255, 0.1)"
+                    : "rgba(0, 0, 0, 0.1)"
+                }`,
           backgroundImage: "none",
           p: isMobile ? 1 : 2,
         },
@@ -92,7 +109,10 @@ const VacationEditModal: React.FC<VacationEditModalProps> = ({
             fullWidth
             sx={{
               "& .MuiOutlinedInput-root": {
-                bgcolor: "rgba(0,0,0,0.1)",
+                bgcolor: (theme) =>
+                  theme.palette.mode === "dark"
+                    ? "rgba(0,0,0,0.1)"
+                    : "rgba(0,0,0,0.03)",
                 borderRadius: 2.5,
               },
             }}
@@ -105,7 +125,10 @@ const VacationEditModal: React.FC<VacationEditModalProps> = ({
             fullWidth
             sx={{
               "& .MuiOutlinedInput-root": {
-                bgcolor: "rgba(0,0,0,0.1)",
+                bgcolor: (theme) =>
+                  theme.palette.mode === "dark"
+                    ? "rgba(0,0,0,0.1)"
+                    : "rgba(0,0,0,0.03)",
                 borderRadius: 2.5,
               },
             }}
@@ -126,7 +149,10 @@ const VacationEditModal: React.FC<VacationEditModalProps> = ({
               sx={{
                 flex: 1,
                 "& .MuiOutlinedInput-root": {
-                  bgcolor: "rgba(0,0,0,0.1)",
+                  bgcolor: (theme) =>
+                    theme.palette.mode === "dark"
+                      ? "rgba(0,0,0,0.1)"
+                      : "rgba(0,0,0,0.03)",
                   borderRadius: 2.5,
                 },
               }}
@@ -140,10 +166,53 @@ const VacationEditModal: React.FC<VacationEditModalProps> = ({
               sx={{
                 flex: 1,
                 "& .MuiOutlinedInput-root": {
-                  bgcolor: "rgba(0,0,0,0.1)",
+                  bgcolor: (theme) =>
+                    theme.palette.mode === "dark"
+                      ? "rgba(0,0,0,0.1)"
+                      : "rgba(0,0,0,0.03)",
                   borderRadius: 2.5,
                 },
               }}
+            />
+          </Box>
+          <Box
+            sx={{
+              mt: 1,
+              p: 2,
+              borderRadius: 3,
+              bgcolor: (theme) =>
+                theme.palette.mode === "dark"
+                  ? "rgba(255,255,255,0.03)"
+                  : "rgba(0,0,0,0.02)",
+              border: (theme) =>
+                `1px solid ${
+                  theme.palette.mode === "dark"
+                    ? "rgba(255,255,255,0.05)"
+                    : "rgba(0,0,0,0.05)"
+                }`,
+            }}
+          >
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={isPublic}
+                  onChange={(e) => setIsPublic(e.target.checked)}
+                  color="primary"
+                />
+              }
+              label={
+                <Box>
+                  <Typography
+                    variant="subtitle2"
+                    sx={{ fontWeight: 800, display: "flex", gap: 1 }}
+                  >
+                    <PublicIcon fontSize="small" color="primary" /> Public Trip
+                  </Typography>
+                  <Typography variant="caption" sx={{ opacity: 0.6 }}>
+                    Allow other travelers to see this trip in the Explore tab.
+                  </Typography>
+                </Box>
+              }
             />
           </Box>
         </form>
@@ -153,10 +222,14 @@ const VacationEditModal: React.FC<VacationEditModalProps> = ({
           onClick={onClose}
           variant="outlined"
           sx={{
-            color: "rgba(255,255,255,0.6)",
-            borderColor: "rgba(255,255,255,0.2)",
+            color: "text.secondary",
+            borderColor: (theme) =>
+              theme.palette.mode === "dark"
+                ? "rgba(255,255,255,0.2)"
+                : "rgba(0,0,0,0.2)",
             borderRadius: 3,
             px: 3,
+            fontWeight: 800,
           }}
         >
           Cancel

@@ -4,6 +4,8 @@ import { supabase } from "../supabaseClient";
 export type Participant = {
   user_id: string;
   display_name: string | null;
+  avatar_url: string | null;
+  allow_gallery: boolean;
 };
 
 export function useParticipants(vacationId: number) {
@@ -17,10 +19,12 @@ export function useParticipants(vacationId: number) {
       .select(
         `
         user_id,
-        profiles (
-          display_name
+        allow_gallery,
+        profiles!user_id (
+          display_name,
+          avatar_url
         )
-      `
+      `,
       )
       .eq("vacation_id", vacationId);
 
@@ -28,8 +32,10 @@ export function useParticipants(vacationId: number) {
       setParticipants(
         data.map((p: any) => ({
           user_id: p.user_id,
+          allow_gallery: p.allow_gallery ?? false,
           display_name: p.profiles?.display_name || null,
-        }))
+          avatar_url: p.profiles?.avatar_url || null,
+        })),
       );
     }
     setLoading(false);
@@ -42,7 +48,23 @@ export function useParticipants(vacationId: number) {
   const joinVacation = async (userId: string) => {
     const { error } = await supabase
       .from("vacation_participants")
-      .insert([{ vacation_id: vacationId, user_id: userId }]);
+      .insert([
+        { vacation_id: vacationId, user_id: userId, allow_gallery: false },
+      ]);
+
+    if (!error) {
+      fetchParticipants();
+      return true;
+    }
+    return false;
+  };
+
+  const updateGalleryAccess = async (userId: string, allow: boolean) => {
+    const { error } = await supabase
+      .from("vacation_participants")
+      .update({ allow_gallery: allow })
+      .eq("vacation_id", vacationId)
+      .eq("user_id", userId);
 
     if (!error) {
       fetchParticipants();
@@ -70,6 +92,7 @@ export function useParticipants(vacationId: number) {
     loading,
     joinVacation,
     leaveVacation,
+    updateGalleryAccess,
     refreshParticipants: fetchParticipants,
   };
 }

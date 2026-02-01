@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { supabase } from "../../src/supabaseClient";
 import {
   Box,
@@ -10,12 +10,16 @@ import {
   Container,
   Avatar,
   IconButton,
+  Grid,
 } from "@mui/material";
 import PersonIcon from "@mui/icons-material/Person";
 import SecurityIcon from "@mui/icons-material/Security";
 import LogoutIcon from "@mui/icons-material/Logout";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import SettingsIcon from "@mui/icons-material/Settings";
+import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
+
+import { AVATAR_SLUGS, resolveAvatar } from "../utils/avatars";
 
 type AccountPageProps = {
   user: any;
@@ -31,22 +35,40 @@ export default function AccountPage({
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [displayName, setDisplayName] = useState(
-    user?.user_metadata?.display_name || ""
+    user?.user_metadata?.display_name || "",
   );
-
+  const [avatarUrl, setAvatarUrl] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
+
+  useEffect(() => {
+    async function fetchProfile() {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("display_name, avatar_url")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (!error && data) {
+        setDisplayName(data.display_name || "");
+        setAvatarUrl(data.avatar_url || "");
+      }
+    }
+    if (user?.id) fetchProfile();
+  }, [user.id]);
 
   const handleUpdateProfile = async () => {
     setIsUpdating(true);
     try {
       const { error: authError } = await supabase.auth.updateUser({
-        data: { display_name: displayName },
+        data: { display_name: displayName, avatar_url: avatarUrl },
       });
       if (authError) throw authError;
 
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .upsert({ id: user.id, display_name: displayName });
+      const { error: profileError } = await supabase.from("profiles").upsert({
+        id: user.id,
+        display_name: displayName,
+        avatar_url: avatarUrl,
+      });
       if (profileError) throw profileError;
 
       alert("Profile updated successfully!");
@@ -75,7 +97,7 @@ export default function AccountPage({
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 8 }}>
+    <Container maxWidth="xl" sx={{ py: 8 }}>
       <Box
         sx={{
           mb: 4,
@@ -139,20 +161,26 @@ export default function AccountPage({
           >
             <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 4 }}>
               <Avatar
+                src={resolveAvatar(avatarUrl)}
                 sx={{
-                  width: 64,
-                  height: 64,
+                  width: 80,
+                  height: 80,
                   bgcolor: "primary.main",
                   boxShadow: "0 8px 16px rgba(25, 118, 210, 0.3)",
+                  fontSize: 32,
+                  fontWeight: 800,
                 }}
               >
-                {user.email?.[0].toUpperCase()}
+                {!avatarUrl && user.email?.[0].toUpperCase()}
               </Avatar>
               <Box>
-                <Typography variant="h6" sx={{ fontWeight: 800 }}>
-                  {displayName || "No Name"}
+                <Typography variant="h5" sx={{ fontWeight: 900, mb: 0.5 }}>
+                  {displayName || "Explorer"}
                 </Typography>
-                <Typography variant="body2" sx={{ opacity: 0.5 }}>
+                <Typography
+                  variant="body2"
+                  sx={{ opacity: 0.6, fontWeight: 500 }}
+                >
                   {user.email}
                 </Typography>
               </Box>
@@ -162,10 +190,54 @@ export default function AccountPage({
               variant="subtitle2"
               sx={{
                 mb: 2,
-                fontWeight: 700,
+                fontWeight: 800,
                 display: "flex",
                 alignItems: "center",
                 gap: 1,
+                color: "primary.light",
+              }}
+            >
+              <PhotoCameraIcon fontSize="small" />
+              Choose Profile Picture
+            </Typography>
+
+            <Box sx={{ mb: 4 }}>
+              <Grid container spacing={1.5}>
+                {AVATAR_SLUGS.map((slug) => (
+                  <Grid key={slug} size="auto">
+                    <Avatar
+                      src={resolveAvatar(slug)}
+                      onClick={() => setAvatarUrl(slug)}
+                      sx={{
+                        width: 52,
+                        height: 52,
+                        cursor: "pointer",
+                        border:
+                          avatarUrl === slug
+                            ? "3px solid #1976d2"
+                            : "2px solid transparent",
+                        transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                        transform: avatarUrl === slug ? "scale(1.1)" : "none",
+                        "&:hover": {
+                          transform: "scale(1.15)",
+                          zIndex: 1,
+                        },
+                      }}
+                    />
+                  </Grid>
+                ))}
+              </Grid>
+            </Box>
+
+            <Typography
+              variant="subtitle2"
+              sx={{
+                mb: 2,
+                fontWeight: 800,
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                color: "primary.light",
               }}
             >
               <PersonIcon fontSize="small" />

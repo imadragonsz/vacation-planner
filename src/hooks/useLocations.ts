@@ -10,6 +10,7 @@ export type VacationLocation = {
   end_date: string | null;
   lat?: number;
   lng?: number;
+  hotel_url?: string | null;
 };
 
 export function useLocations(vacationId: number) {
@@ -68,7 +69,21 @@ export function useLocations(vacationId: number) {
     start_date?: string,
     end_date?: string,
   ) {
-    setLoading(true);
+    // Optimistic update
+    setLocations((prev) =>
+      prev.map((loc) =>
+        loc.id === id
+          ? {
+              ...loc,
+              name,
+              address,
+              start_date: start_date || null,
+              end_date: end_date || null,
+            }
+          : loc,
+      ),
+    );
+
     const { error } = await supabase
       .from("locations")
       .update({
@@ -78,15 +93,19 @@ export function useLocations(vacationId: number) {
         end_date: end_date || null,
       })
       .eq("id", id);
-    if (!error) fetchLocations();
-    setLoading(false);
+    if (!error) {
+      setTimeout(() => fetchLocations(), 100);
+    }
   }
 
   async function removeLocation(id: number) {
-    setLoading(true);
+    // Optimistic update
+    setLocations((prev) => prev.filter((loc) => loc.id !== id));
+
     const { error } = await supabase.from("locations").delete().eq("id", id);
-    if (!error) fetchLocations();
-    setLoading(false);
+    if (error) {
+      fetchLocations(); // Revert on failure
+    }
   }
 
   return { locations, loading, addLocation, updateLocation, removeLocation };

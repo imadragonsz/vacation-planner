@@ -1,16 +1,28 @@
 {
-	"version": "2.0.0",
-	"tasks": [
-		{
-			"label": "start-app",
-			"type": "shell",
-			"command": "npm",
-			"args": [
-				"start"
-			],
-			"isBackground": true,
-			"problemMatcher": [],
-			"group": "build"
-		}
-	]
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "start-app",
+      "type": "shell",
+      "command": "npm",
+      "args": ["start"],
+      "isBackground": true,
+      "problemMatcher": [],
+      "group": "build"
+    },
+    {
+      "label": "start-backend",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "server"],
+      "isBackground": true,
+      "group": "build"
+    },
+    {
+      "label": "Run Development Server",
+      "type": "shell",
+      "command": "npm start",
+      "isBackground": true
+    }
+  ]
 }
