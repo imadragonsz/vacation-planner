@@ -32,9 +32,3 @@ Vacation Planner Pro is a high-performance, professional travel orchestration su
 4. **Launch Application**:
    - Frontend: `npm start`
    - Backend: `npm run server`
-
----
-
-## 🌍 Live Demo
-
-Check out the live demo of the application [here](https://your-live-demo-link.com).
