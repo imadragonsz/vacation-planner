@@ -21,13 +21,14 @@ export interface NavBarProps {
   setTheme: (theme: "dark" | "light") => void;
   user: any;
   setShowAccount: (show: boolean) => void;
+  setShowAdminPanel?: (show: boolean) => void;
   setShowItinerary?: (show: boolean) => void;
-  setShowCalendar: (show: boolean) => void;
   handleLogout: () => Promise<void>;
   setShowAuthModal?: (show: boolean) => void;
-  onCalendarToggle: () => void;
   onBackToTrips?: () => void;
 }
+
+const ADMIN_UUID = process.env.REACT_APP_ADMIN_UUID;
 
 const NavBar: React.FC<NavBarProps> = React.memo(
   ({
@@ -35,8 +36,8 @@ const NavBar: React.FC<NavBarProps> = React.memo(
     setTheme,
     user,
     setShowAccount,
+    setShowAdminPanel,
     setShowItinerary,
-    setShowCalendar,
     handleLogout,
     setShowAuthModal,
     onBackToTrips,
@@ -64,7 +65,13 @@ const NavBar: React.FC<NavBarProps> = React.memo(
           color: "text.primary",
         }}
       >
-        <Toolbar sx={{ display: "flex", justifyContent: "space-between" }}>
+        <Toolbar
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            minHeight: { xs: 56, md: 64 },
+          }}
+        >
           <Box
             sx={{
               display: "flex",
@@ -103,7 +110,6 @@ const NavBar: React.FC<NavBarProps> = React.memo(
                       onBackToTrips();
                     } else {
                       setShowAccount(false);
-                      setShowCalendar(false);
                       if (setShowItinerary) setShowItinerary(false);
                     }
                   }}
@@ -115,7 +121,6 @@ const NavBar: React.FC<NavBarProps> = React.memo(
                   color="inherit"
                   onClick={() => {
                     setShowAccount(false);
-                    setShowCalendar(false);
                     if (setShowItinerary) setShowItinerary(true);
                   }}
                   disabled={!user}
@@ -123,17 +128,21 @@ const NavBar: React.FC<NavBarProps> = React.memo(
                 >
                   My Plan
                 </Button>
-                <Button
-                  color="inherit"
-                  onClick={() => {
-                    setShowAccount(false);
-                    setShowCalendar(true);
-                    if (setShowItinerary) setShowItinerary(false);
-                  }}
-                  sx={{ fontWeight: 600 }}
-                >
-                  Calendar
-                </Button>
+                {user?.id === ADMIN_UUID && (
+                  <Button
+                    color="inherit"
+                    onClick={() => {
+                      if (setShowAdminPanel) {
+                        setShowAccount(false);
+                        if (setShowItinerary) setShowItinerary(false);
+                        setShowAdminPanel(true);
+                      }
+                    }}
+                    sx={{ fontWeight: 600, color: "primary.main" }}
+                  >
+                    Admin
+                  </Button>
+                )}
                 <Button
                   color="inherit"
                   onClick={() => user && setShowAccount(true)}

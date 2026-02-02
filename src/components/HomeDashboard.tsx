@@ -80,16 +80,23 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   const showSearchResults = isMobile && (search.length > 0 || activeTab === 1);
 
   return (
-    <Box sx={{ maxWidth: 1200, mx: "auto", py: { xs: 2, md: 4 }, px: 2 }}>
+    <Box
+      sx={{
+        maxWidth: 1200,
+        mx: "auto",
+        py: { xs: 1, md: 4 },
+        px: { xs: 1, md: 2 },
+      }}
+    >
       {/* Mobile Search/Explore Header */}
       {isMobile && (
-        <Box sx={{ mb: 4 }}>
+        <Box sx={{ mb: 2 }}>
           <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
             <Button
               variant={activeTab === 0 ? "contained" : "outlined"}
               size="small"
               onClick={() => onActiveTabChange?.(0)}
-              sx={{ borderRadius: 2, fontWeight: 700, flex: 1 }}
+              sx={{ borderRadius: "12px", fontWeight: 700, flex: 1, py: 1 }}
             >
               My Trips
             </Button>
@@ -97,7 +104,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               variant={activeTab === 1 ? "contained" : "outlined"}
               size="small"
               onClick={() => onActiveTabChange?.(1)}
-              sx={{ borderRadius: 2, fontWeight: 700, flex: 1 }}
+              sx={{ borderRadius: "12px", fontWeight: 700, flex: 1, py: 1 }}
             >
               Explore
             </Button>

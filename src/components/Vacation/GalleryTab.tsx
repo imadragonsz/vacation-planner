@@ -221,7 +221,7 @@ export const GalleryTab: React.FC<GalleryTabProps> = ({
             }}
           >
             {isOwner && onManagePermissions && (
-              <Tooltip title="Manage Gallery Permissions">
+              <Tooltip title="Manage Trip Permissions">
                 <IconButton
                   onClick={onManagePermissions}
                   color="primary"

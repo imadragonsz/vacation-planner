@@ -62,8 +62,13 @@ export function VacationDetails({
   const [activeTab, setActiveTab] = useState(1); // Default to Destinations
 
   const isOwner = user && vacation.user_id === user.id;
-  const { participants, joinVacation, leaveVacation, updateGalleryAccess } =
-    useParticipants(vacation.id);
+  const {
+    participants,
+    joinVacation,
+    leaveVacation,
+    updateGalleryAccess,
+    updateEditAccess,
+  } = useParticipants(vacation.id);
 
   const [showPermissions, setShowPermissions] = useState(false);
 
@@ -99,7 +104,12 @@ export function VacationDetails({
     () => user && participants.some((p) => p.user_id === user.id),
     [user, participants],
   );
-  const canEdit = isOwner || isParticipant;
+
+  const canEdit = useMemo(() => {
+    if (isOwner) return true;
+    const participant = participants.find((p) => p.user_id === user?.id);
+    return participant?.allow_edit ?? false;
+  }, [isOwner, participants, user]);
 
   const handleArchive = async () => {
     await handleArchiveVacation(
@@ -392,8 +402,8 @@ export function VacationDetails({
   };
 
   return (
-    <Box sx={{ py: 3, px: { xs: 2, sm: 3, md: 6 } }}>
-      <Box sx={{ mb: 6 }}>
+    <Box sx={{ py: { xs: 1, md: 3 }, px: { xs: 1, sm: 3, md: 6 } }}>
+      <Box sx={{ mb: { xs: 4, md: 6 } }}>
         <VacationEditor
           vacation={vacation}
           onVacationUpdated={onRefresh || (() => {})}
@@ -646,7 +656,7 @@ export function VacationDetails({
         />
       ))}
 
-      {/* Gallery Permissions Dialog */}
+      {/* Trip Permissions Dialog */}
       <Dialog
         open={showPermissions}
         onClose={() => setShowPermissions(false)}
@@ -662,39 +672,87 @@ export function VacationDetails({
         }}
       >
         <DialogTitle sx={{ fontWeight: 900, pb: 1 }}>
-          Gallery Access Control
+          Trip Access Control
         </DialogTitle>
         <DialogContent>
           <Typography variant="body2" sx={{ mb: 3, opacity: 0.7 }}>
-            Select which participants are allowed to view the vacation gallery.
-            The trip owner always has access.
+            Select which participants are allowed to view the gallery or edit
+            trip details. The trip owner always has full access.
           </Typography>
           {participants.length > 0 ? (
             <List>
               {participants.map((p) => (
-                <ListItem
+                <Box
                   key={p.user_id}
-                  secondaryAction={
+                  sx={{
+                    mb: 2,
+                    p: 2,
+                    borderRadius: 3,
+                    bgcolor: (theme) =>
+                      theme.palette.mode === "dark"
+                        ? "rgba(255,255,255,0.03)"
+                        : "rgba(0,0,0,0.02)",
+                  }}
+                >
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      mb: 2,
+                    }}
+                  >
+                    <Avatar
+                      src={resolveAvatar(p.avatar_url)}
+                      sx={{ width: 32, height: 32, mr: 1.5 }}
+                    >
+                      {!p.avatar_url && p.display_name?.charAt(0)}
+                    </Avatar>
+                    <Typography fontWeight={700}>
+                      {p.display_name || "Anonymous"}
+                    </Typography>
+                  </Box>
+
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      mb: 1,
+                    }}
+                  >
+                    <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                      Gallery Access
+                    </Typography>
                     <Switch
-                      edge="end"
+                      size="small"
                       checked={p.allow_gallery}
+                      disabled={!isOwner}
                       onChange={(e) =>
                         updateGalleryAccess(p.user_id, e.target.checked)
                       }
                     />
-                  }
-                >
-                  <ListItemAvatar>
-                    <Avatar src={resolveAvatar(p.avatar_url)}>
-                      {!p.avatar_url && p.display_name?.charAt(0)}
-                    </Avatar>
-                  </ListItemAvatar>
-                  <ListItemText
-                    primary={p.display_name || "Anonymous"}
-                    primaryTypographyProps={{ fontWeight: 700 }}
-                    secondary={p.allow_gallery ? "Has Access" : "No Access"}
-                  />
-                </ListItem>
+                  </Box>
+
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                      Editing Permissions
+                    </Typography>
+                    <Switch
+                      size="small"
+                      checked={p.allow_edit}
+                      disabled={!isOwner}
+                      onChange={(e) =>
+                        updateEditAccess(p.user_id, e.target.checked)
+                      }
+                    />
+                  </Box>
+                </Box>
               ))}
             </List>
           ) : (

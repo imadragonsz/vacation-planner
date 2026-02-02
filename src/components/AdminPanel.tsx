@@ -1,0 +1,1264 @@
+import React, { useState, useEffect } from "react";
+import {
+  Box,
+  Typography,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  IconButton,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Tooltip,
+  Avatar,
+  Chip,
+  Grid,
+  InputAdornment,
+  FormControlLabel,
+  Checkbox,
+  Switch,
+  Tabs,
+  Tab,
+  CircularProgress,
+} from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
+import EditIcon from "@mui/icons-material/Edit";
+import ExploreIcon from "@mui/icons-material/Explore";
+import ArchiveIcon from "@mui/icons-material/Archive";
+import UnarchiveIcon from "@mui/icons-material/Unarchive";
+import AddIcon from "@mui/icons-material/Add";
+import SearchIcon from "@mui/icons-material/Search";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import PeopleIcon from "@mui/icons-material/People";
+import PersonRemoveIcon from "@mui/icons-material/PersonRemove";
+import PhotoLibraryIcon from "@mui/icons-material/PhotoLibrary";
+import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
+import SecurityIcon from "@mui/icons-material/Security";
+import LocalShippingIcon from "@mui/icons-material/LocalShipping";
+import SettingsIcon from "@mui/icons-material/Settings";
+import ShoppingBagIcon from "@mui/icons-material/ShoppingBag";
+import { supabase } from "../supabaseClient";
+import { Vacation } from "../vacation";
+import { resolveAvatar } from "../utils/avatars";
+
+interface AdminPanelProps {
+  onViewTrip?: (trip: Vacation) => void;
+}
+
+const AdminPanel: React.FC<AdminPanelProps> = ({ onViewTrip }) => {
+  const [vacations, setVacations] = useState<Vacation[]>([]);
+  const [profiles, setProfiles] = useState<any[]>([]);
+  const [images, setImages] = useState<any[]>([]);
+  const [allAgendas, setAllAgendas] = useState<any[]>([]);
+  const [allHotels, setAllHotels] = useState<any[]>([]);
+  const [allExpenses, setAllExpenses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [activeTab, setActiveTab] = useState(0);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [managingParticipants, setManagingParticipants] =
+    useState<Vacation | null>(null);
+  const [newTrip, setNewTrip] = useState({
+    name: "",
+    destination: "",
+    start_date: new Date().toISOString().split("T")[0],
+    end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split("T")[0],
+    user_id: process.env.REACT_APP_ADMIN_UUID || "",
+    is_public: false,
+  });
+
+  const fetchAllData = async () => {
+    setLoading(true);
+    try {
+      // Fetch common data
+      const [
+        vacResult,
+        profResult,
+        imgResult,
+        agendaResult,
+        hotelResult,
+        expenseResult,
+      ] = await Promise.all([
+        supabase
+          .from("vacations")
+          .select(
+            `
+          *,
+          profiles!user_id (display_name, avatar_url),
+          vacation_participants (
+            user_id, 
+            allow_gallery, 
+            allow_edit, 
+            profiles:user_id (display_name, avatar_url)
+          )
+        `,
+          )
+          .order("created_at", { ascending: false }),
+        supabase.from("profiles").select("*"),
+        supabase
+          .from("vacation_gallery")
+          .select("*, vacations(name)")
+          .order("id", { ascending: false }),
+        supabase
+          .from("agendas")
+          .select("*, locations(vacations(name))")
+          .order("agenda_date", { ascending: true }),
+        supabase
+          .from("hotels")
+          .select("*, locations(vacations(name))")
+          .order("id", { ascending: true }),
+        supabase
+          .from("trip_expenses")
+          .select("*, vacations(name)")
+          .order("id", { ascending: false }),
+      ]);
+
+      if (vacResult.data) setVacations(vacResult.data);
+      if (profResult.data) setProfiles(profResult.data);
+      if (imgResult.data) setImages(imgResult.data);
+      if (agendaResult.data) setAllAgendas(agendaResult.data);
+      if (hotelResult.data) setAllHotels(hotelResult.data);
+      if (expenseResult.data) setAllExpenses(expenseResult.data);
+    } catch (err) {
+      console.error("Error fetching admin data:", err);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchAllData();
+  }, []);
+
+  const handleTabChange = (_: any, newValue: number) => {
+    setActiveTab(newValue);
+  };
+
+  const filteredVacations = vacations.filter((v) => {
+    const query = search.toLowerCase();
+    return (
+      v.name.toLowerCase().includes(query) ||
+      v.destination.toLowerCase().includes(query) ||
+      v.user_id?.toLowerCase().includes(query) ||
+      (v as any).profiles?.display_name?.toLowerCase().includes(query)
+    );
+  });
+
+  const stats = {
+    total: vacations.length,
+    active: vacations.filter((v) => !v.archived).length,
+    archived: vacations.filter((v) => v.archived).length,
+    public: vacations.filter((v) => v.is_public).length,
+  };
+
+  const handleDelete = async (id: number) => {
+    if (
+      window.confirm("Are you sure you want to delete this trip permanently?")
+    ) {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const response = await fetch(`/api/admin/vacations/${id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+      });
+
+      if (response.ok) {
+        setVacations(vacations.filter((v) => v.id !== id));
+      } else {
+        const err = await response.json();
+        alert("Error deleting trip: " + err.error);
+      }
+    }
+  };
+
+  const handleToggleArchive = async (vacation: Vacation) => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const response = await fetch(`/api/admin/vacations/${vacation.id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session?.access_token}`,
+      },
+      body: JSON.stringify({ archived: !vacation.archived }),
+    });
+
+    if (response.ok) {
+      setVacations(
+        vacations.map((v) =>
+          v.id === vacation.id ? { ...v, archived: !v.archived } : v,
+        ),
+      );
+    } else {
+      const err = await response.json();
+      alert("Error updating trip: " + err.error);
+    }
+  };
+  const handleRemoveParticipant = async (
+    vacationId: number,
+    userId: string,
+  ) => {
+    if (window.confirm("Remove this participant from the trip?")) {
+      const { error } = await supabase
+        .from("vacation_participants")
+        .delete()
+        .eq("vacation_id", vacationId)
+        .eq("user_id", userId);
+
+      if (!error) {
+        // Refresh local state
+        setVacations((prev) =>
+          prev.map((v) => {
+            if (v.id === vacationId) {
+              return {
+                ...v,
+                vacation_participants: v.vacation_participants?.filter(
+                  (p: any) => p.user_id !== userId,
+                ),
+              };
+            }
+            return v;
+          }),
+        );
+
+        // Update managing modal if open
+        if (managingParticipants?.id === vacationId) {
+          setManagingParticipants((prev) => {
+            if (!prev) return null;
+            return {
+              ...prev,
+              vacation_participants: prev.vacation_participants?.filter(
+                (p: any) => p.user_id !== userId,
+              ),
+            };
+          });
+        }
+      } else {
+        alert("Error removing participant: " + error.message);
+      }
+    }
+  };
+
+  const handleUpdateTripField = async (
+    vacationId: number,
+    field: string,
+    value: any,
+  ) => {
+    try {
+      const { error } = await supabase
+        .from("vacations")
+        .update({ [field]: value })
+        .eq("id", vacationId);
+
+      if (!error) {
+        setVacations((prev) =>
+          prev.map((v) => (v.id === vacationId ? { ...v, [field]: value } : v)),
+        );
+        if (managingParticipants?.id === vacationId) {
+          setManagingParticipants((prev) =>
+            prev ? { ...prev, [field]: value } : null,
+          );
+        }
+      } else {
+        alert("Error updating trip: " + error.message);
+      }
+    } catch (err) {
+      console.error("Error updating trip:", err);
+    }
+  };
+
+  const handleUpdatePermission = async (
+    vacationId: number,
+    userId: string,
+    field: "allow_gallery" | "allow_edit",
+    value: boolean,
+  ) => {
+    try {
+      const { error } = await supabase
+        .from("vacation_participants")
+        .update({ [field]: value })
+        .eq("vacation_id", vacationId)
+        .eq("user_id", userId);
+
+      if (!error) {
+        // Refresh local state
+        setVacations((prev) =>
+          prev.map((v) => {
+            if (v.id === vacationId) {
+              return {
+                ...v,
+                vacation_participants: v.vacation_participants?.map((p: any) =>
+                  p.user_id === userId ? { ...p, [field]: value } : p,
+                ),
+              };
+            }
+            return v;
+          }),
+        );
+
+        // Update managing modal if open
+        if (managingParticipants?.id === vacationId) {
+          setManagingParticipants((prev) => {
+            if (!prev) return null;
+            return {
+              ...prev,
+              vacation_participants: prev.vacation_participants?.map(
+                (p: any) =>
+                  p.user_id === userId ? { ...p, [field]: value } : p,
+              ),
+            };
+          });
+        }
+      } else {
+        alert("Error updating permission: " + error.message);
+      }
+    } catch (err) {
+      console.error("Error updating permission:", err);
+    }
+  };
+  const handleCreateTrip = async () => {
+    const { error } = await supabase.from("vacations").insert([newTrip]);
+    if (!error) {
+      setIsAddModalOpen(false);
+      fetchAllData();
+      setNewTrip({
+        name: "",
+        destination: "",
+        start_date: new Date().toISOString().split("T")[0],
+        end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+          .toISOString()
+          .split("T")[0],
+        user_id: process.env.REACT_APP_ADMIN_UUID || "",
+        is_public: false,
+      });
+    } else {
+      alert("Error creating trip: " + error.message);
+    }
+  };
+
+  const deletePhoto = async (photoId: number) => {
+    if (window.confirm("Delete this photo permanently?")) {
+      const { error } = await supabase
+        .from("vacation_gallery")
+        .delete()
+        .eq("id", photoId);
+      if (!error) {
+        setImages(images.filter((img) => img.id !== photoId));
+      }
+    }
+  };
+
+  const deleteExpense = async (expenseId: number) => {
+    if (window.confirm("Delete this expense record?")) {
+      const { error } = await supabase
+        .from("trip_expenses")
+        .delete()
+        .eq("id", expenseId);
+      if (!error) {
+        setAllExpenses(allExpenses.filter((exp) => exp.id !== expenseId));
+      }
+    }
+  };
+
+  const systemStats = {
+    totalImages: images.length,
+    totalExpenses: allExpenses.reduce((sum, exp) => sum + (exp.amount || 0), 0),
+    avgTripCost:
+      allExpenses.length > 0
+        ? (
+            allExpenses.reduce((sum, exp) => sum + (exp.amount || 0), 0) /
+            vacations.length
+          ).toFixed(2)
+        : 0,
+    dbStatus: "Healthy",
+  };
+
+  const filteredProfiles = profiles.filter(
+    (p) =>
+      p.display_name?.toLowerCase().includes(search.toLowerCase()) ||
+      p.id?.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  const filteredImages = images.filter(
+    (img) =>
+      img.vacations?.name?.toLowerCase().includes(search.toLowerCase()) ||
+      img.caption?.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  const renderTripsTab = () => (
+    <>
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        {[
+          { label: "Total Trips", value: stats.total, color: "primary.main" },
+          { label: "Active", value: stats.active, color: "success.main" },
+          { label: "Archived", value: stats.archived, color: "warning.main" },
+          { label: "Public", value: stats.public, color: "info.main" },
+        ].map((stat) => (
+          <Grid size={{ xs: 12, sm: 6, md: 3 }} key={stat.label}>
+            <Paper
+              sx={{
+                p: 2,
+                textAlign: "center",
+                borderRadius: 3,
+                border: "1px solid rgba(255,255,255,0.05)",
+                bgcolor: "rgba(255,255,255,0.02)",
+              }}
+            >
+              <Typography
+                variant="caption"
+                sx={{
+                  opacity: 0.6,
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                }}
+              >
+                {stat.label}
+              </Typography>
+              <Typography
+                variant="h4"
+                sx={{ fontWeight: 900, color: stat.color }}
+              >
+                {stat.value}
+              </Typography>
+            </Paper>
+          </Grid>
+        ))}
+      </Grid>
+
+      <TableContainer
+        component={Paper}
+        sx={{
+          borderRadius: 3,
+          overflow: "hidden",
+          border: "1px solid rgba(255,255,255,0.05)",
+        }}
+      >
+        <Table>
+          <TableHead sx={{ bgcolor: "rgba(255,255,255,0.03)" }}>
+            <TableRow>
+              <TableCell sx={{ fontWeight: 800 }}>Trip Details</TableCell>
+              <TableCell sx={{ fontWeight: 800 }}>Owner</TableCell>
+              <TableCell sx={{ fontWeight: 800 }}>Dates</TableCell>
+              <TableCell sx={{ fontWeight: 800 }}>Status</TableCell>
+              <TableCell sx={{ fontWeight: 800 }} align="right">
+                Actions
+              </TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {filteredVacations.map((vac) => (
+              <TableRow
+                key={vac.id}
+                hover
+                sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
+              >
+                <TableCell>
+                  <Box>
+                    <Typography sx={{ fontWeight: 700 }}>{vac.name}</Typography>
+                    <Typography variant="caption" sx={{ opacity: 0.5 }}>
+                      {vac.destination} • ID: {vac.id}
+                    </Typography>
+                  </Box>
+                </TableCell>
+                <TableCell>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                    <Avatar
+                      src={resolveAvatar((vac as any).profiles?.avatar_url)}
+                      sx={{
+                        width: 32,
+                        height: 32,
+                        border: "1px solid rgba(255,255,255,0.1)",
+                      }}
+                    />
+                    <Box>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        {(vac as any).profiles?.display_name || "Unknown User"}
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{ opacity: 0.4, fontFamily: "monospace" }}
+                      >
+                        {vac.user_id?.substring(0, 8)}...
+                      </Typography>
+                    </Box>
+                  </Box>
+                </TableCell>
+                <TableCell>
+                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                    {new Date(vac.start_date).toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </Typography>
+                  <Typography variant="caption" sx={{ opacity: 0.5 }}>
+                    to{" "}
+                    {new Date(vac.end_date).toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </Typography>
+                </TableCell>
+                <TableCell>
+                  <Box sx={{ display: "flex", gap: 1 }}>
+                    {vac.archived ? (
+                      <Chip
+                        label="Archived"
+                        size="small"
+                        color="warning"
+                        variant="outlined"
+                        sx={{ fontWeight: 700 }}
+                      />
+                    ) : (
+                      <Chip
+                        label="Active"
+                        size="small"
+                        color="success"
+                        variant="outlined"
+                        sx={{ fontWeight: 700 }}
+                      />
+                    )}
+                    {vac.is_public && (
+                      <Chip
+                        label="Public"
+                        size="small"
+                        color="info"
+                        variant="outlined"
+                        sx={{ fontWeight: 700 }}
+                      />
+                    )}
+                  </Box>
+                </TableCell>
+                <TableCell align="right">
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "flex-end",
+                      gap: 0.5,
+                    }}
+                  >
+                    {onViewTrip && (
+                      <Tooltip title="View Trip">
+                        <IconButton
+                          onClick={() => onViewTrip(vac)}
+                          size="small"
+                          color="primary"
+                        >
+                          <VisibilityIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                    <Tooltip title="Trip Permissions & Participants">
+                      <IconButton
+                        onClick={() => setManagingParticipants(vac)}
+                        size="small"
+                        color="secondary"
+                        sx={{
+                          bgcolor: "rgba(156, 39, 176, 0.1)",
+                          "&:hover": { bgcolor: "rgba(156, 39, 176, 0.2)" },
+                        }}
+                      >
+                        <SecurityIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title={vac.archived ? "Restore" : "Archive"}>
+                      <IconButton
+                        onClick={() => handleToggleArchive(vac)}
+                        size="small"
+                      >
+                        {vac.archived ? (
+                          <UnarchiveIcon fontSize="small" />
+                        ) : (
+                          <ArchiveIcon fontSize="small" />
+                        )}
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Delete Permanently">
+                      <IconButton
+                        onClick={() => handleDelete(vac.id)}
+                        color="error"
+                        size="small"
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                </TableCell>
+              </TableRow>
+            ))}
+            {filteredVacations.length === 0 && !loading && (
+              <TableRow>
+                <TableCell colSpan={5} align="center" sx={{ py: 8 }}>
+                  <Typography sx={{ opacity: 0.5 }}>
+                    No matching trips found.
+                  </Typography>
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </>
+  );
+
+  const renderUsersTab = () => (
+    <TableContainer
+      component={Paper}
+      sx={{ borderRadius: 3, border: "1px solid rgba(255,255,255,0.05)" }}
+    >
+      <Table>
+        <TableHead sx={{ bgcolor: "rgba(255,255,255,0.03)" }}>
+          <TableRow>
+            <TableCell sx={{ fontWeight: 800 }}>User</TableCell>
+            <TableCell sx={{ fontWeight: 800 }}>User ID</TableCell>
+            <TableCell sx={{ fontWeight: 800 }}>Joined</TableCell>
+            <TableCell sx={{ fontWeight: 800 }}>Trips Owned</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {filteredProfiles.map((prof) => (
+            <TableRow key={prof.id} hover>
+              <TableCell>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                  <Avatar src={resolveAvatar(prof.avatar_url)} />
+                  <Typography sx={{ fontWeight: 600 }}>
+                    {prof.display_name || "New Traveler"}
+                  </Typography>
+                </Box>
+              </TableCell>
+              <TableCell sx={{ fontFamily: "monospace", fontSize: "0.8rem" }}>
+                {prof.id}
+              </TableCell>
+              <TableCell>
+                {prof.created_at
+                  ? new Date(prof.created_at).toLocaleDateString()
+                  : "N/A"}
+              </TableCell>
+              <TableCell>
+                {vacations.filter((v) => v.user_id === prof.id).length} Trips
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+
+  const renderGalleryTab = () => (
+    <Grid container spacing={2}>
+      {filteredImages.map((img) => (
+        <Grid size={{ xs: 6, sm: 4, md: 3, lg: 2 }} key={img.id}>
+          <Paper
+            sx={{ position: "relative", overflow: "hidden", borderRadius: 2 }}
+          >
+            <img
+              src={img.thumbnail_url || img.large_url || img.original_url}
+              alt={img.caption}
+              style={{ width: "100%", aspectRatio: "1/1", objectFit: "cover" }}
+            />
+            <Box
+              sx={{
+                position: "absolute",
+                bottom: 0,
+                left: 0,
+                right: 0,
+                p: 1,
+                bgcolor: "rgba(0,0,0,0.7)",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "white",
+                  display: "block",
+                  textOverflow: "ellipsis",
+                  overflow: "hidden",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {img.vacations?.name || "Trip"}
+              </Typography>
+              <IconButton
+                size="small"
+                color="error"
+                onClick={() => deletePhoto(img.id)}
+              >
+                <DeleteIcon fontSize="inherit" />
+              </IconButton>
+            </Box>
+          </Paper>
+        </Grid>
+      ))}
+      {filteredImages.length === 0 && (
+        <Grid
+          size={{ xs: 12 }}
+          sx={{ textAlign: "center", py: 8, opacity: 0.5 }}
+        >
+          <Typography>No photos found in gallery moderation.</Typography>
+        </Grid>
+      )}
+    </Grid>
+  );
+
+  const renderExpensesTab = () => (
+    <TableContainer
+      component={Paper}
+      sx={{ borderRadius: 3, border: "1px solid rgba(255,255,255,0.05)" }}
+    >
+      <Table>
+        <TableHead sx={{ bgcolor: "rgba(255,255,255,0.03)" }}>
+          <TableRow>
+            <TableCell sx={{ fontWeight: 800 }}>Currency</TableCell>
+            <TableCell sx={{ fontWeight: 800 }}>Description</TableCell>
+            <TableCell sx={{ fontWeight: 800 }}>Trip</TableCell>
+            <TableCell sx={{ fontWeight: 800 }}>Amount</TableCell>
+            <TableCell sx={{ fontWeight: 800 }} align="right">
+              Actions
+            </TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {allExpenses.map((exp) => (
+            <TableRow key={exp.id} hover>
+              <TableCell>
+                <Chip
+                  label={exp.currency || "USD"}
+                  size="small"
+                  variant="outlined"
+                />
+              </TableCell>
+              <TableCell>{exp.description}</TableCell>
+              <TableCell>{exp.vacations?.name}</TableCell>
+              <TableCell sx={{ fontWeight: 700 }}>
+                {exp.currency === "EUR" ? "€" : "$"}
+                {exp.amount?.toFixed(2)}
+              </TableCell>
+              <TableCell align="right">
+                <IconButton
+                  size="small"
+                  color="error"
+                  onClick={() => deleteExpense(exp.id)}
+                >
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              </TableCell>
+            </TableRow>
+          ))}
+          <TableRow sx={{ bgcolor: "rgba(25, 118, 210, 0.05)" }}>
+            <TableCell colSpan={3} sx={{ fontWeight: 800 }}>
+              PLATFORM TOTAL
+            </TableCell>
+            <TableCell
+              colSpan={2}
+              sx={{ fontWeight: 900, color: "primary.main" }}
+            >
+              $
+              {allExpenses
+                .reduce((sum, exp) => sum + (exp.amount || 0), 0)
+                .toFixed(2)}
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+
+  const renderLogisticsTab = () => (
+    <Grid container spacing={4}>
+      <Grid size={{ xs: 12, md: 6 }}>
+        <Typography variant="h6" sx={{ mb: 2, fontWeight: 800 }}>
+          Upcoming Events/Agendas
+        </Typography>
+        <TableContainer component={Paper} sx={{ borderRadius: 3 }}>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Activity</TableCell>
+                <TableCell>Trip</TableCell>
+                <TableCell>Date</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {allAgendas.slice(0, 10).map((ag) => (
+                <TableRow key={ag.id}>
+                  <TableCell>{ag.description || ag.title}</TableCell>
+                  <TableCell>
+                    <Typography variant="caption">
+                      {(ag as any).locations?.vacations?.name || "N/A"}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="caption">
+                      {ag.agenda_date || ag.start_time
+                        ? new Date(
+                            ag.agenda_date || ag.start_time,
+                          ).toLocaleDateString()
+                        : "N/A"}
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Grid>
+      <Grid size={{ xs: 12, md: 6 }}>
+        <Typography variant="h6" sx={{ mb: 2, fontWeight: 800 }}>
+          Hotel Bookings
+        </Typography>
+        <TableContainer component={Paper} sx={{ borderRadius: 3 }}>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Hotel</TableCell>
+                <TableCell>Trip</TableCell>
+                <TableCell>Location</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {allHotels.slice(0, 10).map((ht) => (
+                <TableRow key={ht.id}>
+                  <TableCell>{ht.name}</TableCell>
+                  <TableCell>
+                    <Typography variant="caption">
+                      {(ht as any).locations?.vacations?.name || "N/A"}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="caption">
+                      {(ht as any).locations?.name || "N/A"}
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Grid>
+    </Grid>
+  );
+
+  const renderSystemTab = () => (
+    <Grid container spacing={3}>
+      {[
+        {
+          label: "Storage Used (Photos)",
+          value: `${systemStats.totalImages} Files`,
+          icon: <PhotoLibraryIcon />,
+        },
+        {
+          label: "Total Platform Spend",
+          value: `$${systemStats.totalExpenses}`,
+          icon: <AttachMoneyIcon />,
+        },
+        {
+          label: "Avg. Budget per Trip",
+          value: `$${systemStats.avgTripCost}`,
+          icon: <ShoppingBagIcon />,
+        },
+        {
+          label: "Database Connection",
+          value: systemStats.dbStatus,
+          icon: <SettingsIcon />,
+          color: "success.main",
+        },
+      ].map((stat) => (
+        <Grid size={{ xs: 12, sm: 6 }} key={stat.label}>
+          <Paper
+            sx={{
+              p: 3,
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+              borderRadius: 3,
+            }}
+          >
+            <Avatar sx={{ bgcolor: "primary.main" }}>{stat.icon}</Avatar>
+            <Box>
+              <Typography variant="caption" sx={{ opacity: 0.6 }}>
+                {stat.label}
+              </Typography>
+              <Typography
+                variant="h5"
+                sx={{ fontWeight: 900, color: stat.color }}
+              >
+                {stat.value}
+              </Typography>
+            </Box>
+          </Paper>
+        </Grid>
+      ))}
+    </Grid>
+  );
+
+  return (
+    <Box sx={{ p: { xs: 2, md: 4 } }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: 4,
+          flexDirection: { xs: "column", sm: "row" },
+          gap: 2,
+        }}
+      >
+        <Typography
+          variant="h4"
+          sx={{ fontWeight: 900, fontSize: { xs: "1.75rem", md: "2.125rem" } }}
+        >
+          Admin Dashboard
+        </Typography>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => setIsAddModalOpen(true)}
+          sx={{
+            borderRadius: 2,
+            fontWeight: 700,
+            width: { xs: "100%", sm: "auto" },
+          }}
+        >
+          Add New Trip
+        </Button>
+      </Box>
+
+      <Tabs
+        value={activeTab}
+        onChange={handleTabChange}
+        sx={{ mb: 4, borderBottom: 1, borderColor: "divider" }}
+        variant="scrollable"
+        scrollButtons="auto"
+      >
+        <Tab label="Trips" icon={<ExploreIcon />} iconPosition="start" />
+        <Tab label="Users" icon={<PeopleIcon />} iconPosition="start" />
+        <Tab label="Gallery" icon={<PhotoLibraryIcon />} iconPosition="start" />
+        <Tab label="Expenses" icon={<AttachMoneyIcon />} iconPosition="start" />
+        <Tab
+          label="Logistics"
+          icon={<LocalShippingIcon />}
+          iconPosition="start"
+        />
+        <Tab label="System" icon={<SettingsIcon />} iconPosition="start" />
+      </Tabs>
+
+      <Box sx={{ mb: 3 }}>
+        <TextField
+          fullWidth
+          placeholder="Filter results..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          variant="outlined"
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon sx={{ opacity: 0.5 }} />
+              </InputAdornment>
+            ),
+            sx: { borderRadius: 3, bgcolor: "rgba(255,255,255,0.03)" },
+          }}
+        />
+      </Box>
+
+      {loading ? (
+        <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <Box>
+          {activeTab === 0 && renderTripsTab()}
+          {activeTab === 1 && renderUsersTab()}
+          {activeTab === 2 && renderGalleryTab()}
+          {activeTab === 3 && renderExpensesTab()}
+          {activeTab === 4 && renderLogisticsTab()}
+          {activeTab === 5 && renderSystemTab()}
+        </Box>
+      )}
+
+      <Dialog
+        open={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: 800 }}>
+          Create New Trip (Admin)
+        </DialogTitle>
+        <DialogContent
+          sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 2 }}
+        >
+          <TextField
+            label="Trip Name"
+            fullWidth
+            value={newTrip.name}
+            onChange={(e) => setNewTrip({ ...newTrip, name: e.target.value })}
+          />
+          <TextField
+            label="Destination"
+            fullWidth
+            value={newTrip.destination}
+            onChange={(e) =>
+              setNewTrip({ ...newTrip, destination: e.target.value })
+            }
+          />
+          <Box sx={{ display: "flex", gap: 2 }}>
+            <TextField
+              label="Start Date"
+              type="date"
+              fullWidth
+              InputLabelProps={{ shrink: true }}
+              value={newTrip.start_date}
+              onChange={(e) =>
+                setNewTrip({ ...newTrip, start_date: e.target.value })
+              }
+            />
+            <TextField
+              label="End Date"
+              type="date"
+              fullWidth
+              InputLabelProps={{ shrink: true }}
+              value={newTrip.end_date}
+              onChange={(e) =>
+                setNewTrip({ ...newTrip, end_date: e.target.value })
+              }
+            />
+          </Box>
+          <TextField
+            label="Owner User ID"
+            fullWidth
+            helperText="UUID of the user who should own this trip"
+            value={newTrip.user_id}
+            onChange={(e) =>
+              setNewTrip({ ...newTrip, user_id: e.target.value })
+            }
+          />
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={newTrip.is_public}
+                onChange={(e) =>
+                  setNewTrip({ ...newTrip, is_public: e.target.checked })
+                }
+              />
+            }
+            label="Make Trip Public"
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button onClick={() => setIsAddModalOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={handleCreateTrip}
+            disabled={!newTrip.name || !newTrip.destination}
+          >
+            Create Trip
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={!!managingParticipants}
+        onClose={() => setManagingParticipants(null)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: 800 }}>
+          Trip Permissions & Participants
+          <Typography variant="body2" sx={{ opacity: 0.6 }}>
+            {managingParticipants?.name}
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 1 }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+            <Box
+              sx={{
+                p: 2,
+                mb: 1,
+                borderRadius: 3,
+                bgcolor: (theme) =>
+                  theme.palette.mode === "dark"
+                    ? "rgba(33, 150, 243, 0.1)"
+                    : "rgba(33, 150, 243, 0.05)",
+                border: "1px solid rgba(33, 150, 243, 0.2)",
+              }}
+            >
+              <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1 }}>
+                Global Trip Privacy
+              </Typography>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <Typography variant="body2">Publicly Visible</Typography>
+                <Switch
+                  size="small"
+                  checked={!!managingParticipants?.is_public}
+                  onChange={(e) =>
+                    handleUpdateTripField(
+                      managingParticipants!.id,
+                      "is_public",
+                      e.target.checked,
+                    )
+                  }
+                />
+              </Box>
+            </Box>
+
+            <Typography variant="subtitle2" sx={{ fontWeight: 800, px: 1 }}>
+              Participant Permissions
+            </Typography>
+
+            {managingParticipants?.vacation_participants &&
+            managingParticipants.vacation_participants.length > 0 ? (
+              managingParticipants.vacation_participants.map((p: any) => (
+                <Box
+                  key={p.user_id}
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    p: 2,
+                    borderRadius: 3,
+                    bgcolor: (theme) =>
+                      theme.palette.mode === "dark"
+                        ? "rgba(255,255,255,0.03)"
+                        : "rgba(0,0,0,0.02)",
+                    border: (theme) =>
+                      theme.palette.mode === "dark"
+                        ? "1px solid rgba(255,255,255,0.05)"
+                        : "1px solid rgba(0,0,0,0.05)",
+                  }}
+                >
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      mb: 2,
+                    }}
+                  >
+                    <Box
+                      sx={{ display: "flex", alignItems: "center", gap: 1.5 }}
+                    >
+                      <Avatar
+                        src={resolveAvatar(p.profiles?.avatar_url)}
+                        sx={{ width: 32, height: 32 }}
+                      />
+                      <Box>
+                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                          {p.profiles?.display_name || "Unknown User"}
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          sx={{ opacity: 0.5, fontFamily: "monospace" }}
+                        >
+                          {p.user_id.substring(0, 8)}...
+                        </Typography>
+                      </Box>
+                    </Box>
+                    <IconButton
+                      size="small"
+                      color="error"
+                      onClick={() =>
+                        handleRemoveParticipant(
+                          managingParticipants.id,
+                          p.user_id,
+                        )
+                      }
+                      sx={{
+                        bgcolor: "rgba(244, 67, 54, 0.1)",
+                        "&:hover": { bgcolor: "rgba(244, 67, 54, 0.2)" },
+                      }}
+                    >
+                      <PersonRemoveIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+
+                  <Box
+                    sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}
+                  >
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Typography variant="caption" fontWeight={600}>
+                        Gallery Access
+                      </Typography>
+                      <Switch
+                        size="small"
+                        checked={p.allow_gallery}
+                        onChange={(e) =>
+                          handleUpdatePermission(
+                            managingParticipants.id,
+                            p.user_id,
+                            "allow_gallery",
+                            e.target.checked,
+                          )
+                        }
+                      />
+                    </Box>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Typography variant="caption" fontWeight={600}>
+                        Editing Permission
+                      </Typography>
+                      <Switch
+                        size="small"
+                        checked={p.allow_edit}
+                        onChange={(e) =>
+                          handleUpdatePermission(
+                            managingParticipants.id,
+                            p.user_id,
+                            "allow_edit",
+                            e.target.checked,
+                          )
+                        }
+                      />
+                    </Box>
+                  </Box>
+                </Box>
+              ))
+            ) : (
+              <Box sx={{ py: 4, textAlign: "center" }}>
+                <Typography sx={{ opacity: 0.5 }}>
+                  No participants found.
+                </Typography>
+              </Box>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setManagingParticipants(null)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
+};
+
+export default AdminPanel;

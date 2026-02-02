@@ -125,8 +125,10 @@ export const ItineraryTab: React.FC<ItineraryTabProps> = ({
       sx={{
         display: "grid",
         gridTemplateColumns: { xs: "1fr", lg: "320px 1fr" },
-        gap: 4,
+        gap: { xs: 2.5, lg: 4 },
         alignItems: "start",
+        width: "100%",
+        minWidth: 0,
       }}
     >
       {/* Navigation Sidebar */}
@@ -137,6 +139,8 @@ export const ItineraryTab: React.FC<ItineraryTabProps> = ({
           display: "flex",
           flexDirection: "column",
           gap: 2,
+          width: "100%",
+          minWidth: 0,
         }}
       >
         <Typography
@@ -288,9 +292,9 @@ export const ItineraryTab: React.FC<ItineraryTabProps> = ({
                 display: "grid",
                 gridTemplateColumns: {
                   xs: "1fr",
-                  md: "repeat(auto-fill, minmax(300px, 1fr))",
+                  sm: "repeat(auto-fill, minmax(280px, 1fr))",
                 },
-                gap: 3,
+                gap: { xs: 2, sm: 3 },
               }}
             >
               {locations.map((loc, idx) => (
@@ -380,7 +384,15 @@ export const ItineraryTab: React.FC<ItineraryTabProps> = ({
               }}
             >
               <Box>
-                <Typography variant="h3" sx={{ fontWeight: 900, mb: 1.5 }}>
+                <Typography
+                  variant="h3"
+                  sx={{
+                    fontWeight: 900,
+                    mb: 1.5,
+                    fontSize: { xs: "1.75rem", md: "3rem" },
+                    wordBreak: "break-word",
+                  }}
+                >
                   {selectedLocation.name}
                 </Typography>
                 <Stack direction="row" spacing={2} alignItems="center">

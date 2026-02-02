@@ -94,7 +94,7 @@ export const DestinationsTab: React.FC<DestinationsTabProps> = ({
           xs: "1fr",
           lg: canEdit ? "1fr 400px" : "1fr",
         },
-        gap: 4,
+        gap: { xs: 2.5, lg: 4 },
       }}
     >
       <Box>

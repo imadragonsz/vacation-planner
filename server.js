@@ -78,6 +78,66 @@ app.use(express.static(buildPath));
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
+app.delete("/api/admin/vacations/:id", async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: "Missing token" });
+
+    const token = authHeader.replace("Bearer ", "");
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser(token);
+    if (authError || !user)
+      return res.status(401).json({ error: "Unauthorized" });
+
+    if (user.id !== process.env.REACT_APP_ADMIN_UUID) {
+      return res.status(403).json({ error: "Forbidden: Not an admin" });
+    }
+
+    const { error } = await supabase
+      .from("vacations")
+      .delete()
+      .eq("id", req.params.id);
+
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Admin delete failed:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.patch("/api/admin/vacations/:id", async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: "Missing token" });
+
+    const token = authHeader.replace("Bearer ", "");
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser(token);
+    if (authError || !user)
+      return res.status(401).json({ error: "Unauthorized" });
+
+    if (user.id !== process.env.REACT_APP_ADMIN_UUID) {
+      return res.status(403).json({ error: "Forbidden: Not an admin" });
+    }
+
+    const { error } = await supabase
+      .from("vacations")
+      .update(req.body)
+      .eq("id", req.params.id);
+
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Admin update failed:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post("/api/gallery/upload", upload.single("image"), async (req, res) => {
   try {
     console.log("[Upload] Received request:", req.body);

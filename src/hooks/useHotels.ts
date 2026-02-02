@@ -44,10 +44,10 @@ export function useHotels(locationId: number | null) {
       {
         location_id: locationId,
         name,
-        url,
-        price,
-        rating,
-        notes,
+        url: url || null,
+        price: price !== undefined && price !== null ? price : null,
+        rating: rating !== undefined && rating !== null ? rating : null,
+        notes: notes || null,
         is_selected: false,
       },
     ]);

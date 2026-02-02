@@ -190,7 +190,11 @@ export const HotelInfo: React.FC<HotelInfoProps> = ({
         >
           <Stack spacing={2}>
             <Box
-              sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}
+              sx={{
+                display: "grid",
+                gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+                gap: 2,
+              }}
             >
               <TextField
                 label="Hotel Name"
@@ -319,7 +323,7 @@ export const HotelInfo: React.FC<HotelInfoProps> = ({
                   <Box
                     sx={{
                       display: "grid",
-                      gridTemplateColumns: "1fr 1fr",
+                      gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
                       gap: 2,
                     }}
                   >
@@ -341,7 +345,7 @@ export const HotelInfo: React.FC<HotelInfoProps> = ({
                   <Box
                     sx={{
                       display: "grid",
-                      gridTemplateColumns: "1fr 1fr auto",
+                      gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr auto" },
                       gap: 2,
                       alignItems: "center",
                     }}

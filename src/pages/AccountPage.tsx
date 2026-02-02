@@ -18,6 +18,7 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import SettingsIcon from "@mui/icons-material/Settings";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
+import MailOutlineIcon from "@mui/icons-material/MailOutline";
 
 import { AVATAR_SLUGS, resolveAvatar } from "../utils/avatars";
 
@@ -81,29 +82,52 @@ export default function AccountPage({
 
   async function handleUpdatePassword(e: React.FormEvent) {
     e.preventDefault();
-    if (!currentPassword || !newPassword) return;
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: user.email,
-      password: currentPassword,
-    });
-    if (signInError) {
-      console.error("Current password is incorrect.");
-      return;
+    if (!newPassword) return;
+
+    setIsUpdating(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+      if (error) throw error;
+      alert("Password updated successfully!");
+      setNewPassword("");
+      setCurrentPassword("");
+    } catch (error: any) {
+      alert(error.message || "Error updating password");
+    } finally {
+      setIsUpdating(false);
     }
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
-    if (error) console.error(error.message);
-    setCurrentPassword("");
-    setNewPassword("");
+  }
+
+  async function handleSendResetEmail() {
+    setIsUpdating(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+        redirectTo: `${window.location.origin}/`,
+      });
+      if (error) throw error;
+      alert("Password recovery email sent successfully!");
+    } catch (error: any) {
+      alert(error.message || "Error sending recovery email");
+    } finally {
+      setIsUpdating(false);
+    }
   }
 
   return (
-    <Container maxWidth="xl" sx={{ py: 8 }}>
+    <Container
+      maxWidth="xl"
+      sx={{ py: { xs: 2, md: 8 }, px: { xs: 2, md: 4 } }}
+    >
       <Box
         sx={{
           mb: 4,
           display: "flex",
-          alignItems: "center",
+          alignItems: { xs: "flex-start", sm: "center" },
           justifyContent: "space-between",
+          flexDirection: { xs: "column", sm: "row" },
+          gap: 2,
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
@@ -117,9 +141,10 @@ export default function AccountPage({
               display: "flex",
               alignItems: "center",
               gap: 1.5,
+              fontSize: { xs: "1.5rem", md: "2.125rem" },
             }}
           >
-            <SettingsIcon sx={{ fontSize: 40, opacity: 0.8 }} />
+            <SettingsIcon sx={{ fontSize: { xs: 30, md: 40 }, opacity: 0.8 }} />
             Account Settings
           </Typography>
         </Box>
@@ -128,10 +153,12 @@ export default function AccountPage({
           color="error"
           startIcon={<LogoutIcon />}
           onClick={onLogout}
+          fullWidth={false}
           sx={{
             borderRadius: 2,
-            borderWidth: 1.5,
-            "&:hover": { borderWidth: 1.5 },
+            px: 3,
+            fontWeight: 700,
+            alignSelf: { xs: "stretch", sm: "auto" },
           }}
         >
           Logout
@@ -299,38 +326,18 @@ export default function AccountPage({
               onSubmit={handleUpdatePassword}
               sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}
             >
-              <Box
+              <TextField
+                label="New Password"
+                type="password"
+                fullWidth
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
                 sx={{
-                  display: "grid",
-                  gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
-                  gap: 2,
+                  "& .MuiOutlinedInput-root": {
+                    bgcolor: "rgba(255,255,255,0.02)",
+                  },
                 }}
-              >
-                <TextField
-                  label="Current Password"
-                  type="password"
-                  fullWidth
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      bgcolor: "rgba(255,255,255,0.02)",
-                    },
-                  }}
-                />
-                <TextField
-                  label="New Password"
-                  type="password"
-                  fullWidth
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      bgcolor: "rgba(255,255,255,0.02)",
-                    },
-                  }}
-                />
-              </Box>
+              />
               <Typography variant="caption" sx={{ opacity: 0.5 }}>
                 Password must be at least 8 characters long and include numbers
                 or special symbols.
@@ -339,6 +346,7 @@ export default function AccountPage({
                 variant="outlined"
                 color="primary"
                 type="submit"
+                disabled={isUpdating}
                 sx={{
                   py: 1.5,
                   fontWeight: 800,
@@ -347,9 +355,50 @@ export default function AccountPage({
                   "&:hover": { borderWidth: 1.5 },
                 }}
               >
-                Change Password
+                {isUpdating ? "Updating..." : "Change Password"}
               </Button>
             </Box>
+
+            <Divider sx={{ my: 4, opacity: 0.1 }} />
+
+            <Typography
+              variant="subtitle2"
+              sx={{
+                mb: 1,
+                fontWeight: 700,
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+              }}
+            >
+              Reset Password
+            </Typography>
+            <Typography variant="body2" sx={{ mb: 3, opacity: 0.6 }}>
+              Send a password recovery email to your inbox to securely reset
+              your password.
+            </Typography>
+            <Button
+              variant="outlined"
+              color="inherit"
+              fullWidth
+              disabled={isUpdating}
+              onClick={handleSendResetEmail}
+              startIcon={<MailOutlineIcon />}
+              sx={{
+                py: 1.5,
+                fontWeight: 800,
+                borderRadius: 2,
+                borderWidth: 1.5,
+                borderColor: "rgba(255,255,255,0.1)",
+                "&:hover": {
+                  borderWidth: 1.5,
+                  bgcolor: "rgba(255,255,255,0.05)",
+                  borderColor: "rgba(255,255,255,0.2)",
+                },
+              }}
+            >
+              Send password recovery
+            </Button>
 
             <Divider sx={{ my: 4, opacity: 0.1 }} />
 

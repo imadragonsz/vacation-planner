@@ -8,7 +8,7 @@ export type Agenda = {
   description: string;
   address?: string;
   Time?: string;
-  type?: "activity" | "flight" | "train" | "bus" | "hotel" | "note";
+  type?: "activity" | "flight" | "train" | "bus" | "hotel" | "note" | "food";
   position: number;
   price?: number;
 };
@@ -54,11 +54,11 @@ export function useAgendas(locationId: number) {
         location_id: locationId,
         agenda_date,
         description,
-        address,
-        Time,
-        type,
+        address: address || null,
+        Time: Time || null,
+        type: type || "activity",
         position: maxPos + 1,
-        price,
+        price: price !== undefined && price !== null ? price : null,
       },
     ]);
     if (!error) {
@@ -95,7 +95,14 @@ export function useAgendas(locationId: number) {
 
     const { error } = await supabase
       .from("agendas")
-      .update({ agenda_date, description, address, Time, type, price })
+      .update({
+        agenda_date,
+        description,
+        address: address || null,
+        Time: Time || null,
+        type: type || "activity",
+        price: price !== undefined && price !== null ? price : null,
+      })
       .eq("id", id);
     if (!error) {
       setTimeout(() => fetchAgendas(locationId), 100);
@@ -113,9 +120,11 @@ export function useAgendas(locationId: number) {
       location_id: item.location_id,
       agenda_date: item.agenda_date,
       description: item.description,
-      type: item.type,
-      Time: item.Time,
-      address: item.address,
+      type: item.type || "activity",
+      Time: item.Time || null,
+      address: item.address || null,
+      price:
+        item.price !== undefined && item.price !== null ? item.price : null,
     }));
 
     const { error } = await supabase.from("agendas").upsert(updates);

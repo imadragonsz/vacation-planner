@@ -9,5 +9,13 @@ export type Vacation = {
   user_id?: string;
   owner_name?: string;
   owner_avatar?: string;
-  vacation_participants?: { user_id: string }[];
+  vacation_participants?: {
+    user_id: string;
+    allow_gallery: boolean;
+    allow_edit: boolean;
+    profiles?: {
+      display_name: string | null;
+      avatar_url: string | null;
+    };
+  }[];
 };

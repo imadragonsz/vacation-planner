@@ -6,6 +6,7 @@ export type Participant = {
   display_name: string | null;
   avatar_url: string | null;
   allow_gallery: boolean;
+  allow_edit: boolean;
 };
 
 export function useParticipants(vacationId: number) {
@@ -20,6 +21,7 @@ export function useParticipants(vacationId: number) {
         `
         user_id,
         allow_gallery,
+        allow_edit,
         profiles!user_id (
           display_name,
           avatar_url
@@ -33,6 +35,7 @@ export function useParticipants(vacationId: number) {
         data.map((p: any) => ({
           user_id: p.user_id,
           allow_gallery: p.allow_gallery ?? false,
+          allow_edit: p.allow_edit ?? false,
           display_name: p.profiles?.display_name || null,
           avatar_url: p.profiles?.avatar_url || null,
         })),
@@ -46,11 +49,14 @@ export function useParticipants(vacationId: number) {
   }, [fetchParticipants]);
 
   const joinVacation = async (userId: string) => {
-    const { error } = await supabase
-      .from("vacation_participants")
-      .insert([
-        { vacation_id: vacationId, user_id: userId, allow_gallery: false },
-      ]);
+    const { error } = await supabase.from("vacation_participants").insert([
+      {
+        vacation_id: vacationId,
+        user_id: userId,
+        allow_gallery: false,
+        allow_edit: false,
+      },
+    ]);
 
     if (!error) {
       fetchParticipants();
@@ -63,6 +69,20 @@ export function useParticipants(vacationId: number) {
     const { error } = await supabase
       .from("vacation_participants")
       .update({ allow_gallery: allow })
+      .eq("vacation_id", vacationId)
+      .eq("user_id", userId);
+
+    if (!error) {
+      fetchParticipants();
+      return true;
+    }
+    return false;
+  };
+
+  const updateEditAccess = async (userId: string, allow: boolean) => {
+    const { error } = await supabase
+      .from("vacation_participants")
+      .update({ allow_edit: allow })
       .eq("vacation_id", vacationId)
       .eq("user_id", userId);
 
@@ -93,6 +113,7 @@ export function useParticipants(vacationId: number) {
     joinVacation,
     leaveVacation,
     updateGalleryAccess,
+    updateEditAccess,
     refreshParticipants: fetchParticipants,
   };
 }

@@ -31,19 +31,13 @@ import {
 import MapIcon from "@mui/icons-material/Map";
 import ExploreIcon from "@mui/icons-material/Explore";
 import HomeIcon from "@mui/icons-material/Home";
-import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import AddIcon from "@mui/icons-material/Add";
 
 import { Vacation } from "./vacation";
 import { HomeDashboard } from "./components/HomeDashboard";
+import AdminPanel from "./components/AdminPanel";
 
-// Lazy load pages for performance
-const VacationCalendar = lazy(() =>
-  import("./pages/VacationCalendar").then((module) => ({
-    default: module.VacationCalendar,
-  })),
-);
 const VacationDetails = lazy(() =>
   import("./pages/VacationDetails").then((module) => ({
     default: module.VacationDetails,
@@ -102,6 +96,13 @@ function App({ user, setUser }: AppProps) {
           h6: { fontWeight: 800 },
         },
         components: {
+          MuiCssBaseline: {
+            styleOverrides: {
+              body: {
+                paddingBottom: "env(safe-area-inset-bottom)",
+              },
+            },
+          },
           MuiButton: {
             styleOverrides: {
               root: {
@@ -165,8 +166,8 @@ function App({ user, setUser }: AppProps) {
   const [showArchived, setShowArchived] = useState(false);
   const [activeTab, setActiveTab] = useState(0); // 0: My Trips, 1: Shared Trips
   const [showAccount, setShowAccount] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [showItinerary, setShowItinerary] = useState(false);
-  const [showCalendar, setShowCalendar] = useState(false);
   const [editingVacation, setEditingVacation] = useState<Vacation | null>(null);
   const [selectedVacation, setSelectedVacation] = useState<Vacation | null>(
     null,
@@ -269,8 +270,15 @@ function App({ user, setUser }: AppProps) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
+
+      if (event === "PASSWORD_RECOVERY") {
+        setShowAccount(true);
+        setToastMessage("Recovery link accepted. Please set a new password.");
+        setToastType("info");
+      }
+
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       setLoadingUser(false);
@@ -420,27 +428,27 @@ function App({ user, setUser }: AppProps) {
       <UserContext.Provider value={{ user }}>
         <div className="vp-main">
           <NavBar
-            onCalendarToggle={() => setShowCalendar((prev) => !prev)}
             theme={themeMode}
             setTheme={setThemeMode}
             user={user}
             setShowAccount={setShowAccount}
+            setShowAdminPanel={setShowAdminPanel}
             setShowItinerary={setShowItinerary}
-            setShowCalendar={setShowCalendar}
             setShowAuthModal={setShowAuthModal}
             handleLogout={async () => {
               await supabase.auth.signOut();
               setUser(null);
               setShowAccount(false);
+              setShowAdminPanel(false);
               setShowItinerary(false);
               setSelectedVacation(null);
             }}
             onBackToTrips={
-              showItinerary || showAccount || showCalendar
+              showItinerary || showAccount || showAdminPanel
                 ? () => {
                     setShowItinerary(false);
                     setShowAccount(false);
-                    setShowCalendar(false);
+                    setShowAdminPanel(false);
                   }
                 : selectedVacation
                   ? () => {
@@ -454,15 +462,6 @@ function App({ user, setUser }: AppProps) {
               Error connecting to the database. Some features may not work.
             </div>
           )}
-          <VacationCalendar
-            open={showCalendar}
-            onClose={() => setShowCalendar(false)}
-            vacations={vacations}
-            onVacationClick={(vac) => {
-              setSelectedVacation(vac);
-              setShowCalendar(false);
-            }}
-          />
           {editingVacation && (
             <Suspense fallback={<CircularProgress />}>
               <VacationEditModal
@@ -761,12 +760,13 @@ function App({ user, setUser }: AppProps) {
                 flex: 1,
                 minHeight: "calc(100vh - 64px)",
                 overflowY: "auto",
+                pb: isMobile && user ? "100px" : { xs: 2, sm: 3, md: 4 },
                 bgcolor: themeMode === "dark" ? "#0f1115" : "#f5f5f7",
                 backgroundImage:
                   themeMode === "dark"
                     ? "radial-gradient(circle at 50% 50%, rgba(25, 118, 210, 0.05) 0%, rgba(0,0,0,0) 100%)"
                     : "radial-gradient(circle at 50% 50%, rgba(25, 118, 210, 0.02) 0%, rgba(255,255,255,0) 100%)",
-                p: { xs: 2, sm: 3, md: 4, lg: 5, xl: 6 },
+                p: { xs: 0, sm: 3, md: 4, lg: 5, xl: 6 },
               }}
             >
               <Suspense
@@ -783,7 +783,15 @@ function App({ user, setUser }: AppProps) {
                   </Box>
                 }
               >
-                {showAccount && user ? (
+                {showAdminPanel &&
+                user?.id === process.env.REACT_APP_ADMIN_UUID ? (
+                  <AdminPanel
+                    onViewTrip={(trip) => {
+                      setSelectedVacation(trip);
+                      setShowAdminPanel(false);
+                    }}
+                  />
+                ) : showAccount && user ? (
                   <AccountPage
                     user={user}
                     onLogout={async () => {
@@ -852,49 +860,73 @@ function App({ user, setUser }: AppProps) {
             <Paper
               sx={{
                 position: "fixed",
-                bottom: 0,
-                left: 0,
-                right: 0,
+                bottom: 16,
+                left: 16,
+                right: 16,
                 zIndex: 1100,
+                borderRadius: "20px",
+                overflow: "hidden",
+                bgcolor: (theme) =>
+                  theme.palette.mode === "dark"
+                    ? "rgba(15, 17, 21, 0.8)"
+                    : "rgba(255, 255, 255, 0.8)",
+                backdropFilter: "blur(20px)",
+                border: (theme) =>
+                  `1px solid ${
+                    theme.palette.mode === "dark"
+                      ? "rgba(255, 255, 255, 0.1)"
+                      : "rgba(0, 0, 0, 0.1)"
+                  }`,
+                boxShadow: "0 8px 32px 0 rgba(0, 0, 0, 0.3)",
               }}
-              elevation={3}
+              elevation={0}
             >
               <BottomNavigation
                 showLabels
                 value={
-                  showAccount ? 3 : showCalendar ? 2 : showItinerary ? 1 : 0
+                  showAdminPanel ? 3 : showAccount ? 2 : showItinerary ? 1 : 0
                 }
                 onChange={(event, newValue) => {
+                  setShowAccount(false);
+                  setShowItinerary(false);
+                  setShowAdminPanel(false);
                   if (newValue === 0) {
-                    setShowAccount(false);
-                    setShowCalendar(false);
-                    setShowItinerary(false);
                     setSelectedVacation(null);
                   } else if (newValue === 1) {
-                    setShowAccount(false);
-                    setShowCalendar(false);
                     setShowItinerary(true);
                   } else if (newValue === 2) {
-                    setShowAccount(false);
-                    setShowCalendar(true);
-                    setShowItinerary(false);
-                  } else if (newValue === 3) {
                     setShowAccount(true);
-                    setShowCalendar(false);
-                    setShowItinerary(false);
+                  } else if (newValue === 3) {
+                    setShowAdminPanel(true);
                   }
+                }}
+                sx={{
+                  bgcolor: "transparent",
+                  height: 64,
+                  "& .MuiBottomNavigationAction-root": {
+                    color: "text.secondary",
+                    "&.Mui-selected": {
+                      color: "primary.main",
+                      "& .MuiBottomNavigationAction-label": {
+                        fontWeight: 900,
+                        fontSize: "0.75rem",
+                      },
+                    },
+                  },
                 }}
               >
                 <BottomNavigationAction label="Trips" icon={<HomeIcon />} />
                 <BottomNavigationAction label="Plan" icon={<MapIcon />} />
                 <BottomNavigationAction
-                  label="Calendar"
-                  icon={<CalendarMonthIcon />}
-                />
-                <BottomNavigationAction
                   label="Account"
                   icon={<AccountCircleIcon />}
                 />
+                {user?.id === process.env.REACT_APP_ADMIN_UUID && (
+                  <BottomNavigationAction
+                    label="Admin"
+                    icon={<ExploreIcon />}
+                  />
+                )}
               </BottomNavigation>
             </Paper>
           )}

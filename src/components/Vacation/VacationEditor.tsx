@@ -347,7 +347,7 @@ export const VacationEditor: React.FC<VacationEditorProps> = ({
               </Typography>
 
               {isOwner && (
-                <Tooltip title="Manage Gallery Permissions">
+                <Tooltip title="Manage Trip Permissions">
                   <Button
                     size="small"
                     variant="outlined"
@@ -375,7 +375,7 @@ export const VacationEditor: React.FC<VacationEditorProps> = ({
                       component="span"
                       sx={{ display: { xs: "none", sm: "inline" } }}
                     >
-                      Gallery Permissions
+                      Trip Permissions
                     </Box>
                   </Button>
                 </Tooltip>

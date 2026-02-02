@@ -42,7 +42,10 @@ function AuthForm({ onAuth, mode, setMode, errorMsg }: AuthFormProps) {
           }
           return { data, error };
         },
-        reset: async () => supabase.auth.resetPasswordForEmail(resetEmail),
+        reset: async () =>
+          supabase.auth.resetPasswordForEmail(resetEmail, {
+            redirectTo: `${window.location.origin}/`,
+          }),
       };
 
       const { error } = await actions[mode]();
@@ -55,8 +58,8 @@ function AuthForm({ onAuth, mode, setMode, errorMsg }: AuthFormProps) {
           mode === "register"
             ? "Check your email for a confirmation link."
             : mode === "reset"
-            ? "Check your email for a password reset link."
-            : null
+              ? "Check your email for a password reset link."
+              : null,
         );
         onAuth(null);
       }
@@ -108,15 +111,15 @@ function AuthForm({ onAuth, mode, setMode, errorMsg }: AuthFormProps) {
           {mode === "login"
             ? "Welcome Back"
             : mode === "register"
-            ? "Create Account"
-            : "Reset Password"}
+              ? "Create Account"
+              : "Reset Password"}
         </Typography>
         <Typography variant="body2" sx={{ opacity: 0.6 }}>
           {mode === "login"
             ? "Please enter your details to sign in"
             : mode === "register"
-            ? "Sign up to start planning your trips"
-            : "Enter your email to receive a reset link"}
+              ? "Sign up to start planning your trips"
+              : "Enter your email to receive a reset link"}
         </Typography>
       </Box>
 
@@ -215,10 +218,10 @@ function AuthForm({ onAuth, mode, setMode, errorMsg }: AuthFormProps) {
         {loading
           ? "Processing..."
           : mode === "login"
-          ? "Sign In"
-          : mode === "register"
-          ? "Create Account"
-          : "Send Reset Link"}
+            ? "Sign In"
+            : mode === "register"
+              ? "Create Account"
+              : "Send Reset Link"}
       </Button>
 
       <Box
