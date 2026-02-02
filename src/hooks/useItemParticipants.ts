@@ -8,18 +8,35 @@ export type ItemParticipant = {
   avatar_url: string | null;
 };
 
-export function useItemParticipants(type: "location" | "agenda") {
+export function useItemParticipants(
+  type: "location" | "agenda" | "packing" | "vote",
+) {
   const [participants, setParticipants] = useState<
     Record<number, ItemParticipant[]>
   >({});
+  const [loading, setLoading] = useState(false);
   const tableName =
-    type === "location" ? "location_participants" : "agenda_participants";
-  const idColumn = type === "location" ? "location_id" : "agenda_id";
+    type === "location"
+      ? "location_participants"
+      : type === "agenda"
+        ? "agenda_participants"
+        : type === "packing"
+          ? "packing_item_participants"
+          : "agenda_votes";
+  const idColumn =
+    type === "location"
+      ? "location_id"
+      : type === "agenda"
+        ? "agenda_id"
+        : type === "packing"
+          ? "item_id"
+          : "agenda_id";
 
   const fetchParticipants = useCallback(
     async (itemIds: number[]) => {
       if (itemIds.length === 0) return;
 
+      setLoading(true);
       const { data, error } = await supabase
         .from(tableName)
         .select(
@@ -55,6 +72,7 @@ export function useItemParticipants(type: "location" | "agenda") {
           return next;
         });
       }
+      setLoading(false);
     },
     [tableName, idColumn],
   );
@@ -90,5 +108,6 @@ export function useItemParticipants(type: "location" | "agenda") {
     joinItem,
     leaveItem,
     fetchParticipants,
+    loading,
   };
 }

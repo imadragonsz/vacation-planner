@@ -29,7 +29,6 @@ import {
   CircularProgress,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
-import EditIcon from "@mui/icons-material/Edit";
 import ExploreIcon from "@mui/icons-material/Explore";
 import ArchiveIcon from "@mui/icons-material/Archive";
 import UnarchiveIcon from "@mui/icons-material/Unarchive";
@@ -44,9 +43,20 @@ import SecurityIcon from "@mui/icons-material/Security";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import SettingsIcon from "@mui/icons-material/Settings";
 import ShoppingBagIcon from "@mui/icons-material/ShoppingBag";
+import HotelIcon from "@mui/icons-material/Hotel";
+import EventIcon from "@mui/icons-material/Event";
 import { supabase } from "../supabaseClient";
 import { Vacation } from "../vacation";
 import { resolveAvatar } from "../utils/avatars";
+
+const CURRENCIES = [
+  { code: "EUR", symbol: "€" },
+  { code: "USD", symbol: "$" },
+  { code: "GBP", symbol: "£" },
+  { code: "JPY", symbol: "¥" },
+  { code: "CHF", symbol: "Fr." },
+  { code: "HUF", symbol: "Ft" },
+];
 
 interface AdminPanelProps {
   onViewTrip?: (trip: Vacation) => void;
@@ -62,6 +72,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onViewTrip }) => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState(0);
+  const [rates, setRates] = useState<{ [key: string]: number }>({ EUR: 1 });
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [managingParticipants, setManagingParticipants] =
     useState<Vacation | null>(null);
@@ -79,6 +90,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onViewTrip }) => {
   const fetchAllData = async () => {
     setLoading(true);
     try {
+      // Fetch rates first for calculations
+      fetch("https://api.frankfurter.app/latest?from=EUR")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.rates) setRates({ EUR: 1, ...data.rates });
+        })
+        .catch((err) => console.error("Rates fetch error:", err));
+
       // Fetch common data
       const [
         vacResult,
@@ -114,11 +133,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onViewTrip }) => {
           .order("agenda_date", { ascending: true }),
         supabase
           .from("hotels")
-          .select("*, locations(vacations(name))")
+          .select("*, locations(name, vacations(name))")
           .order("id", { ascending: true }),
         supabase
           .from("trip_expenses")
-          .select("*, vacations(name)")
+          .select(
+            `
+            *, 
+            vacations(name),
+            profiles:profile_id(display_name, avatar_url),
+            trip_expense_participants(
+              profile_id,
+              custom_amount,
+              profiles:profile_id(display_name)
+            )
+          `,
+          )
           .order("id", { ascending: false }),
       ]);
 
@@ -372,14 +402,30 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onViewTrip }) => {
     }
   };
 
+  const convertToEur = (amt: number, curr: string) => {
+    const rate = rates[curr] || 1;
+    return amt / rate;
+  };
+
   const systemStats = {
     totalImages: images.length,
-    totalExpenses: allExpenses.reduce((sum, exp) => sum + (exp.amount || 0), 0),
-    avgTripCost:
-      allExpenses.length > 0
+    totals: Array.from(
+      new Set(allExpenses.map((e) => e.currency || "USD")),
+    ).map((curr) => ({
+      currency: curr,
+      total: allExpenses
+        .filter((e) => (e.currency || "USD") === curr)
+        .reduce((sum, exp) => sum + (exp.amount || 0), 0)
+        .toFixed(2),
+    })),
+    avgTripCostEur:
+      vacations.length > 0
         ? (
-            allExpenses.reduce((sum, exp) => sum + (exp.amount || 0), 0) /
-            vacations.length
+            allExpenses.reduce(
+              (sum, exp) =>
+                sum + convertToEur(exp.amount || 0, exp.currency || "USD"),
+              0,
+            ) / vacations.length
           ).toFixed(2)
         : 0,
     dbStatus: "Healthy",
@@ -475,7 +521,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onViewTrip }) => {
                 <TableCell>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
                     <Avatar
-                      src={resolveAvatar((vac as any).profiles?.avatar_url)}
+                      src={resolveAvatar(
+                        (Array.isArray((vac as any).profiles)
+                          ? (vac as any).profiles[0]
+                          : (vac as any).profiles
+                        )?.avatar_url,
+                      )}
                       sx={{
                         width: 32,
                         height: 32,
@@ -484,7 +535,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onViewTrip }) => {
                     />
                     <Box>
                       <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {(vac as any).profiles?.display_name || "Unknown User"}
+                        {(Array.isArray((vac as any).profiles)
+                          ? (vac as any).profiles[0]
+                          : (vac as any).profiles
+                        )?.display_name || "Unknown User"}
                       </Typography>
                       <Typography
                         variant="caption"
@@ -716,6 +770,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onViewTrip }) => {
     </Grid>
   );
 
+  const getSymbol = (code: string) =>
+    CURRENCIES.find((c) => c.code === (code || "USD"))?.symbol || "$";
+
   const renderExpensesTab = () => (
     <TableContainer
       component={Paper}
@@ -724,9 +781,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onViewTrip }) => {
       <Table>
         <TableHead sx={{ bgcolor: "rgba(255,255,255,0.03)" }}>
           <TableRow>
-            <TableCell sx={{ fontWeight: 800 }}>Currency</TableCell>
+            <TableCell sx={{ fontWeight: 800 }}>Payer</TableCell>
             <TableCell sx={{ fontWeight: 800 }}>Description</TableCell>
             <TableCell sx={{ fontWeight: 800 }}>Trip</TableCell>
+            <TableCell sx={{ fontWeight: 800 }}>Split With</TableCell>
             <TableCell sx={{ fontWeight: 800 }}>Amount</TableCell>
             <TableCell sx={{ fontWeight: 800 }} align="right">
               Actions
@@ -737,16 +795,82 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onViewTrip }) => {
           {allExpenses.map((exp) => (
             <TableRow key={exp.id} hover>
               <TableCell>
-                <Chip
-                  label={exp.currency || "USD"}
-                  size="small"
-                  variant="outlined"
-                />
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Avatar
+                    src={resolveAvatar(
+                      (Array.isArray(exp.profiles)
+                        ? exp.profiles[0]
+                        : exp.profiles
+                      )?.avatar_url,
+                    )}
+                    sx={{ width: 24, height: 24 }}
+                  />
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {(Array.isArray(exp.profiles)
+                      ? exp.profiles[0]
+                      : exp.profiles
+                    )?.display_name || "Unknown"}
+                  </Typography>
+                </Box>
               </TableCell>
-              <TableCell>{exp.description}</TableCell>
-              <TableCell>{exp.vacations?.name}</TableCell>
+              <TableCell>
+                <Box>
+                  <Typography variant="body2">{exp.description}</Typography>
+                  <Chip
+                    label={exp.currency || "USD"}
+                    size="small"
+                    variant="outlined"
+                    sx={{ height: 16, fontSize: "0.6rem", mt: 0.5 }}
+                  />
+                </Box>
+              </TableCell>
+              <TableCell>
+                <Typography variant="body2" sx={{ opacity: 0.7 }}>
+                  {exp.vacations?.name}
+                </Typography>
+              </TableCell>
+              <TableCell>
+                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                  {exp.trip_expense_participants?.map((p: any) => (
+                    <Tooltip
+                      key={p.profile_id}
+                      title={
+                        p.custom_amount
+                          ? `Custom: ${p.custom_amount} ${exp.currency}`
+                          : "Equal Split"
+                      }
+                    >
+                      <Chip
+                        label={
+                          (Array.isArray(p.profiles)
+                            ? p.profiles[0]
+                            : p.profiles
+                          )?.display_name || "???"
+                        }
+                        size="small"
+                        sx={{
+                          height: 20,
+                          fontSize: "0.7rem",
+                          bgcolor: p.custom_amount
+                            ? "rgba(156, 39, 176, 0.1)"
+                            : "rgba(255,255,255,0.05)",
+                          border: p.custom_amount
+                            ? "1px solid rgba(156, 39, 176, 0.2)"
+                            : "none",
+                        }}
+                      />
+                    </Tooltip>
+                  ))}
+                  {(!exp.trip_expense_participants ||
+                    exp.trip_expense_participants.length === 0) && (
+                    <Typography variant="caption" sx={{ opacity: 0.4 }}>
+                      No splits
+                    </Typography>
+                  )}
+                </Box>
+              </TableCell>
               <TableCell sx={{ fontWeight: 700 }}>
-                {exp.currency === "EUR" ? "€" : "$"}
+                {getSymbol(exp.currency)}
                 {exp.amount?.toFixed(2)}
               </TableCell>
               <TableCell align="right">
@@ -761,17 +885,34 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onViewTrip }) => {
             </TableRow>
           ))}
           <TableRow sx={{ bgcolor: "rgba(25, 118, 210, 0.05)" }}>
-            <TableCell colSpan={3} sx={{ fontWeight: 800 }}>
-              PLATFORM TOTAL
+            <TableCell colSpan={4} sx={{ fontWeight: 800 }}>
+              PLATFORM TOTALS (PER CURRENCY)
             </TableCell>
             <TableCell
               colSpan={2}
-              sx={{ fontWeight: 900, color: "primary.main" }}
+              sx={{ fontWeight: 800, color: "primary.main" }}
             >
-              $
-              {allExpenses
-                .reduce((sum, exp) => sum + (exp.amount || 0), 0)
-                .toFixed(2)}
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+                {Array.from(
+                  new Set(allExpenses.map((e) => e.currency || "USD")),
+                )
+                  .sort()
+                  .map((curr) => {
+                    const total = allExpenses
+                      .filter((e) => (e.currency || "USD") === curr)
+                      .reduce((sum, e) => sum + (e.amount || 0), 0);
+                    return (
+                      <Typography
+                        key={curr}
+                        variant="caption"
+                        sx={{ fontWeight: 900 }}
+                      >
+                        {getSymbol(curr)}
+                        {total.toFixed(2)} ({curr})
+                      </Typography>
+                    );
+                  })}
+              </Box>
             </TableCell>
           </TableRow>
         </TableBody>
@@ -782,29 +923,45 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onViewTrip }) => {
   const renderLogisticsTab = () => (
     <Grid container spacing={4}>
       <Grid size={{ xs: 12, md: 6 }}>
-        <Typography variant="h6" sx={{ mb: 2, fontWeight: 800 }}>
-          Upcoming Events/Agendas
+        <Typography
+          variant="h6"
+          sx={{
+            mb: 2,
+            fontWeight: 800,
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+          }}
+        >
+          <EventIcon color="primary" /> Upcoming Events/Agendas
         </Typography>
-        <TableContainer component={Paper} sx={{ borderRadius: 3 }}>
+        <TableContainer
+          component={Paper}
+          sx={{ borderRadius: 3, border: "1px solid rgba(255,255,255,0.05)" }}
+        >
           <Table size="small">
-            <TableHead>
+            <TableHead sx={{ bgcolor: "rgba(255,255,255,0.03)" }}>
               <TableRow>
-                <TableCell>Activity</TableCell>
-                <TableCell>Trip</TableCell>
-                <TableCell>Date</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Activity</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Trip</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Date</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {allAgendas.slice(0, 10).map((ag) => (
-                <TableRow key={ag.id}>
-                  <TableCell>{ag.description || ag.title}</TableCell>
+              {allAgendas.slice(0, 15).map((ag) => (
+                <TableRow key={ag.id} hover>
                   <TableCell>
-                    <Typography variant="caption">
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {ag.description || ag.title}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="caption" sx={{ opacity: 0.7 }}>
                       {(ag as any).locations?.vacations?.name || "N/A"}
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    <Typography variant="caption">
+                    <Typography variant="caption" sx={{ fontWeight: 500 }}>
                       {ag.agenda_date || ag.start_time
                         ? new Date(
                             ag.agenda_date || ag.start_time,
@@ -819,29 +976,64 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onViewTrip }) => {
         </TableContainer>
       </Grid>
       <Grid size={{ xs: 12, md: 6 }}>
-        <Typography variant="h6" sx={{ mb: 2, fontWeight: 800 }}>
-          Hotel Bookings
+        <Typography
+          variant="h6"
+          sx={{
+            mb: 2,
+            fontWeight: 800,
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+          }}
+        >
+          <HotelIcon sx={{ color: "#FFD700" }} /> Hotel Bookings
         </Typography>
-        <TableContainer component={Paper} sx={{ borderRadius: 3 }}>
+        <TableContainer
+          component={Paper}
+          sx={{ borderRadius: 3, border: "1px solid rgba(255,255,255,0.05)" }}
+        >
           <Table size="small">
-            <TableHead>
+            <TableHead sx={{ bgcolor: "rgba(255,255,255,0.03)" }}>
               <TableRow>
-                <TableCell>Hotel</TableCell>
-                <TableCell>Trip</TableCell>
-                <TableCell>Location</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Hotel</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Trip</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Location Info</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {allHotels.slice(0, 10).map((ht) => (
-                <TableRow key={ht.id}>
-                  <TableCell>{ht.name}</TableCell>
+              {allHotels.slice(0, 15).map((ht) => (
+                <TableRow
+                  key={ht.id}
+                  hover
+                  sx={{ bgcolor: "rgba(255, 215, 0, 0.02)" }}
+                >
                   <TableCell>
-                    <Typography variant="caption">
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <HotelIcon
+                        sx={{ fontSize: 16, color: "#FFD700", opacity: 0.8 }}
+                      />
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                        {ht.name}
+                      </Typography>
+                    </Box>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="caption" sx={{ fontWeight: 600 }}>
                       {(ht as any).locations?.vacations?.name || "N/A"}
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    <Typography variant="caption">
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        opacity: 0.7,
+                        display: "block",
+                        maxWidth: 150,
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
                       {(ht as any).locations?.name || "N/A"}
                     </Typography>
                   </TableCell>
@@ -863,13 +1055,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onViewTrip }) => {
           icon: <PhotoLibraryIcon />,
         },
         {
-          label: "Total Platform Spend",
-          value: `$${systemStats.totalExpenses}`,
+          label: "Platform Spend (By Currency)",
+          value: systemStats.totals
+            .map((t) => `${getSymbol(t.currency)}${t.total}`)
+            .join(" / "),
           icon: <AttachMoneyIcon />,
         },
         {
           label: "Avg. Budget per Trip",
-          value: `$${systemStats.avgTripCost}`,
+          value: `€${systemStats.avgTripCostEur}`,
           icon: <ShoppingBagIcon />,
         },
         {
@@ -887,11 +1081,25 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onViewTrip }) => {
               alignItems: "center",
               gap: 2,
               borderRadius: 3,
+              bgcolor: "rgba(255,255,255,0.02)",
+              border: "1px solid rgba(255,255,255,0.05)",
             }}
           >
-            <Avatar sx={{ bgcolor: "primary.main" }}>{stat.icon}</Avatar>
+            <Avatar
+              sx={{
+                bgcolor: stat.color
+                  ? "rgba(76, 175, 80, 0.1)"
+                  : "rgba(25, 118, 210, 0.1)",
+                color: stat.color || "primary.main",
+              }}
+            >
+              {stat.icon}
+            </Avatar>
             <Box>
-              <Typography variant="caption" sx={{ opacity: 0.6 }}>
+              <Typography
+                variant="caption"
+                sx={{ opacity: 0.6, fontWeight: 700 }}
+              >
                 {stat.label}
               </Typography>
               <Typography
@@ -1113,8 +1321,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onViewTrip }) => {
                   size="small"
                   checked={!!managingParticipants?.is_public}
                   onChange={(e) =>
+                    managingParticipants &&
                     handleUpdateTripField(
-                      managingParticipants!.id,
+                      managingParticipants.id,
                       "is_public",
                       e.target.checked,
                     )
@@ -1124,6 +1333,61 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onViewTrip }) => {
             </Box>
 
             <Typography variant="subtitle2" sx={{ fontWeight: 800, px: 1 }}>
+              Trip Owner
+            </Typography>
+
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                p: 2,
+                borderRadius: 3,
+                bgcolor: "rgba(255, 193, 7, 0.1)",
+                border: "1px solid rgba(255, 193, 7, 0.2)",
+              }}
+            >
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                  <Avatar
+                    src={resolveAvatar(
+                      (Array.isArray((managingParticipants as any)?.profiles)
+                        ? (managingParticipants as any)?.profiles[0]
+                        : (managingParticipants as any)?.profiles
+                      )?.avatar_url,
+                    )}
+                    sx={{ width: 32, height: 32 }}
+                  />
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                      {(Array.isArray((managingParticipants as any)?.profiles)
+                        ? (managingParticipants as any)?.profiles[0]
+                        : (managingParticipants as any)?.profiles
+                      )?.display_name || "Unknown Owner"}
+                    </Typography>
+                    <Typography variant="caption" sx={{ opacity: 0.6 }}>
+                      Primary Administrator
+                    </Typography>
+                  </Box>
+                </Box>
+                <Chip
+                  label="OWNER"
+                  size="small"
+                  color="warning"
+                  sx={{ fontWeight: 800, height: 20, fontSize: "0.6rem" }}
+                />
+              </Box>
+            </Box>
+
+            <Typography
+              variant="subtitle2"
+              sx={{ fontWeight: 800, px: 1, mt: 1 }}
+            >
               Participant Permissions
             </Typography>
 
@@ -1178,6 +1442,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onViewTrip }) => {
                       size="small"
                       color="error"
                       onClick={() =>
+                        managingParticipants &&
                         handleRemoveParticipant(
                           managingParticipants.id,
                           p.user_id,
@@ -1209,6 +1474,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onViewTrip }) => {
                         size="small"
                         checked={p.allow_gallery}
                         onChange={(e) =>
+                          managingParticipants &&
                           handleUpdatePermission(
                             managingParticipants.id,
                             p.user_id,
@@ -1232,6 +1498,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onViewTrip }) => {
                         size="small"
                         checked={p.allow_edit}
                         onChange={(e) =>
+                          managingParticipants &&
                           handleUpdatePermission(
                             managingParticipants.id,
                             p.user_id,

@@ -25,6 +25,9 @@ import { resolveAvatar } from "../../utils/avatars";
 interface DestinationsTabProps {
   locations: VacationLocation[];
   canEdit: boolean;
+  isParticipant: boolean;
+  tripStart?: string;
+  tripEnd?: string;
   user: any;
   locationParticipants: Record<number, ItemParticipant[]>;
   editingLocId: number | null;
@@ -58,6 +61,9 @@ interface DestinationsTabProps {
 export const DestinationsTab: React.FC<DestinationsTabProps> = ({
   locations,
   canEdit,
+  isParticipant,
+  tripStart,
+  tripEnd,
   user,
   locationParticipants,
   editingLocId,
@@ -266,6 +272,8 @@ export const DestinationsTab: React.FC<DestinationsTabProps> = ({
                       <DatePicker
                         label="Arrival"
                         value={editLocStart ? dayjs(editLocStart) : null}
+                        minDate={tripStart ? dayjs(tripStart) : undefined}
+                        maxDate={tripEnd ? dayjs(tripEnd) : undefined}
                         onChange={(v) =>
                           setEditLocStart(v ? v.format("YYYY-MM-DD") : "")
                         }
@@ -287,6 +295,8 @@ export const DestinationsTab: React.FC<DestinationsTabProps> = ({
                       <DatePicker
                         label="Departure"
                         value={editLocEnd ? dayjs(editLocEnd) : null}
+                        minDate={tripStart ? dayjs(tripStart) : undefined}
+                        maxDate={tripEnd ? dayjs(tripEnd) : undefined}
                         onChange={(v) =>
                           setEditLocEnd(v ? v.format("YYYY-MM-DD") : "")
                         }
@@ -511,7 +521,7 @@ export const DestinationsTab: React.FC<DestinationsTabProps> = ({
                         ))}
                       </AvatarGroup>
 
-                      {user && canEdit && (
+                      {user && (canEdit || isParticipant) && (
                         <Button
                           size="small"
                           variant={
@@ -575,8 +585,8 @@ export const DestinationsTab: React.FC<DestinationsTabProps> = ({
           <Paper
             elevation={0}
             sx={{
-              p: 4,
-              borderRadius: 4,
+              p: { xs: 2.5, sm: 4 },
+              borderRadius: { xs: 3, sm: 4 },
               bgcolor: (theme) =>
                 theme.palette.mode === "dark"
                   ? "rgba(255,255,255,0.03)"
@@ -586,17 +596,20 @@ export const DestinationsTab: React.FC<DestinationsTabProps> = ({
                 theme.palette.mode === "dark"
                   ? "1px solid rgba(255,255,255,0.05)"
                   : "1px solid rgba(0,0,0,0.05)",
-              position: "sticky",
+              position: { xs: "static", lg: "sticky" },
               top: 24,
             }}
           >
-            <Typography variant="h6" sx={{ fontWeight: 900, mb: 3 }}>
+            <Typography
+              variant="h6"
+              sx={{ fontWeight: 900, mb: { xs: 2, sm: 3 } }}
+            >
               Add New Stop
             </Typography>
             <Box
               component="form"
               onSubmit={handleAddLocation}
-              sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}
+              sx={{ display: "flex", flexDirection: "column", gap: 2 }}
             >
               <TextField
                 label="Where to?"
@@ -606,6 +619,7 @@ export const DestinationsTab: React.FC<DestinationsTabProps> = ({
                 required
                 fullWidth
                 variant="filled"
+                size={window.innerWidth < 600 ? "small" : "medium"}
                 sx={{
                   "& .MuiFilledInput-root": {
                     bgcolor: (theme) =>
@@ -621,6 +635,7 @@ export const DestinationsTab: React.FC<DestinationsTabProps> = ({
                 onChange={(e) => setNewLocAddr(e.target.value)}
                 fullWidth
                 variant="filled"
+                size={window.innerWidth < 600 ? "small" : "medium"}
                 sx={{
                   "& .MuiFilledInput-root": {
                     bgcolor: (theme) =>
@@ -640,12 +655,15 @@ export const DestinationsTab: React.FC<DestinationsTabProps> = ({
                 <DatePicker
                   label="Arrival"
                   value={newLocStart ? dayjs(newLocStart) : null}
+                  minDate={tripStart ? dayjs(tripStart) : undefined}
+                  maxDate={tripEnd ? dayjs(tripEnd) : undefined}
                   onChange={(v) =>
                     setNewLocStart(v ? v.format("YYYY-MM-DD") : "")
                   }
                   slotProps={{
                     textField: {
                       variant: "filled",
+                      size: window.innerWidth < 600 ? "small" : "medium",
                       sx: {
                         "& .MuiFilledInput-root": {
                           bgcolor: (theme) =>
@@ -660,12 +678,15 @@ export const DestinationsTab: React.FC<DestinationsTabProps> = ({
                 <DatePicker
                   label="Departure"
                   value={newLocEnd ? dayjs(newLocEnd) : null}
+                  minDate={tripStart ? dayjs(tripStart) : undefined}
+                  maxDate={tripEnd ? dayjs(tripEnd) : undefined}
                   onChange={(v) =>
                     setNewLocEnd(v ? v.format("YYYY-MM-DD") : "")
                   }
                   slotProps={{
                     textField: {
                       variant: "filled",
+                      size: window.innerWidth < 600 ? "small" : "medium",
                       sx: {
                         "& .MuiFilledInput-root": {
                           bgcolor: (theme) =>
@@ -684,10 +705,10 @@ export const DestinationsTab: React.FC<DestinationsTabProps> = ({
                 disabled={!newLocName.trim()}
                 startIcon={<AddIcon />}
                 sx={{
-                  py: 2,
+                  py: { xs: 1.5, sm: 2 },
                   fontWeight: 900,
                   borderRadius: 3,
-                  fontSize: "1rem",
+                  fontSize: { xs: "0.9rem", sm: "1rem" },
                   boxShadow: (theme) =>
                     theme.palette.mode === "dark"
                       ? "0 8px 24px rgba(33, 150, 243, 0.3)"

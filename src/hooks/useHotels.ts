@@ -71,7 +71,24 @@ export function useHotels(locationId: number | null) {
 
     if (id !== null) {
       // Select the target one
-      await supabase.from("hotels").update({ is_selected: true }).eq("id", id);
+      const { data: selectedHotel } = await supabase
+        .from("hotels")
+        .update({ is_selected: true })
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (selectedHotel) {
+        await supabase
+          .from("locations")
+          .update({ hotel_url: selectedHotel.url })
+          .eq("id", locationId);
+      }
+    } else {
+      await supabase
+        .from("locations")
+        .update({ hotel_url: null })
+        .eq("id", locationId);
     }
 
     fetchHotels(locationId);

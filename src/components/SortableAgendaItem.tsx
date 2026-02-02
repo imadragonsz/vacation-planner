@@ -16,19 +16,50 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
+import ThumbUpIcon from "@mui/icons-material/ThumbUp";
+import ThumbUpOutlinedIcon from "@mui/icons-material/ThumbUpOutlined";
+import WbSunnyIcon from "@mui/icons-material/WbSunny";
+import CloudIcon from "@mui/icons-material/Cloud";
+import GrainIcon from "@mui/icons-material/Grain";
+import AcUnitIcon from "@mui/icons-material/AcUnit";
+import ThunderstormIcon from "@mui/icons-material/Thunderstorm";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import { Agenda } from "../hooks/useAgendas";
 import { getTravelIcon } from "../utils/icons";
 import ConfirmDialog from "../ConfirmDialog";
+import dayjs from "dayjs";
+
+const getWeatherIcon = (code: number) => {
+  if (code === 0)
+    return <WbSunnyIcon sx={{ fontSize: 16, color: "#ffb300" }} />;
+  if (code >= 1 && code <= 3)
+    return <CloudIcon sx={{ fontSize: 16, color: "#90a4ae" }} />;
+  if (code >= 45 && code <= 48)
+    return <CloudIcon sx={{ fontSize: 16, color: "#78909c" }} />;
+  if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82))
+    return <GrainIcon sx={{ fontSize: 16, color: "#4fc3f7" }} />;
+  if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86))
+    return <AcUnitIcon sx={{ fontSize: 16, color: "#e3f2fd" }} />;
+  if (code >= 95)
+    return <ThunderstormIcon sx={{ fontSize: 16, color: "#5c6bc0" }} />;
+  return <WbSunnyIcon sx={{ fontSize: 16, color: "#ffb300" }} />;
+};
 
 interface SortableAgendaItemProps {
   ag: Agenda;
   canEdit: boolean;
+  isParticipant: boolean;
   user: any;
   participants: any[];
+  votes?: any[];
+  lat?: number;
+  lng?: number;
   onEdit: (ag: Agenda) => void;
   onDelete: (id: number) => void;
   onJoin: (id: number, userId: string) => void;
   onLeave: (id: number, userId: string) => void;
+  onJoinVote?: (id: number, userId: string) => void;
+  onLeaveVote?: (id: number, userId: string) => void;
   isConfirmingDelete: boolean;
   setConfirmDeleteId: (id: number | null) => void;
 }
@@ -37,12 +68,18 @@ export const SortableAgendaItem = React.memo(
   ({
     ag,
     canEdit,
+    isParticipant,
     user,
     participants = [],
+    votes = [],
+    lat,
+    lng,
     onEdit,
     onDelete,
     onJoin,
     onLeave,
+    onJoinVote = () => {},
+    onLeaveVote = () => {},
     isConfirmingDelete,
     setConfirmDeleteId,
   }: SortableAgendaItemProps) => {
@@ -61,6 +98,32 @@ export const SortableAgendaItem = React.memo(
       zIndex: isDragging ? 10 : 1,
       opacity: isDragging ? 0.3 : 1,
     };
+
+    const [weather, setWeather] = React.useState<{
+      code: number;
+      temp: number;
+    } | null>(null);
+
+    React.useEffect(() => {
+      if (!lat || !lng || !ag.agenda_date) return;
+
+      const diff = dayjs(ag.agenda_date).diff(dayjs(), "day");
+      if (diff < 0 || diff > 10) return;
+
+      fetch(
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&daily=weathercode,temperature_2m_max&timezone=auto&start_date=${ag.agenda_date}&end_date=${ag.agenda_date}`,
+      )
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.daily && data.daily.weathercode) {
+            setWeather({
+              code: data.daily.weathercode[0],
+              temp: data.daily.temperature_2m_max[0],
+            });
+          }
+        })
+        .catch(() => {});
+    }, [lat, lng, ag.agenda_date]);
 
     const isJoined = user && participants.some((p) => p.user_id === user.id);
 
@@ -219,9 +282,40 @@ export const SortableAgendaItem = React.memo(
                   fontSize: "1rem",
                   lineHeight: 1.2,
                   wordBreak: "break-word",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
                 }}
               >
                 {ag.description}
+                {weather && (
+                  <Tooltip title={`${weather.temp}°C | Forecasted Weather`}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 0.5,
+                        bgcolor: "rgba(255,255,255,0.05)",
+                        px: 0.8,
+                        py: 0.2,
+                        borderRadius: 1.5,
+                        border: "1px solid rgba(255,255,255,0.1)",
+                      }}
+                    >
+                      {getWeatherIcon(weather.code)}
+                      <Typography variant="caption" sx={{ fontWeight: 900 }}>
+                        {Math.round(weather.temp)}°
+                      </Typography>
+                    </Box>
+                  </Tooltip>
+                )}
+                {weather && weather.code >= 51 && (
+                  <Tooltip title="Potential bad weather - checking for indoor alternatives is recommended">
+                    <WarningAmberIcon
+                      sx={{ fontSize: 16, color: "warning.main" }}
+                    />
+                  </Tooltip>
+                )}
               </Typography>
             </Box>
 
@@ -249,43 +343,94 @@ export const SortableAgendaItem = React.memo(
                 mt: 1.5,
               }}
             >
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <AvatarGroup
-                  max={4}
-                  sx={{
-                    "& .MuiAvatar-root": {
-                      width: 24,
-                      height: 24,
-                      fontSize: "0.65rem",
-                      border: (theme) =>
-                        `2px solid ${theme.palette.background.paper}`,
-                      bgcolor: (theme) =>
-                        theme.palette.mode === "dark"
-                          ? "rgba(255,255,255,0.1)"
-                          : "rgba(0,0,0,0.05)",
-                    },
-                  }}
-                >
-                  {participants.map((p: any) => (
-                    <Tooltip key={p.user_id} title={p.display_name}>
-                      <Avatar src={p.avatar_url || undefined}>
-                        {!p.avatar_url &&
-                          p.display_name?.charAt(0).toUpperCase()}
-                      </Avatar>
-                    </Tooltip>
-                  ))}
-                </AvatarGroup>
-                {participants.length > 0 && (
-                  <Typography
-                    variant="caption"
-                    sx={{ color: "text.secondary", fontWeight: 700 }}
+              <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <AvatarGroup
+                    max={4}
+                    sx={{
+                      "& .MuiAvatar-root": {
+                        width: 24,
+                        height: 24,
+                        fontSize: "0.65rem",
+                        border: (theme) =>
+                          `2px solid ${theme.palette.background.paper}`,
+                        bgcolor: (theme) =>
+                          theme.palette.mode === "dark"
+                            ? "rgba(255,255,255,0.1)"
+                            : "rgba(0,0,0,0.05)",
+                      },
+                    }}
                   >
-                    {participants.length} Joining
-                  </Typography>
+                    {participants.map((p: any) => (
+                      <Tooltip key={p.user_id} title={p.display_name}>
+                        <Avatar src={p.avatar_url || undefined}>
+                          {!p.avatar_url &&
+                            p.display_name?.charAt(0).toUpperCase()}
+                        </Avatar>
+                      </Tooltip>
+                    ))}
+                  </AvatarGroup>
+                  {participants.length > 0 && (
+                    <Typography
+                      variant="caption"
+                      sx={{ color: "text.secondary", fontWeight: 700 }}
+                    >
+                      {participants.length} Joining
+                    </Typography>
+                  )}
+                </Box>
+
+                {isParticipant && (
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        const hasVoted = votes.some(
+                          (v) => v.user_id === user?.id,
+                        );
+                        if (hasVoted) onLeaveVote(ag.id, user.id);
+                        else onJoinVote(ag.id, user.id);
+                      }}
+                      sx={{
+                        color: votes.some((v) => v.user_id === user?.id)
+                          ? "primary.main"
+                          : "text.disabled",
+                        bgcolor: (theme) =>
+                          votes.some((v) => v.user_id === user?.id)
+                            ? theme.palette.mode === "dark"
+                              ? "rgba(33, 150, 243, 0.1)"
+                              : "rgba(33, 150, 243, 0.05)"
+                            : "transparent",
+                        p: 0.5,
+                        "&:hover": {
+                          bgcolor: (theme) =>
+                            theme.palette.mode === "dark"
+                              ? "rgba(255,255,255,0.05)"
+                              : "rgba(0,0,0,0.03)",
+                        },
+                      }}
+                    >
+                      {votes.some((v) => v.user_id === user?.id) ? (
+                        <ThumbUpIcon sx={{ fontSize: 18 }} />
+                      ) : (
+                        <ThumbUpOutlinedIcon sx={{ fontSize: 18 }} />
+                      )}
+                    </IconButton>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontWeight: 900,
+                        color:
+                          votes.length > 0 ? "primary.main" : "text.disabled",
+                      }}
+                    >
+                      {votes.length}
+                    </Typography>
+                  </Box>
                 )}
               </Box>
 
-              {user && canEdit && (
+              {user && (canEdit || isParticipant) && (
                 <Button
                   size="small"
                   variant={isJoined ? "outlined" : "contained"}
@@ -342,31 +487,6 @@ export const SortableAgendaItem = React.memo(
             justifyContent: "flex-end",
           }}
         >
-          {ag.address && (
-            <Tooltip title="View Route">
-              <IconButton
-                size="small"
-                onClick={() => {
-                  const routeUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-                    ag.address || "",
-                  )}`;
-                  window.open(routeUrl, "_blank");
-                }}
-                sx={{
-                  color: "text.secondary",
-                  "&:hover": {
-                    color: "primary.main",
-                    bgcolor: (theme) =>
-                      theme.palette.mode === "dark"
-                        ? "rgba(33, 150, 243, 0.1)"
-                        : "rgba(33, 150, 243, 0.08)",
-                  },
-                }}
-              >
-                <LocationOnIcon sx={{ fontSize: "1.1rem" }} />
-              </IconButton>
-            </Tooltip>
-          )}
           {canEdit && (
             <>
               <Tooltip title="Edit">

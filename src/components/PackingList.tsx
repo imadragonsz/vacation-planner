@@ -23,13 +23,13 @@ import InventoryIcon from "@mui/icons-material/Inventory";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
 import { supabase } from "../supabaseClient";
+import { resolveAvatar } from "../utils/avatars";
+import { useItemParticipants } from "../hooks/useItemParticipants";
 
 interface PackingItem {
   id: number;
   item_name: string;
   is_packed: boolean;
-  packed_by: string | null;
-  packed_by_profile?: { display_name: string };
 }
 
 interface PackingListProps {
@@ -49,32 +49,36 @@ export default function PackingList({
   const [newItemName, setNewItemName] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const {
+    participants: itemParticipants,
+    joinItem,
+    leaveItem,
+    fetchParticipants: fetchItemParticipants,
+  } = useItemParticipants("packing");
+
   const fetchItems = useCallback(async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
         .from("packing_items")
-        .select("*, profiles!packed_by(display_name)") // Standard join, simplified
+        .select("*")
         .eq("vacation_id", vacationId)
         .order("id", { ascending: true });
 
       if (error) {
         console.error("Error fetching packing items:", error);
-        // Fallback fetch
-        const { data: fallback } = await supabase
-          .from("packing_items")
-          .select("*")
-          .eq("vacation_id", vacationId);
-        if (fallback) setItems(fallback as PackingItem[]);
       } else if (data) {
         setItems(data as PackingItem[]);
+        if (data.length > 0) {
+          fetchItemParticipants(data.map((i: any) => i.id));
+        }
       }
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
-  }, [vacationId]);
+  }, [vacationId, fetchItemParticipants]);
 
   useEffect(() => {
     fetchItems();
@@ -89,6 +93,17 @@ export default function PackingList({
           schema: "public",
           table: "packing_items",
           filter: `vacation_id=eq.${vacationId}`,
+        },
+        () => {
+          fetchItems();
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "packing_item_participants",
         },
         () => {
           fetchItems();
@@ -120,19 +135,34 @@ export default function PackingList({
     async (item: PackingItem) => {
       if (!user) return;
 
-      const { error } = await supabase
-        .from("packing_items")
-        .update({
-          is_packed: !item.is_packed,
-          packed_by: !item.is_packed ? user.id : null,
-        })
-        .eq("id", item.id);
+      const isPackedByMe = itemParticipants[item.id]?.some(
+        (p) => p.user_id === user.id,
+      );
 
-      if (!error) {
-        fetchItems();
+      if (isPackedByMe) {
+        const success = await leaveItem(item.id, user.id);
+        if (success) {
+          // If I was the last one, mark as not packed globally
+          if (itemParticipants[item.id]?.length === 1) {
+            await supabase
+              .from("packing_items")
+              .update({ is_packed: false })
+              .eq("id", item.id);
+          }
+        }
+      } else {
+        const success = await joinItem(item.id, user.id);
+        if (success) {
+          // Mark as packed globally if first one
+          await supabase
+            .from("packing_items")
+            .update({ is_packed: true })
+            .eq("id", item.id);
+        }
       }
+      fetchItems();
     },
-    [user, fetchItems],
+    [user, itemParticipants, joinItem, leaveItem, fetchItems],
   );
 
   const deleteItem = useCallback(
@@ -360,13 +390,23 @@ export default function PackingList({
                   <ListItemIcon sx={{ minWidth: 48, justifyContent: "center" }}>
                     <Checkbox
                       edge="start"
-                      checked={item.is_packed}
+                      checked={
+                        itemParticipants[item.id]?.some(
+                          (p) => p.user_id === user?.id,
+                        ) || false
+                      }
                       onChange={() => togglePacked(item)}
                       disabled={!canEdit}
                       icon={
-                        <RadioButtonUncheckedIcon
-                          sx={{ fontSize: 26, opacity: 0.2 }}
-                        />
+                        item.is_packed ? (
+                          <CheckCircleIcon
+                            sx={{ fontSize: 26, color: "rgba(76,175,80,0.2)" }}
+                          />
+                        ) : (
+                          <RadioButtonUncheckedIcon
+                            sx={{ fontSize: 26, opacity: 0.2 }}
+                          />
+                        )
                       }
                       checkedIcon={
                         <CheckCircleIcon
@@ -395,26 +435,31 @@ export default function PackingList({
                   <ListItemSecondaryAction
                     sx={{ display: "flex", alignItems: "center", gap: 1.5 }}
                   >
-                    {item.is_packed && item.packed_by_profile && (
-                      <Tooltip
-                        title={`Packed by ${item.packed_by_profile.display_name}`}
-                      >
-                        <Avatar
-                          sx={{
-                            width: 28,
-                            height: 28,
-                            fontSize: "0.75rem",
-                            bgcolor: "success.main",
-                            fontWeight: 900,
-                            boxShadow: "0 2px 8px rgba(76, 175, 80, 0.4)",
-                          }}
+                    <Box sx={{ display: "flex", flexDirection: "row-reverse" }}>
+                      {(itemParticipants[item.id] || []).map((p, idx) => (
+                        <Tooltip
+                          key={p.user_id}
+                          title={`Packed by ${p.display_name}`}
                         >
-                          {item.packed_by_profile.display_name
-                            .charAt(0)
-                            .toUpperCase()}
-                        </Avatar>
-                      </Tooltip>
-                    )}
+                          <Avatar
+                            src={resolveAvatar(p.avatar_url)}
+                            sx={{
+                              width: 28,
+                              height: 28,
+                              fontSize: "0.75rem",
+                              bgcolor: "primary.main",
+                              fontWeight: 900,
+                              border: "2px solid #121212",
+                              marginLeft: idx === 0 ? 0 : -1,
+                              zIndex: 10 - idx,
+                              boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+                            }}
+                          >
+                            {p.display_name?.charAt(0).toUpperCase()}
+                          </Avatar>
+                        </Tooltip>
+                      ))}
+                    </Box>
                     {canEdit && (
                       <IconButton
                         className="item-delete"

@@ -74,9 +74,12 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 const buildPath = path.join(__dirname, "build");
 app.use(express.static(buildPath));
 
-// Multer setup
+// Multer setup - Limit to 25MB for high-res travel photos
 const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 25 * 1024 * 1024 }, // 25MB limit
+});
 
 app.delete("/api/admin/vacations/:id", async (req, res) => {
   try {
@@ -214,8 +217,9 @@ app.post("/api/gallery/upload", upload.single("image"), async (req, res) => {
         const outputPath = path.join(sizeDir, `${baseFilename}.webp`);
 
         await sharp(file.buffer)
+          .rotate() // Automatically rotate based on EXIF orientation
           .resize(size.width, null, { withoutEnlargement: true })
-          .webp({ quality: 80 })
+          .webp({ quality: size.name === "large" ? 85 : 80 })
           .toFile(outputPath);
 
         paths[size.name] = `/uploads/${size.name}/${baseFilename}.webp`;

@@ -435,16 +435,16 @@ export const VacationEditor: React.FC<VacationEditorProps> = ({
               </Button>
             )}
           </Box>
-          {canEdit && (
-            <Box
-              sx={{
-                display: "flex",
-                flexDirection: { xs: "column", sm: "row" },
-                gap: 1,
-                alignItems: "center",
-                width: { xs: "100%", md: "auto" },
-              }}
-            >
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: { xs: "column", sm: "row" },
+              gap: 1,
+              alignItems: "center",
+              width: { xs: "100%", md: "auto" },
+            }}
+          >
+            {(isOwner || participants.some((p) => p.user_id === user?.id)) && (
               <Button
                 onClick={onExportICal}
                 variant="outlined"
@@ -461,10 +461,13 @@ export const VacationEditor: React.FC<VacationEditorProps> = ({
                   px: 2,
                   py: 1,
                   fontWeight: 700,
+                  width: { xs: "100%", sm: "auto" },
                 }}
               >
                 Export iCal
               </Button>
+            )}
+            {canEdit && (
               <Button
                 onClick={() => setEditing(true)}
                 variant="outlined"
@@ -495,43 +498,47 @@ export const VacationEditor: React.FC<VacationEditorProps> = ({
               >
                 Edit
               </Button>
-              {vacation.archived ? (
-                <>
+            )}
+            {canEdit && (
+              <>
+                {vacation.archived ? (
+                  <>
+                    <Button
+                      onClick={onRestore}
+                      variant="outlined"
+                      color="success"
+                      startIcon={<RestoreIcon />}
+                      sx={{ borderRadius: 2, fontWeight: 700, px: 2 }}
+                      fullWidth={isMobile}
+                    >
+                      Restore
+                    </Button>
+                    <Button
+                      onClick={onDeletePermanently}
+                      variant="outlined"
+                      color="error"
+                      startIcon={<DeleteIcon />}
+                      sx={{ borderRadius: 2, fontWeight: 700, px: 2 }}
+                      fullWidth={isMobile}
+                    >
+                      Delete
+                    </Button>
+                  </>
+                ) : (
                   <Button
-                    onClick={onRestore}
+                    onClick={onArchive}
                     variant="outlined"
-                    color="success"
-                    startIcon={<RestoreIcon />}
+                    color="warning"
+                    startIcon={<ArchiveIcon />}
                     sx={{ borderRadius: 2, fontWeight: 700, px: 2 }}
                     fullWidth={isMobile}
                   >
-                    Restore
+                    Archive
                   </Button>
-                  <Button
-                    onClick={onDeletePermanently}
-                    variant="outlined"
-                    color="error"
-                    startIcon={<DeleteIcon />}
-                    sx={{ borderRadius: 2, fontWeight: 700, px: 2 }}
-                    fullWidth={isMobile}
-                  >
-                    Delete
-                  </Button>
-                </>
-              ) : (
-                <Button
-                  onClick={onArchive}
-                  variant="outlined"
-                  color="warning"
-                  startIcon={<ArchiveIcon />}
-                  sx={{ borderRadius: 2, fontWeight: 700, px: 2 }}
-                  fullWidth={isMobile}
-                >
-                  Archive
-                </Button>
-              )}
-            </Box>
-          )}
+                )}
+              </>
+            )}
+          </Box>
         </Box>
       )}
     </Box>

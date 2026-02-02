@@ -67,6 +67,11 @@ export type Location = {
   lat?: number;
   lng?: number;
   hotel_url?: string | null;
+  start_date?: string | null;
+  selected_hotel?: {
+    name: string;
+    url: string | null;
+  } | null;
 };
 
 export type Agenda = {
@@ -84,6 +89,10 @@ type LocationPopupProps = {
   lat: number;
   lng: number;
   hotelUrl?: string | null;
+  selectedHotel?: {
+    name: string;
+    url: string | null;
+  } | null;
 };
 
 const LocationPopup: React.FC<LocationPopupProps> = ({
@@ -92,6 +101,7 @@ const LocationPopup: React.FC<LocationPopupProps> = ({
   lat,
   lng,
   hotelUrl,
+  selectedHotel,
 }) => {
   const [englishAddress, setEnglishAddress] = React.useState<string | null>(
     () => {
@@ -150,7 +160,7 @@ const LocationPopup: React.FC<LocationPopupProps> = ({
         </h3>
       </div>
       <div className="vp-popup-body">
-        {hotelUrl && (
+        {(hotelUrl || selectedHotel) && (
           <div className="vp-popup-item" style={{ marginBottom: 12 }}>
             <span
               className="vp-popup-icon"
@@ -159,14 +169,29 @@ const LocationPopup: React.FC<LocationPopupProps> = ({
               🏨
             </span>
             <span className="vp-popup-value" style={{ fontWeight: 800 }}>
-              <a
-                href={hotelUrl}
-                target="_blank"
-                rel="noreferrer"
-                style={{ color: "#ffc107", textDecoration: "none" }}
-              >
-                Booking.com Link
-              </a>
+              {selectedHotel ? (
+                selectedHotel.url ? (
+                  <a
+                    href={selectedHotel.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ color: "#ffc107", textDecoration: "none" }}
+                  >
+                    {selectedHotel.name}
+                  </a>
+                ) : (
+                  <span style={{ color: "#ffc107" }}>{selectedHotel.name}</span>
+                )
+              ) : (
+                <a
+                  href={hotelUrl!}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ color: "#ffc107", textDecoration: "none" }}
+                >
+                  Booking.com Link
+                </a>
+              )}
             </span>
           </div>
         )}
@@ -314,13 +339,6 @@ const AgendaMarker: React.FC<AgendaMarkerProps> = ({ agenda }) => {
     };
   }, [agenda.address, agenda.description]);
 
-  const handleGetRoute = () => {
-    if (coords) {
-      const routeUrl = `https://www.openstreetmap.org/directions?route=;${coords.lat},${coords.lng}`;
-      window.open(routeUrl, "_blank");
-    }
-  };
-
   if (!agenda.address) return null;
   if (!coords) {
     // Fallback: show marker at default location (Tokyo) with warning popup
@@ -394,9 +412,6 @@ const AgendaMarker: React.FC<AgendaMarkerProps> = ({ agenda }) => {
                 {englishAddress || displayAddress}
               </span>
             </div>
-            <button className="vp-popup-button" onClick={handleGetRoute}>
-              Get Route
-            </button>
           </div>
         </div>
       </Popup>
@@ -473,7 +488,11 @@ const VacationMap = ({
               <Marker
                 key={loc.id}
                 position={[loc.lat, loc.lng]}
-                icon={loc.hotel_url ? hotelIcon : locationIcon}
+                icon={
+                  loc.hotel_url || loc.selected_hotel
+                    ? hotelIcon
+                    : locationIcon
+                }
                 draggable={!!onLocationChange}
                 eventHandlers={{
                   ...(onLocationChange
@@ -497,6 +516,7 @@ const VacationMap = ({
                     lat={loc.lat}
                     lng={loc.lng}
                     hotelUrl={loc.hotel_url}
+                    selectedHotel={loc.selected_hotel}
                   />
                 </Popup>
               </Marker>

@@ -13,17 +13,29 @@ import {
   MenuItem,
   FormControl,
   Avatar,
+  AvatarGroup,
+  Tooltip,
+  Button,
+  useTheme,
+  useMediaQuery,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import EuroIcon from "@mui/icons-material/Euro";
 import { supabase } from "../supabaseClient";
+import { resolveAvatar } from "../utils/avatars";
 
 // Global cache to prevent redundant API calls across components/sessions
 let cachedRates: { [key: string]: number } | null = null;
 let lastFetchTime = 0;
 const CACHE_DURATION = 1000 * 60 * 30; // 30 minutes
+
+interface Participant {
+  user_id: string;
+  display_name: string | null;
+  avatar_url: string | null;
+}
 
 interface Expense {
   id: number;
@@ -33,7 +45,12 @@ interface Expense {
   profile_id: string;
   profiles?: {
     display_name: string;
+    avatar_url: string | null;
   };
+  trip_expense_participants?: {
+    profile_id: string;
+    custom_amount: number | null;
+  }[];
 }
 
 const CURRENCIES = [
@@ -48,6 +65,7 @@ const CURRENCIES = [
 interface TripExpensesProps {
   vacationId: number;
   user: any;
+  participants?: Participant[];
   locationId?: number | null;
   canEdit?: boolean;
 }
@@ -55,14 +73,30 @@ interface TripExpensesProps {
 export default function TripExpenses({
   vacationId,
   user,
+  participants = [],
   locationId,
   canEdit = true,
 }: TripExpensesProps) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [desc, setDesc] = useState("");
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState("EUR");
   const [rates, setRates] = useState<{ [key: string]: number }>({ EUR: 1 });
+  const [selectedParticipants, setSelectedParticipants] = useState<string[]>(
+    [],
+  );
+  const [splitMode, setSplitMode] = useState<"equal" | "custom">("equal");
+  const [customAmounts, setCustomAmounts] = useState<{ [key: string]: string }>(
+    {},
+  );
+
+  useEffect(() => {
+    if (participants.length > 0) {
+      setSelectedParticipants(participants.map((p) => p.user_id));
+    }
+  }, [participants]);
 
   const fetchRates = async () => {
     // Check global cache first
@@ -92,7 +126,19 @@ export default function TripExpenses({
     try {
       let query = supabase
         .from("trip_expenses")
-        .select("*, profiles!profile_id(display_name)")
+        .select(
+          `
+          *,
+          profiles!profile_id(
+            display_name,
+            avatar_url
+          ),
+          trip_expense_participants(
+            profile_id,
+            custom_amount
+          )
+        `,
+        )
         .eq("vacation_id", vacationId);
 
       if (locationId) {
@@ -148,21 +194,50 @@ export default function TripExpenses({
 
   async function handleAddExpense(e: React.FormEvent) {
     e.preventDefault();
-    if (!desc.trim() || !amount || isNaN(Number(amount)) || !user) return;
+    if (
+      !amount ||
+      isNaN(Number(amount)) ||
+      !user ||
+      selectedParticipants.length === 0
+    )
+      return;
 
-    const { error } = await supabase.from("trip_expenses").insert({
-      vacation_id: vacationId,
-      profile_id: user.id,
-      description: desc.trim(),
-      amount: parseFloat(amount),
-      currency: currency,
-      location_id: locationId || null,
-    });
+    const { data: newExpense, error } = await supabase
+      .from("trip_expenses")
+      .insert({
+        vacation_id: vacationId,
+        profile_id: user.id,
+        description: desc.trim() || "Trip Expense",
+        amount: parseFloat(amount),
+        currency: currency,
+        location_id: locationId || null,
+      })
+      .select()
+      .single();
 
-    if (!error) {
-      setDesc("");
-      setAmount("");
-      fetchExpenses();
+    if (!error && newExpense) {
+      // Add participants
+      const participantInserts = selectedParticipants.map((pid) => ({
+        expense_id: newExpense.id,
+        profile_id: pid,
+        custom_amount:
+          splitMode === "custom" && customAmounts[pid]
+            ? parseFloat(customAmounts[pid])
+            : null,
+      }));
+
+      const { error: pError } = await supabase
+        .from("trip_expense_participants")
+        .insert(participantInserts);
+
+      if (!pError) {
+        setDesc("");
+        setAmount("");
+        setCustomAmounts({});
+        // Reset to all participants
+        setSelectedParticipants(participants.map((p) => p.user_id));
+        fetchExpenses();
+      }
     }
   }
 
@@ -201,9 +276,11 @@ export default function TripExpenses({
         sx={{
           mb: 4,
           display: "flex",
+          flexDirection: { xs: "column", sm: "row" },
           justifyContent: "space-between",
-          alignItems: "flex-end",
+          alignItems: { xs: "flex-start", sm: "flex-end" },
           px: 1,
+          gap: 2,
         }}
       >
         <Box>
@@ -212,6 +289,7 @@ export default function TripExpenses({
             sx={{
               fontWeight: 900,
               mb: 1,
+              fontSize: { xs: "1.75rem", sm: "2.125rem" },
               background: (theme) =>
                 theme.palette.mode === "dark"
                   ? "linear-gradient(45deg, #fff 30%, rgba(255,255,255,0.5) 90%)"
@@ -231,7 +309,7 @@ export default function TripExpenses({
               : `Tracking ${expenses.length} shared expenses.`}
           </Typography>
         </Box>
-        <Box sx={{ textAlign: "right" }}>
+        <Box sx={{ textAlign: { xs: "left", sm: "right" } }}>
           <Typography
             variant="h6"
             sx={{
@@ -240,7 +318,7 @@ export default function TripExpenses({
               mb: 0.5,
               display: "flex",
               alignItems: "center",
-              justifyContent: "flex-end",
+              justifyContent: { xs: "flex-start", sm: "flex-end" },
               gap: 0.5,
               fontSize: { md: "2rem", xs: "1.5rem" },
             }}
@@ -288,14 +366,177 @@ export default function TripExpenses({
           minHeight: 0,
         }}
       >
+        {/* Settlements / Balance Breakdown */}
+        {expenses.length > 0 && participants.length > 1 && (
+          <Box
+            sx={{
+              p: 2,
+              borderRadius: 4,
+              bgcolor: (theme) =>
+                theme.palette.mode === "dark"
+                  ? "rgba(255,255,255,0.02)"
+                  : "rgba(0,0,0,0.02)",
+              border: "1px solid rgba(255,255,255,0.05)",
+            }}
+          >
+            <Typography
+              variant="overline"
+              sx={{
+                fontWeight: 900,
+                mb: 1.5,
+                display: "block",
+                opacity: 0.6,
+                letterSpacing: 1.5,
+              }}
+            >
+              Settlement Status
+            </Typography>
+            <Box
+              sx={{
+                display: "flex",
+                gap: 2,
+                overflowX: "auto",
+                pb: 1,
+                "&::-webkit-scrollbar": { height: 4 },
+                "&::-webkit-scrollbar-thumb": {
+                  bgcolor: "rgba(255,255,255,0.1)",
+                  borderRadius: 2,
+                },
+              }}
+            >
+              {(() => {
+                // Calculate balances based on custom splits
+                const balances: Record<string, number> = {};
+                participants.forEach((p) => (balances[p.user_id] = 0));
+
+                expenses.forEach((exp) => {
+                  const rate = rates[exp.currency] || 1;
+                  const amtEur = exp.amount / rate;
+                  const involved = exp.trip_expense_participants || [];
+
+                  if (involved.length > 0) {
+                    // Payer gets credit
+                    balances[exp.profile_id] =
+                      (balances[exp.profile_id] || 0) + amtEur;
+
+                    // Involved get debt
+                    const customSpecified = involved.filter(
+                      (p) => p.custom_amount !== null,
+                    );
+                    const totalCustomEur = customSpecified.reduce(
+                      (sum, p) => sum + (p.custom_amount || 0) / rate,
+                      0,
+                    );
+
+                    const remainderEur = Math.max(0, amtEur - totalCustomEur);
+                    const remainingCount =
+                      involved.length - customSpecified.length;
+
+                    involved.forEach((part) => {
+                      let share: number;
+                      if (part.custom_amount !== null) {
+                        share = part.custom_amount / rate;
+                      } else {
+                        share =
+                          remainingCount > 0
+                            ? remainderEur / remainingCount
+                            : 0;
+                      }
+
+                      balances[part.profile_id] =
+                        (balances[part.profile_id] || 0) - share;
+                    });
+                  }
+                });
+
+                return participants.map((p) => {
+                  const balance = balances[p.user_id] || 0;
+
+                  return (
+                    <Box
+                      key={p.user_id}
+                      sx={{
+                        p: { xs: 1.25, sm: 1.5 },
+                        minWidth: { xs: 140, sm: 180 },
+                        borderRadius: 3,
+                        bgcolor: (theme) =>
+                          theme.palette.mode === "dark"
+                            ? "rgba(0,0,0,0.3)"
+                            : "rgba(255,255,255,0.5)",
+                        border: "1px solid",
+                        borderColor:
+                          Math.abs(balance) < 0.1
+                            ? (theme) =>
+                                theme.palette.mode === "dark"
+                                  ? "rgba(255,255,255,0.1)"
+                                  : "rgba(0,0,0,0.1)"
+                            : balance > 0
+                              ? "success.main"
+                              : "error.main",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1.5,
+                        flexShrink: 0,
+                        transition: "transform 0.2s ease",
+                        "&:hover": { transform: "translateY(-2px)" },
+                      }}
+                    >
+                      <Avatar
+                        src={resolveAvatar(p.avatar_url)}
+                        sx={{
+                          width: { xs: 28, sm: 32 },
+                          height: { xs: 28, sm: 32 },
+                        }}
+                      >
+                        {p.display_name?.charAt(0).toUpperCase()}
+                      </Avatar>
+                      <Box sx={{ overflow: "hidden" }}>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            fontWeight: 900,
+                            display: "block",
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            opacity: 0.7,
+                          }}
+                        >
+                          {p.display_name?.split(" ")[0]}
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: 950,
+                            color:
+                              Math.abs(balance) < 0.1
+                                ? "text.primary"
+                                : balance > 0
+                                  ? "success.main"
+                                  : "error.main",
+                            fontSize: { xs: "0.85rem", sm: "1rem" },
+                          }}
+                        >
+                          {balance > 0 ? "+" : ""}
+                          {balance.toFixed(2)}€
+                        </Typography>
+                      </Box>
+                    </Box>
+                  );
+                });
+              })()}
+            </Box>
+          </Box>
+        )}
+
         <Box
           component="form"
           onSubmit={handleAddExpense}
           sx={{
             display: "flex",
-            flexDirection: { md: "row", xs: "column" },
+            flexDirection: "column",
             gap: 2,
-            p: 1.5,
+            p: { xs: 2.5, sm: 1.5 },
             borderRadius: 4,
             bgcolor: (theme) =>
               theme.palette.mode === "dark"
@@ -317,129 +558,310 @@ export default function TripExpenses({
             },
           }}
         >
-          <TextField
-            placeholder={
-              canEdit ? "What did we pay for?" : "Join trip to log expenses"
-            }
-            value={desc}
-            onChange={(e) => setDesc(e.target.value)}
-            variant="standard"
-            autoComplete="off"
-            disabled={!canEdit}
-            sx={{ flex: 2 }}
-            InputProps={{
-              disableUnderline: true,
-              sx: {
-                px: 2,
-                color: "text.primary",
-                fontWeight: 700,
-                fontSize: "1rem",
-                opacity: canEdit ? 1 : 0.5,
-              },
-            }}
-          />
-          <Box sx={{ display: "flex", gap: 1.5, flex: 1 }}>
-            <FormControl size="small" sx={{ minWidth: 90 }}>
-              <Select
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value)}
-                variant="standard"
-                disableUnderline
-                disabled={!canEdit}
-                sx={{
-                  bgcolor: (theme) =>
-                    theme.palette.mode === "dark"
-                      ? "rgba(255,255,255,0.05)"
-                      : "rgba(0,0,0,0.05)",
-                  borderRadius: 3,
-                  height: 44,
-                  opacity: canEdit ? 1 : 0.5,
-                  "& .MuiSelect-select": {
-                    px: 2,
-                    display: "flex",
-                    alignItems: "center",
-                    fontWeight: 800,
-                    color: "primary.main",
-                  },
-                }}
-              >
-                {CURRENCIES.map((c) => (
-                  <MenuItem
-                    key={c.code}
-                    value={c.code}
-                    sx={{ fontWeight: 700 }}
-                  >
-                    {c.code}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+          <Box
+            sx={{ flex: 2, display: "flex", flexDirection: "column", gap: 1 }}
+          >
             <TextField
-              placeholder="0.00"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              placeholder={
+                canEdit ? "What did we pay for?" : "Join trip to log expenses"
+              }
+              value={desc}
+              onChange={(e) => setDesc(e.target.value)}
               variant="standard"
               autoComplete="off"
               disabled={!canEdit}
-              sx={{ flex: 1 }}
+              fullWidth
               InputProps={{
                 disableUnderline: true,
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Typography
-                      sx={{
-                        fontWeight: 900,
-                        color: "success.main",
-                        opacity: canEdit ? 0.8 : 0.3,
-                      }}
-                    >
-                      {currentSymbol}
-                    </Typography>
-                  </InputAdornment>
-                ),
                 sx: {
                   px: 2,
                   color: "text.primary",
-                  fontWeight: 900,
-                  bgcolor: (theme) =>
-                    theme.palette.mode === "dark"
-                      ? "rgba(255,255,255,0.05)"
-                      : "rgba(0,0,0,0.05)",
-                  borderRadius: 3,
-                  height: 44,
+                  fontWeight: 700,
+                  fontSize: { xs: "1.1rem", sm: "1rem" },
                   opacity: canEdit ? 1 : 0.5,
                 },
               }}
             />
+            {canEdit && participants.length > 0 && (
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: isMobile ? "column" : "row",
+                  alignItems: isMobile ? "flex-start" : "center",
+                  mb: 2,
+                  gap: 2,
+                  bgcolor: (theme) =>
+                    theme.palette.mode === "dark"
+                      ? "rgba(255,255,255,0.03)"
+                      : "rgba(0,0,0,0.03)",
+                  p: isMobile ? 1 : 1.5,
+                  borderRadius: 4,
+                  width: "100%",
+                }}
+              >
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                    width: isMobile ? "100%" : "auto",
+                    justifyContent: isMobile ? "space-between" : "flex-start",
+                  }}
+                >
+                  <Typography
+                    variant="caption"
+                    sx={{ fontWeight: 800, opacity: 0.5 }}
+                  >
+                    SPLIT:
+                  </Typography>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      bgcolor: "rgba(0,0,0,0.2)",
+                      borderRadius: 2,
+                      p: 0.5,
+                    }}
+                  >
+                    <Button
+                      size="small"
+                      variant={splitMode === "equal" ? "contained" : "text"}
+                      onClick={() => setSplitMode("equal")}
+                      sx={{
+                        borderRadius: 1.5,
+                        textTransform: "none",
+                        fontSize: "0.75rem",
+                        py: 0.5,
+                        minWidth: 80,
+                        boxShadow: "none",
+                      }}
+                    >
+                      Equal
+                    </Button>
+                    <Button
+                      size="small"
+                      variant={splitMode === "custom" ? "contained" : "text"}
+                      onClick={() => setSplitMode("custom")}
+                      sx={{
+                        borderRadius: 1.5,
+                        textTransform: "none",
+                        fontSize: "0.75rem",
+                        py: 0.5,
+                        minWidth: 80,
+                        boxShadow: "none",
+                      }}
+                    >
+                      Custom
+                    </Button>
+                  </Box>
+                </Box>
+
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 2,
+                    overflowX: "auto",
+                    width: "100%",
+                    pb: isMobile ? 1 : 0,
+                    px: isMobile ? 1 : 0,
+                    "&::-webkit-scrollbar": { height: 4 },
+                  }}
+                >
+                  {participants.map((p) => {
+                    const isSelected = selectedParticipants.includes(p.user_id);
+                    return (
+                      <Box
+                        key={p.user_id}
+                        sx={{
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          gap: 1,
+                          minWidth:
+                            isSelected && splitMode === "custom"
+                              ? { xs: 80, sm: 60 }
+                              : { xs: 44, sm: 32 },
+                        }}
+                      >
+                        <Tooltip title={p.display_name || "User"}>
+                          <Avatar
+                            src={resolveAvatar(p.avatar_url)}
+                            onClick={() => {
+                              setSelectedParticipants((prev) =>
+                                prev.includes(p.user_id)
+                                  ? prev.filter((id) => id !== p.user_id)
+                                  : [...prev, p.user_id],
+                              );
+                            }}
+                            sx={{
+                              width: { xs: 44, sm: 32 },
+                              height: { xs: 44, sm: 32 },
+                              cursor: "pointer",
+                              border: "2px solid",
+                              borderColor: isSelected
+                                ? "primary.main"
+                                : "transparent",
+                              opacity: isSelected ? 1 : 0.3,
+                              transition: "all 0.2s",
+                              "&:hover": { opacity: 1 },
+                            }}
+                          >
+                            {p.display_name?.charAt(0).toUpperCase()}
+                          </Avatar>
+                        </Tooltip>
+                        {splitMode === "custom" && isSelected && (
+                          <TextField
+                            placeholder="0"
+                            size="small"
+                            variant="standard"
+                            value={customAmounts[p.user_id] || ""}
+                            onChange={(e) =>
+                              setCustomAmounts({
+                                ...customAmounts,
+                                [p.user_id]: e.target.value,
+                              })
+                            }
+                            InputProps={{
+                              disableUnderline: true,
+                              sx: {
+                                fontSize: "0.85rem",
+                                fontWeight: 900,
+                                bgcolor: "rgba(0,0,0,0.2)",
+                                borderRadius: 1.5,
+                                px: 1,
+                                width: "100%",
+                                textAlign: "center",
+                                "& input": { textAlign: "center", p: 1 },
+                              },
+                            }}
+                          />
+                        )}
+                      </Box>
+                    );
+                  })}
+                </Box>
+              </Box>
+            )}
           </Box>
-          <IconButton
-            type="submit"
-            disabled={!desc.trim() || !amount || !canEdit}
+          <Box
             sx={{
-              bgcolor: "success.main",
-              color: "#fff",
-              borderRadius: 3,
-              width: 44,
-              height: 44,
-              boxShadow: (theme) =>
-                theme.palette.mode === "dark"
-                  ? "0 4px 12px rgba(76, 175, 80, 0.3)"
-                  : "0 4px 12px rgba(76, 175, 80, 0.2)",
-              "&:hover": {
-                bgcolor: "success.dark",
-                transform: "translateY(-1px)",
-              },
-              "&.Mui-disabled": {
-                bgcolor: (theme) =>
-                  theme.palette.mode === "dark"
-                    ? "rgba(255,255,255,0.05)"
-                    : "rgba(0,0,0,0.05)",
-                opacity: 0.5,
-              },
+              display: "flex",
+              flexDirection: isMobile ? "column" : "row",
+              gap: 1.5,
+              width: "100%",
+              alignItems: "stretch",
             }}
           >
-            <AddIcon />
-          </IconButton>
+            <Box sx={{ display: "flex", gap: 1.5, flex: 1 }}>
+              <FormControl size="small" sx={{ minWidth: 90 }}>
+                <Select
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value)}
+                  variant="standard"
+                  disableUnderline
+                  disabled={!canEdit}
+                  sx={{
+                    bgcolor: (theme) =>
+                      theme.palette.mode === "dark"
+                        ? "rgba(255,255,255,0.05)"
+                        : "rgba(0,0,0,0.05)",
+                    borderRadius: 3,
+                    height: { xs: 52, sm: 44 },
+                    opacity: canEdit ? 1 : 0.5,
+                    "& .MuiSelect-select": {
+                      px: 2,
+                      display: "flex",
+                      alignItems: "center",
+                      fontWeight: 800,
+                      color: "primary.main",
+                      fontSize: { xs: "1rem", sm: "0.875rem" },
+                    },
+                  }}
+                >
+                  {CURRENCIES.map((c) => (
+                    <MenuItem
+                      key={c.code}
+                      value={c.code}
+                      sx={{ fontWeight: 700 }}
+                    >
+                      {c.code}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <TextField
+                placeholder="0.00"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                variant="standard"
+                autoComplete="off"
+                disabled={!canEdit}
+                sx={{ flex: 1 }}
+                InputProps={{
+                  disableUnderline: true,
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Typography
+                        sx={{
+                          fontWeight: 900,
+                          color: "success.main",
+                          opacity: canEdit ? 0.8 : 0.3,
+                          fontSize: { xs: "1.2rem", sm: "1rem" },
+                        }}
+                      >
+                        {currentSymbol}
+                      </Typography>
+                    </InputAdornment>
+                  ),
+                  sx: {
+                    px: 2,
+                    color: "text.primary",
+                    fontWeight: 900,
+                    bgcolor: (theme) =>
+                      theme.palette.mode === "dark"
+                        ? "rgba(255,255,255,0.05)"
+                        : "rgba(0,0,0,0.05)",
+                    borderRadius: 3,
+                    height: { xs: 52, sm: 44 },
+                    opacity: canEdit ? 1 : 0.5,
+                    fontSize: { xs: "1.2rem", sm: "1rem" },
+                  },
+                }}
+              />
+            </Box>
+            <IconButton
+              type="submit"
+              disabled={!amount || isNaN(Number(amount)) || !canEdit}
+              sx={{
+                bgcolor: "success.main",
+                color: "#fff",
+                borderRadius: 3,
+                width: isMobile ? "100%" : 44,
+                height: { xs: 52, sm: 44 },
+                boxShadow: (theme) =>
+                  theme.palette.mode === "dark"
+                    ? "0 4px 12px rgba(76, 175, 80, 0.3)"
+                    : "0 4px 12px rgba(76, 175, 80, 0.2)",
+                "&:hover": {
+                  bgcolor: "success.dark",
+                  transform: "translateY(-1px)",
+                },
+                "&.Mui-disabled": {
+                  bgcolor: (theme) =>
+                    theme.palette.mode === "dark"
+                      ? "rgba(255,255,255,0.05)"
+                      : "rgba(0,0,0,0.05)",
+                  opacity: 0.5,
+                },
+              }}
+            >
+              {isMobile ? (
+                <Typography sx={{ fontWeight: 900 }}>Add Expense</Typography>
+              ) : (
+                <AddIcon />
+              )}
+            </IconButton>
+          </Box>
         </Box>
 
         <Box
@@ -548,6 +970,7 @@ export default function TripExpenses({
                           sx={{ display: "flex", alignItems: "center", gap: 1 }}
                         >
                           <Avatar
+                            src={resolveAvatar(exp.profiles?.avatar_url)}
                             sx={{
                               width: 18,
                               height: 18,
@@ -567,6 +990,89 @@ export default function TripExpenses({
                             {exp.profiles?.display_name || "Unknown"}
                           </Typography>
                         </Box>
+                        {exp.trip_expense_participants &&
+                          exp.trip_expense_participants.length > 0 && (
+                            <Box
+                              sx={{
+                                mt: 1,
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 1,
+                              }}
+                            >
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  fontWeight: 800,
+                                  opacity: 0.4,
+                                  fontSize: "0.65rem",
+                                }}
+                              >
+                                SPLIT:
+                              </Typography>
+                              <AvatarGroup max={5}>
+                                {exp.trip_expense_participants.map((tp) => {
+                                  const pData = participants.find(
+                                    (p) => p.user_id === tp.profile_id,
+                                  );
+
+                                  // Calculate share for tooltip
+                                  let displayShare: string;
+                                  if (
+                                    tp.custom_amount !== null &&
+                                    tp.custom_amount !== undefined
+                                  ) {
+                                    displayShare = `${symbol}${Number(tp.custom_amount).toFixed(2)}`;
+                                  } else {
+                                    const customTotal =
+                                      exp.trip_expense_participants
+                                        ?.filter(
+                                          (p) =>
+                                            p.custom_amount !== null &&
+                                            p.custom_amount !== undefined,
+                                        )
+                                        .reduce(
+                                          (sum, p) =>
+                                            sum +
+                                            (Number(p.custom_amount) || 0),
+                                          0,
+                                        ) || 0;
+                                    const remainingCount =
+                                      exp.trip_expense_participants?.filter(
+                                        (p) =>
+                                          p.custom_amount === null ||
+                                          p.custom_amount === undefined,
+                                      ).length || 1;
+                                    const share =
+                                      Math.max(0, exp.amount - customTotal) /
+                                      remainingCount;
+                                    displayShare = `${symbol}${share.toFixed(2)}`;
+                                  }
+
+                                  return (
+                                    <Tooltip
+                                      key={tp.profile_id}
+                                      title={`${pData?.display_name || "User"}: ${displayShare}`}
+                                    >
+                                      <Avatar
+                                        src={resolveAvatar(pData?.avatar_url)}
+                                        sx={{
+                                          width: 16,
+                                          height: 16,
+                                          border: "1px solid #000",
+                                          fontSize: "0.5rem",
+                                        }}
+                                      >
+                                        {pData?.display_name
+                                          ?.charAt(0)
+                                          .toUpperCase()}
+                                      </Avatar>
+                                    </Tooltip>
+                                  );
+                                })}
+                              </AvatarGroup>
+                            </Box>
+                          )}
                       </Box>
                       <Box sx={{ textAlign: "right" }}>
                         <Typography

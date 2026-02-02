@@ -11,6 +11,10 @@ export type VacationLocation = {
   lat?: number;
   lng?: number;
   hotel_url?: string | null;
+  selected_hotel?: {
+    name: string;
+    url: string | null;
+  } | null;
 };
 
 export function useLocations(vacationId: number) {
@@ -18,7 +22,30 @@ export function useLocations(vacationId: number) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (vacationId) fetchLocations();
+    if (!vacationId) return;
+
+    fetchLocations();
+
+    // Subscribe to changes
+    const channel = supabase
+      .channel(`locations-changes-${vacationId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "locations",
+          filter: `vacation_id=eq.${vacationId}`,
+        },
+        () => {
+          fetchLocations();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
     // eslint-disable-next-line
   }, [vacationId]);
 
@@ -26,18 +53,24 @@ export function useLocations(vacationId: number) {
     setLoading(true);
     const { data, error } = await supabase
       .from("locations")
-      .select("*")
+      .select("*, hotels(name, url, is_selected)")
       .eq("vacation_id", vacationId);
 
     if (!error && data) {
+      // Extract selected hotel from join results
+      const formatted = (data as any[]).map((loc) => ({
+        ...loc,
+        selected_hotel: loc.hotels?.find((h: any) => h.is_selected) || null,
+      }));
+
       // Sort client-side to handle NULL dates consistently (NULLs at the end)
-      const sorted = (data as VacationLocation[]).sort((a, b) => {
+      const sorted = formatted.sort((a, b) => {
         if (!a.start_date && !b.start_date) return 0;
         if (!a.start_date) return 1;
         if (!b.start_date) return -1;
         return a.start_date.localeCompare(b.start_date);
       });
-      setLocations(sorted);
+      setLocations(sorted as VacationLocation[]);
     }
     setLoading(false);
   }

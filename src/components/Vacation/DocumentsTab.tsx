@@ -1,0 +1,251 @@
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  Box,
+  Typography,
+  Paper,
+  Button,
+  IconButton,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  ListItemSecondaryAction,
+  Tooltip,
+  CircularProgress,
+} from "@mui/material";
+import FileUploadIcon from "@mui/icons-material/FileUpload";
+import DescriptionIcon from "@mui/icons-material/Description";
+import DownloadIcon from "@mui/icons-material/Download";
+import DeleteIcon from "@mui/icons-material/Delete";
+import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
+import SummarizeIcon from "@mui/icons-material/Summarize";
+import { supabase } from "../../supabaseClient";
+
+interface VacationDocument {
+  id: number;
+  name: string;
+  file_path: string;
+  file_type: string;
+  uploaded_by: string;
+  created_at: string;
+  profiles?: {
+    display_name: string;
+  };
+}
+
+interface DocumentsTabProps {
+  vacationId: number;
+  user: any;
+  canEdit: boolean;
+}
+
+export default function DocumentsTab({
+  vacationId,
+  user,
+  canEdit,
+}: DocumentsTabProps) {
+  const [docs, setDocs] = useState<VacationDocument[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+
+  const fetchDocs = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("vacation_documents")
+      .select("*, profiles!uploaded_by(display_name)")
+      .eq("vacation_id", vacationId)
+      .order("created_at", { ascending: false });
+
+    if (!error && data) {
+      setDocs(data as VacationDocument[]);
+    }
+    setLoading(false);
+  }, [vacationId]);
+
+  useEffect(() => {
+    fetchDocs();
+  }, [fetchDocs]);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    setUploading(true);
+    try {
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `documents/${vacationId}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("gallery") // Reusing gallery bucket for simplicity
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { error: dbError } = await supabase
+        .from("vacation_documents")
+        .insert({
+          vacation_id: vacationId,
+          name: file.name,
+          file_path: filePath,
+          file_type: file.type,
+          uploaded_by: user.id,
+        });
+
+      if (dbError) throw dbError;
+
+      fetchDocs();
+    } catch (err) {
+      console.error(err);
+      alert("Error uploading document");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDownload = async (doc: VacationDocument) => {
+    const { data, error } = await supabase.storage
+      .from("gallery")
+      .download(doc.file_path);
+
+    if (!error && data) {
+      const url = URL.createObjectURL(data);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = doc.name;
+      a.click();
+    }
+  };
+
+  const handleDelete = async (doc: VacationDocument) => {
+    if (!window.confirm(`Delete ${doc.name}?`)) return;
+
+    const { error: storageError } = await supabase.storage
+      .from("gallery")
+      .remove([doc.file_path]);
+
+    if (!storageError) {
+      await supabase.from("vacation_documents").delete().eq("id", doc.id);
+      fetchDocs();
+    }
+  };
+
+  const getFileIcon = (type: string) => {
+    if (type.includes("pdf"))
+      return <PictureAsPdfIcon sx={{ color: "#f44336" }} />;
+    if (type.includes("text") || type.includes("doc"))
+      return <SummarizeIcon sx={{ color: "#2196f3" }} />;
+    return <DescriptionIcon sx={{ color: "#9e9e9e" }} />;
+  };
+
+  if (loading) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", py: 10 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  return (
+    <Box>
+      <Box
+        sx={{
+          mb: 4,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <Box>
+          <Typography variant="h4" sx={{ fontWeight: 900, mb: 1 }}>
+            Documents
+          </Typography>
+          <Typography variant="body1" sx={{ opacity: 0.6 }}>
+            Essential bookings, tickets, and travel info.
+          </Typography>
+        </Box>
+        <Button
+          variant="contained"
+          component="label"
+          startIcon={
+            uploading ? (
+              <CircularProgress size={20} color="inherit" />
+            ) : (
+              <FileUploadIcon />
+            )
+          }
+          disabled={uploading || !canEdit}
+          sx={{ borderRadius: 3, fontWeight: 900 }}
+        >
+          {uploading ? "Uploading..." : "Upload File"}
+          <input type="file" hidden onChange={handleUpload} />
+        </Button>
+      </Box>
+
+      <Paper
+        elevation={0}
+        sx={{
+          p: 3,
+          borderRadius: 6,
+          bgcolor: "rgba(255,255,255,0.02)",
+          border: "1px solid rgba(255,255,255,0.05)",
+          backdropFilter: "blur(10px)",
+        }}
+      >
+        {docs.length === 0 ? (
+          <Box sx={{ py: 10, textAlign: "center", opacity: 0.3 }}>
+            <DescriptionIcon sx={{ fontSize: 80, mb: 2 }} />
+            <Typography variant="h6" sx={{ fontWeight: 800 }}>
+              No documents yet
+            </Typography>
+            <Typography variant="body2">
+              Keep your group organized by uploading tickets or reservations.
+            </Typography>
+          </Box>
+        ) : (
+          <List>
+            {docs.map((doc) => (
+              <ListItem
+                key={doc.id}
+                sx={{
+                  mb: 1,
+                  borderRadius: 3,
+                  bgcolor: "rgba(255,255,255,0.02)",
+                  border: "1px solid rgba(255,255,255,0.05)",
+                  "&:hover": { bgcolor: "rgba(255,255,255,0.04)" },
+                }}
+              >
+                <ListItemIcon>{getFileIcon(doc.file_type)}</ListItemIcon>
+                <ListItemText
+                  primary={doc.name}
+                  secondary={`Uploaded by ${doc.profiles?.display_name || "Unknown"} on ${new Date(doc.created_at).toLocaleDateString()}`}
+                  primaryTypographyProps={{ fontWeight: 700 }}
+                />
+                <ListItemSecondaryAction>
+                  <Tooltip title="Download">
+                    <IconButton
+                      onClick={() => handleDownload(doc)}
+                      color="primary"
+                    >
+                      <DownloadIcon />
+                    </IconButton>
+                  </Tooltip>
+                  {canEdit && doc.uploaded_by === user?.id && (
+                    <Tooltip title="Delete">
+                      <IconButton
+                        onClick={() => handleDelete(doc)}
+                        color="error"
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                </ListItemSecondaryAction>
+              </ListItem>
+            ))}
+          </List>
+        )}
+      </Paper>
+    </Box>
+  );
+}

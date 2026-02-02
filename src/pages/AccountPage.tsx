@@ -33,7 +33,6 @@ export default function AccountPage({
   onLogout,
   onHome,
 }: AccountPageProps) {
-  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [displayName, setDisplayName] = useState(
     user?.user_metadata?.display_name || "",
@@ -92,7 +91,6 @@ export default function AccountPage({
       if (error) throw error;
       alert("Password updated successfully!");
       setNewPassword("");
-      setCurrentPassword("");
     } catch (error: any) {
       alert(error.message || "Error updating password");
     } finally {

@@ -8,18 +8,20 @@ import {
   IconButton,
   useMediaQuery,
   useTheme,
-  Avatar,
 } from "@mui/material";
 import LogoutIcon from "@mui/icons-material/Logout";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import { resolveAvatar } from "../utils/avatars";
+import { NotificationMenu } from "./NotificationMenu";
 
 export interface NavBarProps {
   theme: "dark" | "light";
   setTheme: (theme: "dark" | "light") => void;
   user: any;
+  showAccount: boolean;
+  showAdminPanel: boolean;
+  showItinerary: boolean;
   setShowAccount: (show: boolean) => void;
   setShowAdminPanel?: (show: boolean) => void;
   setShowItinerary?: (show: boolean) => void;
@@ -35,6 +37,9 @@ const NavBar: React.FC<NavBarProps> = React.memo(
     theme,
     setTheme,
     user,
+    showAccount,
+    showAdminPanel,
+    showItinerary,
     setShowAccount,
     setShowAdminPanel,
     setShowItinerary,
@@ -43,7 +48,7 @@ const NavBar: React.FC<NavBarProps> = React.memo(
     onBackToTrips,
   }) => {
     const muiTheme = useTheme();
-    const isMobile = useMediaQuery(muiTheme.breakpoints.down("md"));
+    const isMobile = useMediaQuery(muiTheme.breakpoints.down("sm"));
 
     return (
       <AppBar
@@ -51,40 +56,48 @@ const NavBar: React.FC<NavBarProps> = React.memo(
         sx={{
           backgroundColor: (theme) =>
             theme.palette.mode === "dark"
-              ? "rgba(15, 17, 21, 0.8)"
+              ? "rgba(18, 18, 18, 0.7)"
               : "rgba(255, 255, 255, 0.8)",
-          backdropFilter: "blur(10px)",
+          backdropFilter: "blur(20px)",
           borderBottom: (theme) =>
             `1px solid ${
               theme.palette.mode === "dark"
-                ? "rgba(255, 255, 255, 0.05)"
+                ? "rgba(255, 255, 255, 0.08)"
                 : "rgba(0, 0, 0, 0.05)"
             }`,
           boxShadow: "none",
-          mb: { xs: 1, md: 4 },
+          mb: { xs: 0, sm: 2, md: 4 },
           color: "text.primary",
+          zIndex: 1100,
         }}
       >
         <Toolbar
           sx={{
             display: "flex",
             justifyContent: "space-between",
-            minHeight: { xs: 56, md: 64 },
+            minHeight: { xs: 60, md: 72 },
+            px: { xs: 1.5, sm: 3 },
           }}
         >
           <Box
             sx={{
               display: "flex",
               alignItems: "center",
-              gap: { xs: "8px", md: "16px" },
+              gap: { xs: 1, md: 2 },
             }}
           >
-            {isMobile && onBackToTrips && (
+            {onBackToTrips && (
               <IconButton
                 color="inherit"
                 onClick={onBackToTrips}
                 size="small"
-                sx={{ mr: 0.5 }}
+                sx={{
+                  mr: 0.5,
+                  bgcolor: (theme) =>
+                    theme.palette.mode === "dark"
+                      ? "rgba(255,255,255,0.05)"
+                      : "rgba(0,0,0,0.03)",
+                }}
               >
                 <ArrowBackIcon fontSize="small" />
               </IconButton>
@@ -93,75 +106,170 @@ const NavBar: React.FC<NavBarProps> = React.memo(
               variant="h6"
               component="div"
               sx={{
-                fontWeight: 800,
-                letterSpacing: -0.5,
-                fontSize: { xs: "1.1rem", md: "1.25rem" },
+                fontWeight: 950,
+                letterSpacing: "-0.03em",
+                fontSize: { xs: "1.2rem", md: "1.5rem" },
+                background: (theme) =>
+                  theme.palette.mode === "dark"
+                    ? "linear-gradient(90deg, #fff 0%, rgba(255,255,255,0.5) 100%)"
+                    : "linear-gradient(90deg, #1976d2 0%, #1565c0 100%)",
+                backgroundClip: "text",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
               }}
             >
-              Vacation Planner
+              Vacation
             </Typography>
 
-            {!isMobile && (
-              <Box sx={{ display: "flex", gap: 1 }}>
+            {!isMobile && user && (
+              <Box
+                sx={{
+                  ml: { md: 6, sm: 3 },
+                  display: "flex",
+                  gap: { md: 4, sm: 2 },
+                }}
+              >
                 <Button
                   color="inherit"
-                  onClick={() => {
-                    if (onBackToTrips) {
-                      onBackToTrips();
-                    } else {
-                      setShowAccount(false);
-                      if (setShowItinerary) setShowItinerary(false);
-                    }
-                  }}
-                  sx={{ fontWeight: 600 }}
-                >
-                  Home
-                </Button>
-                <Button
-                  color="inherit"
+                  size="small"
                   onClick={() => {
                     setShowAccount(false);
-                    if (setShowItinerary) setShowItinerary(true);
+                    setShowAdminPanel?.(false);
+                    setShowItinerary?.(false);
+                    onBackToTrips?.();
                   }}
-                  disabled={!user}
-                  sx={{ fontWeight: 600 }}
+                  sx={{
+                    fontWeight: 700,
+                    fontSize: "0.85rem",
+                    letterSpacing: "0.05em",
+                    position: "relative",
+                    opacity:
+                      !showAccount && !showAdminPanel && !showItinerary
+                        ? 1
+                        : 0.6,
+                    px: 1,
+                    minWidth: "auto",
+                    transition: "all 0.2s ease",
+                    "&:after": {
+                      content: '""',
+                      position: "absolute",
+                      bottom: -4,
+                      left: 0,
+                      width: "100%",
+                      height: "2px",
+                      background: muiTheme.palette.primary.main,
+                      transform:
+                        !showAccount && !showAdminPanel && !showItinerary
+                          ? "scaleX(1)"
+                          : "scaleX(0)",
+                      transition: "transform 0.2s ease",
+                    },
+                    "&:hover": { opacity: 1, background: "transparent" },
+                  }}
                 >
-                  My Plan
+                  DASHBOARD
                 </Button>
-                {user?.id === ADMIN_UUID && (
-                  <Button
-                    color="inherit"
-                    onClick={() => {
-                      if (setShowAdminPanel) {
-                        setShowAccount(false);
-                        if (setShowItinerary) setShowItinerary(false);
-                        setShowAdminPanel(true);
-                      }
-                    }}
-                    sx={{ fontWeight: 600, color: "primary.main" }}
-                  >
-                    Admin
-                  </Button>
-                )}
                 <Button
                   color="inherit"
-                  onClick={() => user && setShowAccount(true)}
-                  disabled={!user}
+                  size="small"
+                  onClick={() => {
+                    setShowAccount(false);
+                    setShowAdminPanel?.(false);
+                    setShowItinerary?.(true);
+                  }}
                   sx={{
-                    fontWeight: 600,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
+                    fontWeight: 700,
+                    fontSize: "0.85rem",
+                    letterSpacing: "0.05em",
+                    position: "relative",
+                    opacity: showItinerary ? 1 : 0.6,
+                    px: 1,
+                    minWidth: "auto",
+                    transition: "all 0.2s ease",
+                    "&:after": {
+                      content: '""',
+                      position: "absolute",
+                      bottom: -4,
+                      left: 0,
+                      width: "100%",
+                      height: "2px",
+                      background: muiTheme.palette.primary.main,
+                      transform: showItinerary ? "scaleX(1)" : "scaleX(0)",
+                      transition: "transform 0.2s ease",
+                    },
+                    "&:hover": { opacity: 1, background: "transparent" },
                   }}
                 >
-                  {user?.user_metadata?.avatar_url && (
-                    <Avatar
-                      src={resolveAvatar(user.user_metadata.avatar_url)}
-                      sx={{ width: 20, height: 20 }}
-                    />
-                  )}
-                  Account
+                  MY PLAN
                 </Button>
+                <Button
+                  color="inherit"
+                  size="small"
+                  onClick={() => {
+                    setShowAccount(true);
+                    setShowAdminPanel?.(false);
+                    setShowItinerary?.(false);
+                  }}
+                  sx={{
+                    fontWeight: 700,
+                    fontSize: "0.85rem",
+                    letterSpacing: "0.05em",
+                    position: "relative",
+                    opacity: showAccount ? 1 : 0.6,
+                    px: 1,
+                    minWidth: "auto",
+                    transition: "all 0.2s ease",
+                    "&:after": {
+                      content: '""',
+                      position: "absolute",
+                      bottom: -4,
+                      left: 0,
+                      width: "100%",
+                      height: "2px",
+                      background: muiTheme.palette.primary.main,
+                      transform: showAccount ? "scaleX(1)" : "scaleX(0)",
+                      transition: "transform 0.2s ease",
+                    },
+                    "&:hover": { opacity: 1, background: "transparent" },
+                  }}
+                >
+                  ACCOUNT
+                </Button>
+                {user.id === ADMIN_UUID && (
+                  <Button
+                    color="inherit"
+                    size="small"
+                    onClick={() => {
+                      setShowAccount(false);
+                      setShowAdminPanel?.(true);
+                      setShowItinerary?.(false);
+                    }}
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: "0.85rem",
+                      letterSpacing: "0.05em",
+                      position: "relative",
+                      opacity: showAdminPanel ? 1 : 0.6,
+                      px: 1,
+                      minWidth: "auto",
+                      transition: "all 0.2s ease",
+                      "&:after": {
+                        content: '""',
+                        position: "absolute",
+                        bottom: -4,
+                        left: 0,
+                        width: "100%",
+                        height: "2px",
+                        background: muiTheme.palette.primary.main,
+                        transform: showAdminPanel ? "scaleX(1)" : "scaleX(0)",
+                        transition: "transform 0.2s ease",
+                      },
+                      "&:hover": { opacity: 1, background: "transparent" },
+                    }}
+                  >
+                    ADMIN
+                  </Button>
+                )}
               </Box>
             )}
           </Box>
@@ -193,6 +301,8 @@ const NavBar: React.FC<NavBarProps> = React.memo(
                 Login
               </Button>
             )}
+
+            {user && <NotificationMenu userId={user.id} />}
 
             <IconButton
               size="small"

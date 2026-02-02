@@ -91,21 +91,43 @@ function AuthForm({ onAuth, mode, setMode, errorMsg }: AuthFormProps) {
         flexDirection: "column",
         alignItems: "stretch",
         gap: 3,
-        p: { xs: 3, md: 6 },
+        p: { xs: 4, md: 6 },
         width: "100%",
         maxWidth: 420,
-        backgroundColor: "rgba(255, 255, 255, 0.05)",
-        backdropFilter: "blur(15px)",
-        borderRadius: 6,
-        border: "1px solid rgba(255, 255, 255, 0.1)",
+        backgroundColor: (theme) =>
+          theme.palette.mode === "dark"
+            ? "rgba(15, 17, 21, 0.95)"
+            : "rgba(255, 255, 255, 0.95)",
+        backdropFilter: "blur(20px)",
+        borderRadius: { xs: "24px 24px 0 0", md: 6 },
+        border: (theme) =>
+          `1px solid ${
+            theme.palette.mode === "dark"
+              ? "rgba(255, 255, 255, 0.1)"
+              : "rgba(0, 0, 0, 0.1)"
+          }`,
         boxShadow: "0 25px 50px rgba(0,0,0,0.5)",
-        color: "#fff",
-        position: "absolute",
-        top: "50%",
-        left: "50%",
-        transform: "translate(-50%, -50%)",
+        color: "text.primary",
+        mx: "auto",
+        position: "relative",
+        maxHeight: { xs: "90vh", md: "80vh" },
+        overflowY: "auto",
       }}
     >
+      {/* Mobile Grabber */}
+      <Box
+        sx={{
+          width: 40,
+          height: 4,
+          bgcolor: "text.disabled",
+          opacity: 0.3,
+          borderRadius: 2,
+          mx: "auto",
+          mb: 1,
+          display: { xs: "block", md: "none" },
+        }}
+      />
+
       <Box sx={{ mb: 2, textAlign: "center" }}>
         <Typography variant="h4" component="h2" sx={{ fontWeight: 900, mb: 1 }}>
           {mode === "login"
@@ -160,7 +182,7 @@ function AuthForm({ onAuth, mode, setMode, errorMsg }: AuthFormProps) {
                 <IconButton
                   onClick={() => setShowPassword(!showPassword)}
                   edge="end"
-                  sx={{ color: "rgba(255,255,255,0.5)" }}
+                  sx={{ color: "text.secondary" }}
                 >
                   {showPassword ? <VisibilityOff /> : <Visibility />}
                 </IconButton>
@@ -186,9 +208,12 @@ function AuthForm({ onAuth, mode, setMode, errorMsg }: AuthFormProps) {
           variant="body2"
           sx={{
             color: (msg || errorMsg)?.includes("Check your email")
-              ? "#4ade80"
-              : "#ff4d4d",
-            bgcolor: "rgba(0,0,0,0.2)",
+              ? "success.light"
+              : "error.light",
+            bgcolor: (theme) =>
+              theme.palette.mode === "dark"
+                ? "rgba(0,0,0,0.3)"
+                : "rgba(0,0,0,0.05)",
             p: 1.5,
             borderRadius: 2,
             textAlign: "center",
@@ -212,7 +237,12 @@ function AuthForm({ onAuth, mode, setMode, errorMsg }: AuthFormProps) {
           fontWeight: 800,
           textTransform: "none",
           borderRadius: 3,
-          boxShadow: "0 10px 20px rgba(25, 118, 210, 0.3)",
+          boxShadow: (theme) =>
+            `0 10px 20px ${
+              theme.palette.mode === "dark"
+                ? "rgba(0,0,0,0.5)"
+                : "rgba(25, 118, 210, 0.2)"
+            }`,
         }}
       >
         {loading
@@ -237,7 +267,7 @@ function AuthForm({ onAuth, mode, setMode, errorMsg }: AuthFormProps) {
           <>
             <Button
               variant="text"
-              sx={{ color: "rgba(255,255,255,0.6)", textTransform: "none" }}
+              sx={{ color: "text.secondary", textTransform: "none" }}
               onClick={() => setMode("register")}
             >
               Don't have an account? <strong>Sign Up</strong>
@@ -245,7 +275,7 @@ function AuthForm({ onAuth, mode, setMode, errorMsg }: AuthFormProps) {
             <Button
               variant="text"
               sx={{
-                color: "rgba(255,255,255,0.4)",
+                color: "text.disabled",
                 fontSize: "0.75rem",
                 textTransform: "none",
               }}
@@ -258,7 +288,7 @@ function AuthForm({ onAuth, mode, setMode, errorMsg }: AuthFormProps) {
         {mode === "register" && (
           <Button
             variant="text"
-            sx={{ color: "rgba(255,255,255,0.6)", textTransform: "none" }}
+            sx={{ color: "text.secondary", textTransform: "none" }}
             onClick={() => setMode("login")}
           >
             Already have an account? <strong>Sign In</strong>
@@ -267,7 +297,7 @@ function AuthForm({ onAuth, mode, setMode, errorMsg }: AuthFormProps) {
         {mode === "reset" && (
           <Button
             variant="text"
-            sx={{ color: "rgba(255,255,255,0.6)", textTransform: "none" }}
+            sx={{ color: "text.secondary", textTransform: "none" }}
             onClick={() => setMode("login")}
           >
             Back to <strong>Sign In</strong>

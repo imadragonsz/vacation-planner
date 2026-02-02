@@ -33,6 +33,7 @@ import ExploreIcon from "@mui/icons-material/Explore";
 import HomeIcon from "@mui/icons-material/Home";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import AddIcon from "@mui/icons-material/Add";
+import Fab from "@mui/material/Fab";
 
 import { Vacation } from "./vacation";
 import { HomeDashboard } from "./components/HomeDashboard";
@@ -158,16 +159,25 @@ function App({ user, setUser }: AppProps) {
 
   const loading = vacationsLoading || addVacationLoading;
 
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   // State variables
   const [loadingUser, setLoadingUser] = useState(true);
   const [search, setSearch] = useState("");
-  const [showArchived, setShowArchived] = useState(false);
-  const [activeTab, setActiveTab] = useState(0); // 0: My Trips, 1: Shared Trips
-  const [showAccount, setShowAccount] = useState(false);
+  const [showArchived, setShowArchived] = useState(() => {
+    return localStorage.getItem("showArchived") === "true";
+  });
+  const [activeTab, setActiveTab] = useState(() => {
+    const saved = localStorage.getItem("dashboardTab");
+    return saved ? parseInt(saved) : 0;
+  }); // 0: My Trips, 1: Shared Trips
+  const [showAccount, setShowAccount] = useState(() => {
+    return localStorage.getItem("showAccount") === "true";
+  });
   const [showAdminPanel, setShowAdminPanel] = useState(false);
-  const [showItinerary, setShowItinerary] = useState(false);
+  const [showItinerary, setShowItinerary] = useState(() => {
+    return localStorage.getItem("showItinerary") === "true";
+  });
   const [editingVacation, setEditingVacation] = useState<Vacation | null>(null);
   const [selectedVacation, setSelectedVacation] = useState<Vacation | null>(
     null,
@@ -356,6 +366,22 @@ function App({ user, setUser }: AppProps) {
     localStorage.setItem("theme", themeMode);
   }, [themeMode]);
 
+  useEffect(() => {
+    localStorage.setItem("dashboardTab", activeTab.toString());
+  }, [activeTab]);
+
+  useEffect(() => {
+    localStorage.setItem("showAccount", showAccount.toString());
+  }, [showAccount]);
+
+  useEffect(() => {
+    localStorage.setItem("showItinerary", showItinerary.toString());
+  }, [showItinerary]);
+
+  useEffect(() => {
+    localStorage.setItem("showArchived", showArchived.toString());
+  }, [showArchived]);
+
   // Open vacation edit modal
   function openEditVacationModal(vacation: Vacation) {
     setEditingVacation(vacation);
@@ -402,7 +428,7 @@ function App({ user, setUser }: AppProps) {
   }, [dbStatus]);
 
   // Render loading states
-  if (loading || loadingUser) {
+  if (loadingUser) {
     return (
       <ThemeProvider theme={theme}>
         <CssBaseline />
@@ -413,9 +439,20 @@ function App({ user, setUser }: AppProps) {
             alignItems: "center",
             height: "100vh",
             background: themeMode === "dark" ? "#0f1115" : "#f5f5f7",
+            flexDirection: "column",
+            gap: "20px",
           }}
         >
           <ClipLoader color="#1976d2" size={50} />
+          <Typography
+            sx={{
+              color: themeMode === "dark" ? "white" : "black",
+              opacity: 0.5,
+              fontWeight: 700,
+            }}
+          >
+            Verifying your session...
+          </Typography>
         </div>
       </ThemeProvider>
     );
@@ -431,6 +468,9 @@ function App({ user, setUser }: AppProps) {
             theme={themeMode}
             setTheme={setThemeMode}
             user={user}
+            showAccount={showAccount}
+            showAdminPanel={showAdminPanel}
+            showItinerary={showItinerary}
             setShowAccount={setShowAccount}
             setShowAdminPanel={setShowAdminPanel}
             setShowItinerary={setShowItinerary}
@@ -449,6 +489,7 @@ function App({ user, setUser }: AppProps) {
                     setShowItinerary(false);
                     setShowAccount(false);
                     setShowAdminPanel(false);
+                    setSelectedVacation(null);
                   }
                 : selectedVacation
                   ? () => {
@@ -784,7 +825,9 @@ function App({ user, setUser }: AppProps) {
                 }
               >
                 {showAdminPanel &&
-                user?.id === process.env.REACT_APP_ADMIN_UUID ? (
+                user?.id === process.env.REACT_APP_ADMIN_UUID &&
+                !showAccount &&
+                !showItinerary ? (
                   <AdminPanel
                     onViewTrip={(trip) => {
                       setSelectedVacation(trip);
@@ -826,6 +869,7 @@ function App({ user, setUser }: AppProps) {
                     displayedVacations={displayedVacations}
                     showArchived={showArchived}
                     onShowArchivedChange={setShowArchived}
+                    loading={loading}
                   />
                 )}
               </Suspense>
@@ -834,18 +878,35 @@ function App({ user, setUser }: AppProps) {
           <footer className="vp-footer">© 2025 Vacation Planner</footer>
 
           {showAuthModal && (
-            <div className="auth-modal-wrapper">
-              <Suspense fallback={<CircularProgress />}>
-                <AuthForm
-                  mode={authMode}
-                  setMode={setAuthMode}
-                  errorMsg={null}
-                  onAuth={(err) => {
-                    if (!err) setShowAuthModal(false);
-                  }}
-                />
-              </Suspense>
-            </div>
+            <Box
+              sx={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                width: "100vw",
+                height: "100vh",
+                zIndex: 1500,
+                bgcolor: "rgba(0, 0, 0, 0.7)",
+                backdropFilter: "blur(8px)",
+                display: "flex",
+                alignItems: { xs: "flex-end", md: "center" },
+                justifyContent: "center",
+              }}
+              onClick={() => setShowAuthModal(false)}
+            >
+              <Box onClick={(e) => e.stopPropagation()} sx={{ width: "100%" }}>
+                <Suspense fallback={<CircularProgress />}>
+                  <AuthForm
+                    mode={authMode}
+                    setMode={setAuthMode}
+                    errorMsg={null}
+                    onAuth={(err) => {
+                      if (!err) setShowAuthModal(false);
+                    }}
+                  />
+                </Suspense>
+              </Box>
+            </Box>
           )}
 
           {toastMessage && (
@@ -855,6 +916,28 @@ function App({ user, setUser }: AppProps) {
               onClose={() => setToastMessage(null)}
             />
           )}
+
+          {isMobile &&
+            user &&
+            !selectedVacation &&
+            !showAccount &&
+            !showAdminPanel &&
+            !showItinerary && (
+              <Fab
+                color="primary"
+                aria-label="add"
+                sx={{
+                  position: "fixed",
+                  bottom: 96,
+                  right: 24,
+                  zIndex: 1000,
+                  boxShadow: "0 8px 16px rgba(0,0,0,0.3)",
+                }}
+                onClick={() => setShowAddVacationModal(true)}
+              >
+                <AddIcon />
+              </Fab>
+            )}
 
           {isMobile && user && (
             <Paper

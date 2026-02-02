@@ -7,7 +7,6 @@ import {
   IconButton,
   Modal,
   TextField,
-  Tooltip,
   CircularProgress,
   ImageList,
   ImageListItem,
@@ -19,7 +18,6 @@ import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DownloadIcon from "@mui/icons-material/Download";
 import CloseIcon from "@mui/icons-material/Close";
-import SecurityIcon from "@mui/icons-material/Security";
 import { supabase } from "../../supabaseClient";
 
 type GalleryItem = {
@@ -39,7 +37,6 @@ interface GalleryTabProps {
   userId: string;
   canEdit: boolean;
   isOwner?: boolean;
-  onManagePermissions?: () => void;
 }
 
 export const GalleryTab: React.FC<GalleryTabProps> = ({
@@ -47,7 +44,6 @@ export const GalleryTab: React.FC<GalleryTabProps> = ({
   userId,
   canEdit,
   isOwner,
-  onManagePermissions,
 }) => {
   const [items, setItems] = useState<GalleryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -194,21 +190,23 @@ export const GalleryTab: React.FC<GalleryTabProps> = ({
     document.body.removeChild(link);
   };
 
-  const cols = isMobile ? 1 : isTablet ? 2 : 3;
+  const cols = isMobile ? 2 : isTablet ? 3 : 4;
 
   return (
-    <Box sx={{ p: { xs: 2, sm: 4 } }}>
+    <Box sx={{ p: { xs: 1, sm: 4 } }}>
       <Box
         sx={{
-          mb: 4,
+          mb: { xs: 2.5, sm: 4 },
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
+          flexWrap: "wrap",
+          gap: 2,
         }}
       >
         <Typography
           variant="h5"
-          sx={{ fontWeight: 900, letterSpacing: "-1px" }}
+          sx={{ fontWeight: 950, letterSpacing: "-0.03em" }}
         >
           Vacation Gallery
         </Typography>
@@ -218,41 +216,26 @@ export const GalleryTab: React.FC<GalleryTabProps> = ({
               display: "flex",
               gap: { xs: 1, sm: 2 },
               alignItems: "center",
+              width: { xs: "100%", sm: "auto" },
             }}
           >
-            {isOwner && onManagePermissions && (
-              <Tooltip title="Manage Trip Permissions">
-                <IconButton
-                  onClick={onManagePermissions}
-                  color="primary"
-                  sx={{
-                    bgcolor: (theme) =>
-                      theme.palette.mode === "dark"
-                        ? "rgba(33, 150, 243, 0.1)"
-                        : "rgba(33, 150, 243, 0.05)",
-                    "&:hover": {
-                      bgcolor: (theme) =>
-                        theme.palette.mode === "dark"
-                          ? "rgba(33, 150, 243, 0.2)"
-                          : "rgba(33, 150, 243, 0.1)",
-                    },
-                    borderRadius: 3,
-                  }}
-                >
-                  <SecurityIcon />
-                </IconButton>
-              </Tooltip>
-            )}
             <TextField
               size="small"
               placeholder="Add a caption..."
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
-              sx={{ display: { xs: "none", sm: "block" } }}
+              sx={{
+                display: { xs: "none", md: "block" },
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: 3,
+                  bgcolor: "rgba(255,255,255,0.03)",
+                },
+              }}
             />
             <Button
               variant="contained"
               component="label"
+              fullWidth={isMobile}
               startIcon={
                 uploading ? (
                   <CircularProgress size={20} color="inherit" />
@@ -261,7 +244,14 @@ export const GalleryTab: React.FC<GalleryTabProps> = ({
                 )
               }
               disabled={uploading}
-              sx={{ borderRadius: 3, fontWeight: 800 }}
+              sx={{
+                borderRadius: 3,
+                fontWeight: 900,
+                textTransform: "none",
+                px: 3,
+                py: 1,
+                boxShadow: "0 4px 14px rgba(25, 118, 210, 0.3)",
+              }}
             >
               {uploading ? "Uploading..." : "Add Photos"}
               <input
@@ -285,27 +275,43 @@ export const GalleryTab: React.FC<GalleryTabProps> = ({
           sx={{
             py: 10,
             textAlign: "center",
-            bgcolor: "rgba(255,255,255,0.02)",
+            bgcolor: (theme) =>
+              theme.palette.mode === "dark"
+                ? "rgba(255,255,255,0.02)"
+                : "rgba(0,0,0,0.02)",
             borderRadius: 5,
-            border: "1px dashed rgba(255,255,255,0.1)",
+            border: (theme) =>
+              `1px dashed ${
+                theme.palette.mode === "dark"
+                  ? "rgba(255,255,255,0.1)"
+                  : "rgba(0,0,0,0.1)"
+              }`,
           }}
         >
-          <AddPhotoAlternateIcon sx={{ fontSize: 48, opacity: 0.2, mb: 2 }} />
-          <Typography sx={{ opacity: 0.5 }}>
+          <AddPhotoAlternateIcon sx={{ fontSize: 48, opacity: 0.1, mb: 2 }} />
+          <Typography
+            sx={{
+              opacity: 0.6,
+              fontWeight: 700,
+            }}
+          >
             No photos in this gallery yet.
           </Typography>
         </Paper>
       ) : (
-        <ImageList variant="masonry" cols={cols} gap={16}>
+        <ImageList variant="masonry" cols={cols} gap={isMobile ? 8 : 16}>
           {items.map((item) => (
             <ImageListItem
               key={item.id}
               sx={{
-                borderRadius: 4,
+                borderRadius: { xs: 2.5, sm: 4 },
                 overflow: "hidden",
                 cursor: "pointer",
-                transition: "transform 0.3s",
-                "&:hover": { transform: "scale(1.02)" },
+                transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                "&:hover": {
+                  transform: "scale(1.02)",
+                  boxShadow: "0 8px 30px rgba(0,0,0,0.2)",
+                },
               }}
             >
               <img
@@ -317,12 +323,16 @@ export const GalleryTab: React.FC<GalleryTabProps> = ({
                 onClick={() => setSelectedImage(item)}
                 style={{
                   minHeight: "100px",
-                  background: "rgba(255,255,255,0.05)",
+                  background:
+                    theme.palette.mode === "dark"
+                      ? "rgba(255,255,255,0.05)"
+                      : "rgba(0,0,0,0.05)",
                   display: "block",
                   width: "100%",
+                  height: "auto",
+                  objectFit: "cover",
                 }}
                 onError={(e) => {
-                  // If image fails to load, hide the broken icon but keep the space
                   (e.target as HTMLImageElement).style.opacity = "0";
                 }}
               />
@@ -331,22 +341,31 @@ export const GalleryTab: React.FC<GalleryTabProps> = ({
                   title={item.caption}
                   sx={{
                     background:
-                      "linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 70%, rgba(0,0,0,0) 100%)",
+                      "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 70%, rgba(0,0,0,0) 100%)",
+                    "& .MuiImageListItemBar-title": {
+                      fontWeight: 800,
+                      fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                    },
                   }}
                   actionIcon={
                     <Box sx={{ display: "flex" }}>
                       <IconButton
-                        sx={{ color: "white" }}
+                        size="small"
+                        sx={{ color: "white", opacity: 0.8 }}
                         onClick={() => handleDownload(item)}
                       >
-                        <DownloadIcon />
+                        <DownloadIcon fontSize="small" />
                       </IconButton>
                       {canEdit && (
                         <IconButton
-                          sx={{ color: "rgba(255,100,100,0.8)" }}
+                          size="small"
+                          sx={{
+                            color: "rgba(255,100,100,0.9)",
+                            opacity: 0.8,
+                          }}
                           onClick={() => handleDelete(item.id)}
                         >
-                          <DeleteIcon />
+                          <DeleteIcon fontSize="small" />
                         </IconButton>
                       )}
                     </Box>
@@ -372,21 +391,37 @@ export const GalleryTab: React.FC<GalleryTabProps> = ({
             <CloseIcon />
           </IconButton>
           {selectedImage && (
-            <Box sx={{ textAlign: "center" }}>
+            <Box
+              sx={{
+                textAlign: "center",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 2,
+              }}
+            >
               <img
                 src={selectedImage.large_url}
                 srcSet={`${selectedImage.medium_url} 1024w, ${selectedImage.large_url} 1920w`}
                 alt={selectedImage.caption}
                 style={{
-                  maxWidth: "100%",
+                  maxWidth: "95vw",
                   maxHeight: "80vh",
+                  width: "auto",
+                  height: "auto",
+                  objectFit: "contain",
                   borderRadius: "12px",
                   boxShadow: "0 20px 50px rgba(0,0,0,0.5)",
                 }}
               />
               <Typography
                 variant="h6"
-                sx={{ color: "white", mt: 2, fontWeight: 700 }}
+                sx={{
+                  color: "white",
+                  fontWeight: 700,
+                  textShadow: "0 2px 4px rgba(0,0,0,0.5)",
+                  maxWidth: "90vw",
+                }}
               >
                 {selectedImage.caption}
               </Typography>

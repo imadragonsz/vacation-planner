@@ -43,6 +43,9 @@ interface ItineraryTabProps {
   locations: VacationLocation[];
   agendas: Agenda[];
   canEdit: boolean;
+  isParticipant: boolean;
+  tripStart?: string;
+  tripEnd?: string;
   selectedLocation: VacationLocation | null;
   setSelectedLocation: (loc: VacationLocation | null) => void;
   selectedGeoLocation?: { lat: number; lng: number };
@@ -69,6 +72,9 @@ interface ItineraryTabProps {
   // Participants & Actions
   user: any;
   agendaParticipants: { [key: number]: any[] };
+  agendaVotes?: { [key: number]: any[] };
+  joinVote?: (id: number, userId: string) => void;
+  leaveVote?: (id: number, userId: string) => void;
   onEditAgenda: (ag: any) => void;
   joinAgenda: (id: number, userId: string) => void;
   leaveAgenda: (id: number, userId: string) => void;
@@ -80,6 +86,9 @@ export const ItineraryTab: React.FC<ItineraryTabProps> = ({
   locations,
   agendas,
   canEdit,
+  isParticipant,
+  tripStart,
+  tripEnd,
   selectedLocation,
   setSelectedLocation,
   selectedGeoLocation,
@@ -102,6 +111,9 @@ export const ItineraryTab: React.FC<ItineraryTabProps> = ({
   handleDeleteItem,
   user,
   agendaParticipants,
+  agendaVotes = {},
+  joinVote = () => {},
+  leaveVote = () => {},
   onEditAgenda,
   joinAgenda,
   leaveAgenda,
@@ -495,6 +507,20 @@ export const ItineraryTab: React.FC<ItineraryTabProps> = ({
                     <DatePicker
                       label="Date"
                       value={newItemDate ? dayjs(newItemDate) : null}
+                      minDate={
+                        selectedLocation?.start_date
+                          ? dayjs(selectedLocation.start_date)
+                          : tripStart
+                            ? dayjs(tripStart)
+                            : undefined
+                      }
+                      maxDate={
+                        selectedLocation?.end_date
+                          ? dayjs(selectedLocation.end_date)
+                          : tripEnd
+                            ? dayjs(tripEnd)
+                            : undefined
+                      }
                       onChange={(v) =>
                         setNewItemDate(v ? v.format("YYYY-MM-DD") : "")
                       }
@@ -700,12 +726,18 @@ export const ItineraryTab: React.FC<ItineraryTabProps> = ({
                         key={ag.id}
                         ag={ag}
                         canEdit={canEdit}
+                        isParticipant={isParticipant}
                         user={user}
                         participants={agendaParticipants[ag.id] || []}
                         onEdit={onEditAgenda}
                         onDelete={handleDeleteItem}
                         onJoin={joinAgenda}
                         onLeave={leaveAgenda}
+                        votes={agendaVotes[ag.id] || []}
+                        onJoinVote={joinVote}
+                        onLeaveVote={leaveVote}
+                        lat={selectedGeoLocation?.lat}
+                        lng={selectedGeoLocation?.lng}
                         isConfirmingDelete={confirmDeleteAgendaId === ag.id}
                         setConfirmDeleteId={setConfirmDeleteAgendaId}
                       />

@@ -10,6 +10,7 @@ import {
   Chip,
   Checkbox,
   FormControlLabel,
+  Skeleton,
 } from "@mui/material";
 import MapIcon from "@mui/icons-material/Map";
 import FlightIcon from "@mui/icons-material/Flight";
@@ -37,6 +38,7 @@ interface HomeDashboardProps {
   displayedVacations?: Vacation[];
   showArchived?: boolean;
   onShowArchivedChange?: (val: boolean) => void;
+  loading?: boolean;
 }
 
 export const HomeDashboard: React.FC<HomeDashboardProps> = ({
@@ -52,6 +54,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   displayedVacations = [],
   showArchived = false,
   onShowArchivedChange,
+  loading = false,
 }) => {
   // Filter for only trips where the user is an owner or participant
   const myVacations = useMemo(() => {
@@ -78,6 +81,47 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     : null;
 
   const showSearchResults = isMobile && (search.length > 0 || activeTab === 1);
+
+  if (loading) {
+    return (
+      <Box
+        sx={{
+          maxWidth: 1200,
+          mx: "auto",
+          py: { xs: 1, md: 4 },
+          px: { xs: 1, md: 2 },
+        }}
+      >
+        <Box sx={{ mb: { xs: 4, md: 6 } }}>
+          <Skeleton variant="text" width="60%" height={60} sx={{ mb: 1 }} />
+          <Skeleton variant="text" width="40%" height={30} />
+        </Box>
+
+        <Skeleton
+          variant="rectangular"
+          height={300}
+          sx={{ borderRadius: 6, mb: 6 }}
+        />
+
+        <Grid container spacing={3}>
+          <Grid size={{ xs: 12, md: 4 }}>
+            <Skeleton
+              variant="rectangular"
+              height={200}
+              sx={{ borderRadius: 4 }}
+            />
+          </Grid>
+          <Grid size={{ xs: 12, md: 8 }}>
+            <Skeleton
+              variant="rectangular"
+              height={200}
+              sx={{ borderRadius: 4 }}
+            />
+          </Grid>
+        </Grid>
+      </Box>
+    );
+  }
 
   return (
     <Box
@@ -270,7 +314,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           {/* Header Section */}
           <Box
             sx={{
-              mb: { xs: 4, md: 6 },
+              mb: { xs: 3, md: 6 },
               display: "flex",
               justifyContent: "space-between",
               alignItems: "flex-start",
@@ -280,24 +324,28 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               <Typography
                 variant="h3"
                 sx={{
-                  fontWeight: 900,
+                  fontWeight: 950,
                   mb: 1,
-                  fontSize: { xs: "2rem", sm: "2.5rem", md: "3rem" },
+                  fontSize: { xs: "1.75rem", sm: "2.5rem", md: "3rem" },
+                  letterSpacing: "-0.04em",
                 }}
               >
                 Adventure Awaits,{" "}
-                {user?.user_metadata?.display_name || "Traveler"}
+                {user?.user_metadata?.display_name?.split(" ")[0] ||
+                  user?.email?.split("@")[0] ||
+                  "Traveler"}
               </Typography>
               <Typography
                 variant="h6"
                 sx={{
                   color: "text.secondary",
                   fontWeight: 500,
-                  fontSize: { xs: "1rem", md: "1.25rem" },
+                  fontSize: { xs: "0.95rem", md: "1.25rem" },
+                  opacity: 0.7,
                 }}
               >
                 {activeTripsCount > 0
-                  ? `You have ${activeTripsCount} trips currently planned. Ready for the next one?`
+                  ? `You have ${activeTripsCount} trips planned. Ready for the next one?`
                   : "No trips planned yet. Where would you like to go next?"}
               </Typography>
             </Box>
@@ -325,144 +373,168 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               elevation={0}
               onClick={() => onSelectVacation(nextTrip)}
               sx={{
-                p: { xs: 3, md: 4 },
+                p: { xs: 3, md: 5 },
                 mb: { xs: 4, md: 6 },
-                borderRadius: { xs: 4, md: 6 },
+                borderRadius: { xs: 5, md: 7 },
                 background: (theme) =>
                   theme.palette.mode === "dark"
-                    ? "linear-gradient(135deg, rgba(25, 118, 210, 0.2) 0%, rgba(33, 150, 243, 0.05) 100%)"
-                    : "linear-gradient(135deg, rgba(25, 118, 210, 0.08) 0%, rgba(33, 150, 243, 0.03) 100%)",
+                    ? "linear-gradient(135deg, rgba(25, 118, 210, 0.4) 0%, rgba(33, 150, 243, 0.1) 100%)"
+                    : "linear-gradient(135deg, #1976d2 0%, #1565c0 100%)",
+                color: (theme) =>
+                  theme.palette.mode === "dark" ? "inherit" : "white",
                 border: "1px solid",
                 borderColor: (theme) =>
                   theme.palette.mode === "dark"
-                    ? "rgba(25, 118, 210, 0.2)"
-                    : "rgba(25, 118, 210, 0.15)",
+                    ? "rgba(25, 118, 210, 0.3)"
+                    : "rgba(25, 118, 210, 0.2)",
                 position: "relative",
                 overflow: "hidden",
                 cursor: "pointer",
-                transition: "transform 0.2s, background 0.2s",
+                transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
                 "&:hover": {
-                  transform: "translateY(-4px)",
-                  background: (theme) =>
+                  transform: "translateY(-6px)",
+                  boxShadow: (theme) =>
                     theme.palette.mode === "dark"
-                      ? "linear-gradient(135deg, rgba(25, 118, 210, 0.3) 0%, rgba(33, 150, 243, 0.1) 100%)"
-                      : "linear-gradient(135deg, rgba(25, 118, 210, 0.12) 0%, rgba(33, 150, 243, 0.05) 100%)",
+                      ? "0 20px 40px rgba(0,0,0,0.4)"
+                      : "0 20px 40px rgba(25, 118, 210, 0.3)",
                 },
               }}
             >
               <Box sx={{ position: "relative", zIndex: 1 }}>
                 <Chip
                   label="Next Adventure"
-                  color="primary"
-                  sx={{ fontWeight: 800, mb: 3, borderRadius: 1 }}
+                  size="small"
+                  sx={{
+                    mb: 3,
+                    fontWeight: 900,
+                    bgcolor: (theme) =>
+                      theme.palette.mode === "dark"
+                        ? "primary.main"
+                        : "rgba(255,255,255,0.2)",
+                    color: "white",
+                    borderRadius: 1.5,
+                    textTransform: "uppercase",
+                    letterSpacing: 1.2,
+                    fontSize: "0.65rem",
+                  }}
                 />
                 <Grid container spacing={{ xs: 2, md: 4 }} alignItems="center">
-                  <Grid size={{ xs: 12, md: 7 }}>
+                  <Grid size={{ xs: 12, md: 8 }}>
                     <Typography
                       variant="h2"
                       sx={{
-                        fontWeight: 900,
+                        fontWeight: 950,
                         mb: 1,
-                        fontSize: { xs: "2.5rem", md: "3.75rem" },
+                        fontSize: { xs: "2.25rem", md: "3.75rem" },
+                        letterSpacing: "-0.03em",
+                        lineHeight: 1.1,
                       }}
                     >
                       {nextTrip.name}
                     </Typography>
                     <Stack
                       direction={{ xs: "column", sm: "row" }}
-                      spacing={{ xs: 1, sm: 2 }}
+                      spacing={{ xs: 1, sm: 3 }}
                       alignItems={{ xs: "flex-start", sm: "center" }}
-                      sx={{ mb: 3 }}
+                      sx={{ mb: 3, mt: 1 }}
                     >
                       <Box
-                        sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
+                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
                       >
-                        <LocationOnIcon fontSize="small" color="primary" />
+                        <LocationOnIcon
+                          sx={{
+                            fontSize: 20,
+                            color: (theme) =>
+                              theme.palette.mode === "dark"
+                                ? "primary.main"
+                                : "inherit",
+                          }}
+                        />
                         <Typography
-                          variant="body1"
-                          sx={{ fontWeight: 700, opacity: 0.8 }}
+                          variant="h6"
+                          sx={{ fontWeight: 700, opacity: 0.9 }}
                         >
                           {nextTrip.destination}
                         </Typography>
                       </Box>
                       <Box
-                        sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
+                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
                       >
-                        <EventIcon fontSize="small" color="primary" />
+                        <EventIcon
+                          sx={{
+                            fontSize: 20,
+                            color: (theme) =>
+                              theme.palette.mode === "dark"
+                                ? "primary.main"
+                                : "inherit",
+                          }}
+                        />
                         <Typography
-                          variant="body2"
-                          sx={{ fontWeight: 700, color: "text.secondary" }}
+                          variant="subtitle1"
+                          sx={{ fontWeight: 600, opacity: 0.8 }}
                         >
                           {dayjs(nextTrip.start_date).format("MMM D")} -{" "}
                           {dayjs(nextTrip.end_date).format("MMM D, YYYY")}
                         </Typography>
                       </Box>
                     </Stack>
-                    <Button
-                      variant="contained"
-                      endIcon={<ArrowForwardIcon />}
-                      sx={{
-                        py: 1.5,
-                        px: 4,
-                        width: { xs: "100%", sm: "auto" },
-                        borderRadius: 3,
-                        fontWeight: 900,
-                      }}
-                    >
-                      View Full Itinerary
-                    </Button>
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 5 }} sx={{ textAlign: "center" }}>
-                    <Box
-                      sx={{
-                        bgcolor: (theme) =>
-                          theme.palette.mode === "dark"
-                            ? "rgba(255,255,255,0.05)"
-                            : "rgba(0,0,0,0.02)",
-                        p: { xs: 2, md: 4 },
-                        borderRadius: 5,
-                        border: (theme) =>
-                          theme.palette.mode === "dark"
-                            ? "1px solid rgba(255,255,255,0.05)"
-                            : "1px solid rgba(0,0,0,0.05)",
-                      }}
-                    >
-                      <Typography
-                        variant="h2"
+                    <Stack direction="row" spacing={1}>
+                      <Button
+                        variant="contained"
+                        endIcon={<ArrowForwardIcon />}
                         sx={{
-                          fontWeight: 900,
+                          bgcolor: "white",
                           color: "primary.main",
-                          fontSize: { xs: "3rem", md: "3.75rem" },
+                          fontWeight: 900,
+                          px: 3,
+                          py: 1.5,
+                          borderRadius: 3,
+                          "&:hover": { bgcolor: "rgba(255,255,255,0.9)" },
+                          display: { xs: "none", sm: "flex" },
                         }}
                       >
-                        {daysUntilNext}
-                      </Typography>
-                      <Typography
-                        variant="overline"
-                        sx={{
-                          fontWeight: 800,
-                          color: "text.secondary",
-                          letterSpacing: 2,
-                        }}
-                      >
-                        Days to Go
-                      </Typography>
-                    </Box>
+                        View Details
+                      </Button>
+                      {daysUntilNext !== null && (
+                        <Box
+                          sx={{
+                            bgcolor: "rgba(255,255,255,0.15)",
+                            backdropFilter: "blur(10px)",
+                            px: 2,
+                            py: 1.5,
+                            borderRadius: 3,
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            display: "flex",
+                            alignItems: "center",
+                          }}
+                        >
+                          <Typography
+                            variant="subtitle2"
+                            sx={{ fontWeight: 800, letterSpacing: 0.5 }}
+                          >
+                            🚀 {daysUntilNext} DAYS TO GO
+                          </Typography>
+                        </Box>
+                      )}
+                    </Stack>
                   </Grid>
                 </Grid>
               </Box>
+
+              {/* Background Art */}
               <FlightIcon
                 sx={{
                   position: "absolute",
-                  right: { xs: -20, md: -40 },
-                  top: { xs: -20, md: -40 },
-                  fontSize: { xs: 150, md: 250 },
-                  opacity: 0.03,
-                  transform: "rotate(45deg)",
+                  right: -40,
+                  bottom: -40,
+                  fontSize: { xs: 180, md: 280 },
+                  opacity: 0.1,
+                  transform: "rotate(-15deg)",
+                  pointerEvents: "none",
                 }}
               />
             </Paper>
-          ) : (
+          ) : user ? (
             <Paper
               elevation={0}
               onClick={onNewTrip}
@@ -506,7 +578,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                 Create Your First Trip
               </Button>
             </Paper>
-          )}
+          ) : null}
 
           {/* Statistics and Quick Actions */}
           <Grid container spacing={3}>

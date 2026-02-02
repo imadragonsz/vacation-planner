@@ -10,6 +10,7 @@
 
 import { clientsClaim } from "workbox-core";
 import { ExpirationPlugin } from "workbox-expiration";
+import { CacheableResponsePlugin } from "workbox-cacheable-response";
 import { precacheAndRoute, createHandlerBoundToURL } from "workbox-precaching";
 import { registerRoute } from "workbox-routing";
 import {
@@ -54,24 +55,29 @@ registerRoute(
     // Return true to signal that we want to use the handler.
     return true;
   },
-  createHandlerBoundToURL(process.env.PUBLIC_URL + "/index.html")
+  createHandlerBoundToURL(process.env.PUBLIC_URL + "/index.html"),
 );
 
-// An example runtime caching route for requests that aren't handled by the
-// precache, in this case same-origin .png requests like those from in public/
+// Cache Images (Same-origin and Supabase Storage)
+// Extended to handle common formats and storage origins for traveler photos.
 registerRoute(
-  // Add in any other file extensions or routing criteria as needed.
-  ({ url }) =>
-    url.origin === self.location.origin && url.pathname.endsWith(".png"),
-  // Customize this strategy as needed, e.g., by changing to CacheFirst.
-  new StaleWhileRevalidate({
+  ({ request, url }) =>
+    request.destination === "image" ||
+    (url.origin === self.location.origin &&
+      /\.(?:png|gif|jpg|jpeg|webp|svg)$/.test(url.pathname)) ||
+    url.hostname.includes("supabase.co"),
+  new CacheFirst({
     cacheName: "images",
     plugins: [
-      // Ensure that once this runtime cache reaches a maximum size the
-      // least-recently used images are removed.
-      new ExpirationPlugin({ maxEntries: 50 }),
+      new ExpirationPlugin({
+        maxEntries: 100,
+        maxAgeSeconds: 30 * 24 * 60 * 60, // 30 Days
+      }),
+      new CacheableResponsePlugin({
+        statuses: [0, 200],
+      }),
     ],
-  })
+  }),
 );
 
 // This allows the web app to trigger skipWaiting via
@@ -93,13 +99,17 @@ registerRoute(
     url.pathname.startsWith("/rest/v1/"),
   new NetworkFirst({
     cacheName: "supabase-api-data",
+    networkTimeoutSeconds: 3, // Fallback to cache after 3s to keep UI responsive
     plugins: [
       new ExpirationPlugin({
-        maxEntries: 100,
+        maxEntries: 200, // Increased capacity for multiple trips
         maxAgeSeconds: 7 * 24 * 60 * 60, // 1 week
       }),
+      new CacheableResponsePlugin({
+        statuses: [0, 200],
+      }),
     ],
-  })
+  }),
 );
 
 // Cache Map Tiles - CacheFirst
@@ -116,7 +126,7 @@ registerRoute(
         maxAgeSeconds: 30 * 24 * 60 * 60, // 30 Days
       }),
     ],
-  })
+  }),
 );
 
 // Cache Geocoding and Weather Data - StaleWhileRevalidate
@@ -124,14 +134,35 @@ registerRoute(
 registerRoute(
   ({ url }) =>
     url.hostname.includes("photon.komoot.io") ||
-    url.hostname.includes("api.open-meteo.com"),
+    url.hostname.includes("api.open-meteo.com") ||
+    url.hostname.includes("api.frankfurter.app"),
   new StaleWhileRevalidate({
-    cacheName: "location-and-weather",
+    cacheName: "external-api-data",
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 100,
+        maxAgeSeconds: 24 * 60 * 60, // 1 Day
+      }),
+      new CacheableResponsePlugin({
+        statuses: [0, 200],
+      }),
+    ],
+  }),
+);
+
+// Cache Stylesheets and Fonts from Google or other CDNs
+registerRoute(
+  ({ url }) =>
+    url.origin === "https://fonts.googleapis.com" ||
+    url.origin === "https://fonts.gstatic.com" ||
+    url.pathname.endsWith(".css"),
+  new StaleWhileRevalidate({
+    cacheName: "static-resources",
     plugins: [
       new ExpirationPlugin({
         maxEntries: 50,
-        maxAgeSeconds: 24 * 60 * 60, // 1 Day
+        maxAgeSeconds: 30 * 24 * 60 * 60, // 30 Days
       }),
     ],
-  })
+  }),
 );
