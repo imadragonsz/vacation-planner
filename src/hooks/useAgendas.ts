@@ -19,6 +19,16 @@ export function useAgendas(locationId: number) {
 
   useEffect(() => {
     if (locationId) fetchAgendas(locationId);
+
+    const handleOnline = () => {
+      if (locationId) {
+        console.log("Internet restored, refetching agendas...");
+        fetchAgendas(locationId);
+      }
+    };
+
+    window.addEventListener("online", handleOnline);
+    return () => window.removeEventListener("online", handleOnline);
     // eslint-disable-next-line
   }, [locationId]);
 

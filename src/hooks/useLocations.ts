@@ -43,8 +43,16 @@ export function useLocations(vacationId: number) {
       )
       .subscribe();
 
+    const handleOnline = () => {
+      console.log("Internet restored, refetching locations...");
+      fetchLocations();
+    };
+
+    window.addEventListener("online", handleOnline);
+
     return () => {
       supabase.removeChannel(channel);
+      window.removeEventListener("online", handleOnline);
     };
     // eslint-disable-next-line
   }, [vacationId]);

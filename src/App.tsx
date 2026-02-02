@@ -208,8 +208,16 @@ function App({ user, setUser }: AppProps) {
       )
       .subscribe();
 
+    const handleOnline = () => {
+      console.log("Network back online. Refreshing vacations...");
+      fetchVacations(showArchived);
+    };
+
+    window.addEventListener("online", handleOnline);
+
     return () => {
       supabase.removeChannel(channel);
+      window.removeEventListener("online", handleOnline);
     };
   }, [showArchived, fetchVacations]);
 
