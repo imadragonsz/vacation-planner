@@ -5,22 +5,23 @@ import {
   Paper,
   Grid,
   Button,
-  Avatar,
   Stack,
   Chip,
   Checkbox,
   FormControlLabel,
   Skeleton,
+  useTheme,
+  useMediaQuery,
 } from "@mui/material";
-import MapIcon from "@mui/icons-material/Map";
 import FlightIcon from "@mui/icons-material/Flight";
+import ExploreIcon from "@mui/icons-material/Explore";
 import EventIcon from "@mui/icons-material/Event";
-import BeachAccessIcon from "@mui/icons-material/BeachAccess";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import AddIcon from "@mui/icons-material/Add";
 import SearchIcon from "@mui/icons-material/Search";
 import PublicIcon from "@mui/icons-material/Public";
+import { DashboardWidgets } from "./Widgets/DashboardWidgets";
 import dayjs from "dayjs";
 import { Vacation } from "../vacation";
 
@@ -46,7 +47,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   vacations,
   onSelectVacation,
   onNewTrip,
-  isMobile,
+  isMobile: isMobileProp,
   search = "",
   onSearchChange,
   activeTab = 0,
@@ -56,6 +57,10 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   onShowArchivedChange,
   loading = false,
 }) => {
+  const theme = useTheme();
+  const isMobileMediaQuery = useMediaQuery(theme.breakpoints.down("sm"));
+  const isMobile = isMobileProp ?? isMobileMediaQuery;
+
   // Filter for only trips where the user is an owner or participant
   const myVacations = useMemo(() => {
     if (!user) return [];
@@ -80,16 +85,18 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     ? dayjs(nextTrip.start_date).diff(dayjs(), "day")
     : null;
 
-  const showSearchResults = isMobile && (search.length > 0 || activeTab === 1);
+  const showSearchResults =
+    (isMobile && (search.length > 0 || activeTab === 1)) ||
+    (!isMobile && search.length > 0);
 
   if (loading) {
     return (
       <Box
         sx={{
-          maxWidth: 1200,
+          maxWidth: 1400,
           mx: "auto",
           py: { xs: 1, md: 4 },
-          px: { xs: 1, md: 2 },
+          px: { xs: 1, md: 4 },
         }}
       >
         <Box sx={{ mb: { xs: 4, md: 6 } }}>
@@ -126,10 +133,10 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   return (
     <Box
       sx={{
-        maxWidth: 1200,
+        maxWidth: 1400,
         mx: "auto",
         py: { xs: 1, md: 4 },
-        px: { xs: 1, md: 2 },
+        px: { xs: 1, md: 4 },
       }}
     >
       {/* Mobile Search/Explore Header */}
@@ -138,17 +145,29 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
             <Button
               variant={activeTab === 0 ? "contained" : "outlined"}
-              size="small"
+              size="large"
               onClick={() => onActiveTabChange?.(0)}
-              sx={{ borderRadius: "12px", fontWeight: 700, flex: 1, py: 1 }}
+              sx={{
+                borderRadius: "12px",
+                fontWeight: 700,
+                flex: 1,
+                py: 1,
+                height: 48,
+              }}
             >
               My Trips
             </Button>
             <Button
               variant={activeTab === 1 ? "contained" : "outlined"}
-              size="small"
+              size="large"
               onClick={() => onActiveTabChange?.(1)}
-              sx={{ borderRadius: "12px", fontWeight: 700, flex: 1, py: 1 }}
+              sx={{
+                borderRadius: "12px",
+                fontWeight: 700,
+                flex: 1,
+                py: 1,
+                height: 48,
+              }}
             >
               Explore
             </Button>
@@ -351,15 +370,16 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             </Box>
             {activeTripsCount > 0 && (
               <Button
-                variant="outlined"
-                size="small"
+                variant="contained"
+                size="medium"
                 onClick={onNewTrip}
                 startIcon={<AddIcon />}
                 sx={{
                   mt: 1,
-                  fontWeight: 800,
+                  fontWeight: 900,
                   borderRadius: 2,
-                  display: { xs: "flex", md: "none" },
+                  bgcolor: "#ca1d49",
+                  display: { xs: "none", md: "flex" },
                 }}
               >
                 New Trip
@@ -372,31 +392,25 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             <Paper
               elevation={0}
               onClick={() => onSelectVacation(nextTrip)}
+              className="glass-card"
               sx={{
                 p: { xs: 3, md: 5 },
                 mb: { xs: 4, md: 6 },
                 borderRadius: { xs: 5, md: 7 },
                 background: (theme) =>
                   theme.palette.mode === "dark"
-                    ? "linear-gradient(135deg, rgba(25, 118, 210, 0.4) 0%, rgba(33, 150, 243, 0.1) 100%)"
-                    : "linear-gradient(135deg, #1976d2 0%, #1565c0 100%)",
-                color: (theme) =>
-                  theme.palette.mode === "dark" ? "inherit" : "white",
+                    ? "linear-gradient(135deg, rgba(202, 29, 73, 0.4) 0%, rgba(202, 29, 73, 0.1) 100%)"
+                    : "linear-gradient(135deg, #ca1d49 0%, #a0173a 100%)",
+                color: "white",
                 border: "1px solid",
-                borderColor: (theme) =>
-                  theme.palette.mode === "dark"
-                    ? "rgba(25, 118, 210, 0.3)"
-                    : "rgba(25, 118, 210, 0.2)",
+                borderColor: "rgba(202, 29, 73, 0.3)",
                 position: "relative",
                 overflow: "hidden",
                 cursor: "pointer",
                 transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
                 "&:hover": {
                   transform: "translateY(-6px)",
-                  boxShadow: (theme) =>
-                    theme.palette.mode === "dark"
-                      ? "0 20px 40px rgba(0,0,0,0.4)"
-                      : "0 20px 40px rgba(25, 118, 210, 0.3)",
+                  boxShadow: "0 20px 40px rgba(202, 29, 73, 0.2)",
                 },
               }}
             >
@@ -407,10 +421,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                   sx={{
                     mb: 3,
                     fontWeight: 900,
-                    bgcolor: (theme) =>
-                      theme.palette.mode === "dark"
-                        ? "primary.main"
-                        : "rgba(255,255,255,0.2)",
+                    bgcolor: "rgba(255,255,255,0.2)",
                     color: "white",
                     borderRadius: 1.5,
                     textTransform: "uppercase",
@@ -444,10 +455,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                         <LocationOnIcon
                           sx={{
                             fontSize: 20,
-                            color: (theme) =>
-                              theme.palette.mode === "dark"
-                                ? "primary.main"
-                                : "inherit",
+                            color: "white",
                           }}
                         />
                         <Typography
@@ -463,10 +471,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                         <EventIcon
                           sx={{
                             fontSize: 20,
-                            color: (theme) =>
-                              theme.palette.mode === "dark"
-                                ? "primary.main"
-                                : "inherit",
+                            color: "white",
                           }}
                         />
                         <Typography
@@ -484,7 +489,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                         endIcon={<ArrowForwardIcon />}
                         sx={{
                           bgcolor: "white",
-                          color: "primary.main",
+                          color: "black",
                           fontWeight: 900,
                           px: 3,
                           py: 1.5,
@@ -537,181 +542,90 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           ) : user ? (
             <Paper
               elevation={0}
-              onClick={onNewTrip}
+              className="glass-panel onboarding-gradient"
               sx={{
-                p: { xs: 4, md: 6 },
+                p: { xs: 5, md: 8 },
                 mb: 6,
-                borderRadius: 6,
-                bgcolor: (theme) =>
-                  theme.palette.mode === "dark"
-                    ? "rgba(255,255,255,0.02)"
-                    : "rgba(0,0,0,0.01)",
-                border: (theme) =>
-                  `1px dashed ${
-                    theme.palette.mode === "dark"
-                      ? "rgba(255,255,255,0.1)"
-                      : "rgba(0,0,0,0.1)"
-                  }`,
+                borderRadius: 8,
                 textAlign: "center",
-                cursor: "pointer",
-                transition: "all 0.2s",
-                "&:hover": {
-                  bgcolor: "rgba(255,255,255,0.04)",
-                  borderColor: "primary.main",
-                },
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 3,
+                border: "1px solid rgba(255, 255, 255, 0.08)",
+                boxShadow: "0 20px 50px rgba(0,0,0,0.3)",
               }}
             >
-              <MapIcon sx={{ fontSize: 80, opacity: 0.1, mb: 3 }} />
-              <Typography variant="h4" sx={{ fontWeight: 900, mb: 2 }}>
-                Start Your First Adventure
-              </Typography>
-              <Typography variant="body1" sx={{ mb: 4, opacity: 0.5 }}>
-                Create a trip to start adding destinations, activities, and
-                managing your budget.
-              </Typography>
+              <Box
+                sx={{
+                  bgcolor: "rgba(202, 29, 73, 0.1)",
+                  p: 3,
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  mb: 1,
+                }}
+              >
+                <ExploreIcon sx={{ fontSize: 60, color: "#ca1d49" }} />
+              </Box>
+              <Box sx={{ maxWidth: 600 }}>
+                <Typography
+                  variant="h3"
+                  sx={{
+                    fontWeight: 950,
+                    mb: 2,
+                    letterSpacing: "-0.02em",
+                  }}
+                >
+                  Your Adventure Starts Here
+                </Typography>
+                <Typography
+                  variant="h6"
+                  sx={{
+                    mb: 4,
+                    opacity: 0.7,
+                    fontWeight: 400,
+                    lineHeight: 1.6,
+                    color: "text.secondary",
+                  }}
+                >
+                  Travel planning made seamless. Map out your next destination,
+                  organize your activities, and share the journey with friends.
+                </Typography>
+              </Box>
               <Button
                 variant="contained"
                 size="large"
                 onClick={onNewTrip}
-                sx={{ py: 2, px: 6, borderRadius: 3, fontWeight: 900 }}
+                className="interactive-element"
+                sx={{
+                  py: 2,
+                  px: 8,
+                  borderRadius: 4,
+                  fontWeight: 950,
+                  bgcolor: "#ca1d49",
+                  fontSize: "1.1rem",
+                  boxShadow: "0 10px 30px rgba(202, 29, 73, 0.3)",
+                  "&:hover": {
+                    bgcolor: "#e02154",
+                    transform: "translateY(-2px)",
+                  },
+                }}
               >
                 Create Your First Trip
               </Button>
             </Paper>
           ) : null}
 
-          {/* Statistics and Quick Actions */}
-          <Grid container spacing={3}>
-            <Grid size={{ xs: 12, md: 4 }}>
-              <Paper
-                elevation={0}
-                sx={{
-                  p: 3,
-                  borderRadius: 4,
-                  bgcolor: "rgba(255,255,255,0.02)",
-                  border: "1px solid rgba(255,255,255,0.05)",
-                  height: "100%",
-                }}
-              >
-                <Stack
-                  spacing={2}
-                  direction="row"
-                  alignItems="center"
-                  sx={{ mb: 2 }}
-                >
-                  <Avatar
-                    sx={{ bgcolor: "primary.main", width: 40, height: 40 }}
-                  >
-                    <BeachAccessIcon fontSize="small" />
-                  </Avatar>
-                  <Typography variant="h6" sx={{ fontWeight: 800 }}>
-                    Trip Summary
-                  </Typography>
-                </Stack>
-                <Typography variant="body2" sx={{ opacity: 0.6, mb: 2 }}>
-                  Your global footprint at a glance.
-                </Typography>
-                <Stack spacing={1}>
-                  <Box
-                    sx={{ display: "flex", justifyContent: "space-between" }}
-                  >
-                    <Typography variant="body2">Active Trips</Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 900 }}>
-                      {activeTripsCount}
-                    </Typography>
-                  </Box>
-                  <Box
-                    sx={{ display: "flex", justifyContent: "space-between" }}
-                  >
-                    <Typography variant="body2">Destinations</Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 900 }}>
-                      {myVacations.reduce(
-                        (acc, v) =>
-                          acc + (v.destination && !v.archived ? 1 : 0),
-                        0,
-                      )}
-                    </Typography>
-                  </Box>
-                </Stack>
-              </Paper>
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 8 }}>
-              <Paper
-                elevation={0}
-                sx={{
-                  p: 3,
-                  borderRadius: 4,
-                  bgcolor: "rgba(255,255,255,0.02)",
-                  border: "1px solid rgba(255,255,255,0.05)",
-                  height: "100%",
-                }}
-              >
-                <Typography variant="h6" sx={{ fontWeight: 800, mb: 3 }}>
-                  Your Recent Explorations
-                </Typography>
-                <Box
-                  sx={{
-                    display: "flex",
-                    gap: 2,
-                    overflowX: "auto",
-                    pb: 1,
-                    "&::-webkit-scrollbar": { height: 4 },
-                    "&::-webkit-scrollbar-thumb": {
-                      bgcolor: "rgba(255,255,255,0.05)",
-                      borderRadius: 10,
-                    },
-                  }}
-                >
-                  {myVacations.slice(0, 5).map((vac) => (
-                    <Box
-                      key={vac.id}
-                      onClick={() => onSelectVacation(vac)}
-                      sx={{
-                        minWidth: 200,
-                        p: 2,
-                        borderRadius: 3,
-                        bgcolor: "rgba(255,255,255,0.03)",
-                        border: "1px solid rgba(255,255,255,0.05)",
-                        cursor: "pointer",
-                        transition: "all 0.2s",
-                        "&:hover": {
-                          bgcolor: "rgba(255,255,255,0.08)",
-                          borderColor: "primary.main",
-                        },
-                      }}
-                    >
-                      <Typography
-                        variant="subtitle2"
-                        sx={{ fontWeight: 800, mb: 0.5 }}
-                      >
-                        {vac.name}
-                      </Typography>
-                      <Typography
-                        variant="caption"
-                        sx={{ opacity: 0.5, display: "block" }}
-                      >
-                        {vac.destination}
-                      </Typography>
-                    </Box>
-                  ))}
-                  {myVacations.length === 0 && (
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        opacity: 0.3,
-                        py: 4,
-                        textAlign: "center",
-                        width: "100%",
-                      }}
-                    >
-                      No recent trips to display.
-                    </Typography>
-                  )}
-                </Box>
-              </Paper>
-            </Grid>
-          </Grid>
+          {/* Dynamic Widget System */}
+          <Box sx={{ mt: 3, mb: 10 }}>
+            <DashboardWidgets
+              user={user}
+              vacations={vacations}
+              onSelectVacation={onSelectVacation}
+            />
+          </Box>
         </>
       )}
     </Box>

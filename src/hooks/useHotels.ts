@@ -56,8 +56,17 @@ export function useHotels(locationId: number | null) {
   }
 
   async function deleteHotel(id: number) {
+    const hotelToDelete = hotels.find((h) => h.id === id);
     const { error } = await supabase.from("hotels").delete().eq("id", id);
-    if (!error && locationId) fetchHotels(locationId);
+    if (!error && locationId) {
+      if (hotelToDelete?.is_selected) {
+        await supabase
+          .from("locations")
+          .update({ hotel_url: null })
+          .eq("id", locationId);
+      }
+      fetchHotels(locationId);
+    }
   }
 
   async function setSelectedHotel(id: number | null) {
@@ -99,7 +108,16 @@ export function useHotels(locationId: number | null) {
       .from("hotels")
       .update(updates)
       .eq("id", id);
-    if (!error && locationId) fetchHotels(locationId);
+    if (!error && locationId) {
+      const currentHotel = hotels.find((h) => h.id === id);
+      if (currentHotel?.is_selected && updates.url !== undefined) {
+        await supabase
+          .from("locations")
+          .update({ hotel_url: updates.url })
+          .eq("id", locationId);
+      }
+      fetchHotels(locationId);
+    }
   }
 
   return {

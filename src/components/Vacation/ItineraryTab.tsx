@@ -136,7 +136,7 @@ export const ItineraryTab: React.FC<ItineraryTabProps> = ({
     <Box
       sx={{
         display: "grid",
-        gridTemplateColumns: { xs: "1fr", lg: "320px 1fr" },
+        gridTemplateColumns: { xs: "1fr", lg: "280px 1fr", xl: "320px 1fr" },
         gap: { xs: 2.5, lg: 4 },
         alignItems: "start",
         width: "100%",
@@ -157,7 +157,13 @@ export const ItineraryTab: React.FC<ItineraryTabProps> = ({
       >
         <Typography
           variant="overline"
-          sx={{ fontWeight: 900, opacity: 0.4, letterSpacing: 2, px: 1 }}
+          sx={{
+            fontWeight: 900,
+            opacity: 0.4,
+            letterSpacing: 2,
+            px: 1,
+            display: { xs: "none", lg: "block" },
+          }}
         >
           Trip Stops
         </Typography>
@@ -230,7 +236,7 @@ export const ItineraryTab: React.FC<ItineraryTabProps> = ({
                 fontWeight: 700,
                 lineHeight: 1.2,
                 textTransform: "none",
-                minWidth: { xs: "180px", lg: "auto" },
+                minWidth: { xs: "180px", md: "auto" },
                 bgcolor:
                   selectedLocation?.id === loc.id
                     ? "secondary.main"
@@ -500,7 +506,7 @@ export const ItineraryTab: React.FC<ItineraryTabProps> = ({
                   <Box
                     sx={{
                       display: "grid",
-                      gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+                      gridTemplateColumns: { xs: "1fr", xl: "1fr 1fr" },
                       gap: 2,
                     }}
                   >
@@ -604,7 +610,7 @@ export const ItineraryTab: React.FC<ItineraryTabProps> = ({
                       display: "grid",
                       gridTemplateColumns: {
                         xs: "1fr",
-                        md: isEditing ? "1fr 1fr auto auto" : "1fr 1fr auto",
+                        xl: isEditing ? "1fr 1fr auto auto" : "1fr 1fr auto",
                       },
                       gap: 2,
                       alignItems: "center",
@@ -628,6 +634,7 @@ export const ItineraryTab: React.FC<ItineraryTabProps> = ({
                       }}
                     >
                       <MenuItem value="activity">Activity</MenuItem>
+                      <MenuItem value="daytrip">Day Trip</MenuItem>
                       <MenuItem value="food">Dining</MenuItem>
                       <MenuItem value="flight">Travel</MenuItem>
                       <MenuItem value="hotel">Stay</MenuItem>

@@ -98,7 +98,7 @@ export const DestinationsTab: React.FC<DestinationsTabProps> = ({
         display: "grid",
         gridTemplateColumns: {
           xs: "1fr",
-          lg: canEdit ? "1fr 400px" : "1fr",
+          xl: canEdit ? "1fr 400px" : "1fr",
         },
         gap: { xs: 2.5, lg: 4 },
       }}
@@ -253,12 +253,14 @@ export const DestinationsTab: React.FC<DestinationsTabProps> = ({
                       }}
                     />
                     <TextField
-                      label="Address"
+                      label="Location for Map"
                       size="small"
+                      placeholder="Google Maps link or just 'Tokyo'"
                       fullWidth
                       value={editLocAddr}
                       onChange={(e) => setEditLocAddr(e.target.value)}
                       variant="filled"
+                      helperText="Specify the city or address for the map markers."
                       sx={{
                         "& .MuiFilledInput-root": {
                           bgcolor: (theme) =>
@@ -375,8 +377,16 @@ export const DestinationsTab: React.FC<DestinationsTabProps> = ({
                               sx={{
                                 display: "flex",
                                 gap: 0.5,
-                                opacity: 0,
-                                transform: "translateX(10px)",
+                                opacity: { xs: 1, sm: 1, md: 0 },
+                                transform: {
+                                  xs: "none",
+                                  sm: "none",
+                                  md: "translateX(10px)",
+                                },
+                                "@media (hover: none)": {
+                                  opacity: 1,
+                                  transform: "none",
+                                },
                                 transition:
                                   "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
                               }}
@@ -630,7 +640,9 @@ export const DestinationsTab: React.FC<DestinationsTabProps> = ({
                 }}
               />
               <TextField
-                label="Full Address (optional)"
+                label="Location for Map"
+                placeholder="Google Maps link or just 'Tokyo'"
+                helperText="If the destination name is custom (e.g. 'Tokyo Leg 1'), use this field to tell the map where it is."
                 value={newLocAddr}
                 onChange={(e) => setNewLocAddr(e.target.value)}
                 fullWidth
@@ -648,7 +660,7 @@ export const DestinationsTab: React.FC<DestinationsTabProps> = ({
               <Box
                 sx={{
                   display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
+                  gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
                   gap: 1.5,
                 }}
               >

@@ -192,7 +192,10 @@ export const SortableAgendaItem = React.memo(
               {...listeners}
               sx={{
                 cursor: "grab",
-                opacity: 0.1,
+                opacity: { xs: 0.5, md: 0.1 },
+                "@media (hover: none)": {
+                  opacity: 0.6,
+                },
                 transition: "opacity 0.2s",
                 "&:active": { cursor: "grabbing" },
                 display: "flex",
@@ -480,8 +483,12 @@ export const SortableAgendaItem = React.memo(
             display: "flex",
             alignItems: "center",
             gap: 1,
-            opacity: { xs: 1, sm: 0 },
-            transform: { xs: "none", sm: "scale(0.9)" },
+            opacity: { xs: 1, sm: 1, md: 0 },
+            transform: { xs: "none", sm: "none", md: "scale(0.9)" },
+            "@media (hover: none)": {
+              opacity: 1,
+              transform: "none",
+            },
             transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
             mt: { xs: 1, sm: 0 },
             justifyContent: "flex-end",

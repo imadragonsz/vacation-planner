@@ -23,6 +23,11 @@ function Root() {
         <Router>
           <Routes>
             <Route path="/" element={<App user={user} setUser={setUser} />} />
+            <Route
+              path="/auth"
+              element={<App user={user} setUser={setUser} />}
+            />
+            <Route path="*" element={<App user={user} setUser={setUser} />} />
           </Routes>
         </Router>
       </LocalizationProvider>

@@ -91,27 +91,21 @@ const VacationListItem: React.FC<VacationListItemProps> = React.memo(
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "12px 16px",
-          borderRadius: "12px",
-          transition: "all 0.2s",
-          mb: 0.5,
+          padding: { xs: "14px 18px", md: "12px 16px" },
+          borderRadius: "16px",
+          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+          mb: { xs: 1.5, sm: 1.5, md: 1 },
           cursor: "pointer",
           position: "relative",
-          bgcolor: (theme) =>
-            selected
-              ? theme.palette.mode === "dark"
-                ? "rgba(25, 118, 210, 0.15)"
-                : "rgba(25, 118, 210, 0.08)"
-              : "transparent",
+          bgcolor: selected ? "rgba(202, 29, 73, 0.1)" : "transparent",
+          border: selected
+            ? "1px solid rgba(202, 29, 73, 0.3)"
+            : "1px solid transparent",
           "&:hover": {
-            bgcolor: (theme) =>
-              selected
-                ? theme.palette.mode === "dark"
-                  ? "rgba(25, 118, 210, 0.2)"
-                  : "rgba(25, 118, 210, 0.12)"
-                : theme.palette.mode === "dark"
-                  ? "rgba(255, 255, 255, 0.05)"
-                  : "rgba(0, 0, 0, 0.04)",
+            bgcolor: selected
+              ? "rgba(202, 29, 73, 0.15)"
+              : "rgba(255, 255, 255, 0.05)",
+            transform: selected ? "none" : "translateX(4px)",
             "& .vac-actions": { opacity: 1 },
           },
           "&::before": {
@@ -121,7 +115,7 @@ const VacationListItem: React.FC<VacationListItemProps> = React.memo(
             top: "20%",
             bottom: "20%",
             width: 3,
-            bgcolor: "primary.main",
+            bgcolor: "#ca1d49",
             borderRadius: "0 4px 4px 0",
             opacity: selected ? 1 : 0,
             transition: "opacity 0.2s",
@@ -136,7 +130,7 @@ const VacationListItem: React.FC<VacationListItemProps> = React.memo(
             variant="body1"
             sx={{
               fontWeight: selected ? 800 : 700,
-              color: selected ? "primary.main" : "text.primary",
+              color: selected ? "#ca1d49" : "white",
               fontSize: "0.95rem",
               whiteSpace: "nowrap",
               overflow: "hidden",
@@ -218,7 +212,7 @@ const VacationListItem: React.FC<VacationListItemProps> = React.memo(
                   height: 16,
                   fontSize: "0.6rem",
                   fontWeight: 900,
-                  bgcolor: "primary.main",
+                  bgcolor: "#ca1d49",
                   color: "white",
                   borderRadius: 1,
                   "& .MuiChip-label": { px: 0.5 },
@@ -236,7 +230,7 @@ const VacationListItem: React.FC<VacationListItemProps> = React.memo(
                       width: 14,
                       height: 14,
                       fontSize: "0.5rem",
-                      bgcolor: "primary.main",
+                      bgcolor: "#ca1d49",
                     }}
                   >
                     {!vacation.owner_avatar &&
@@ -259,7 +253,14 @@ const VacationListItem: React.FC<VacationListItemProps> = React.memo(
           sx={{
             display: isOwner ? "flex" : "none",
             gap: 0.5,
-            opacity: selected ? 1 : 0,
+            opacity: {
+              xs: 1,
+              sm: 1,
+              md: selected ? 1 : 0,
+            },
+            "@media (hover: none)": {
+              opacity: 1,
+            },
             transition: "opacity 0.2s",
           }}
           onClick={(e) => e.stopPropagation()}

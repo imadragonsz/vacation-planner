@@ -78,6 +78,16 @@ export function useItemParticipants(
   );
 
   const joinItem = async (itemId: number, userId: string) => {
+    // Check if already exists to avoid 409 Conflict
+    const { data: existing } = await supabase
+      .from(tableName)
+      .select("profile_id")
+      .eq(idColumn, itemId)
+      .eq("profile_id", userId)
+      .maybeSingle();
+
+    if (existing) return true;
+
     const { error } = await supabase
       .from(tableName)
       .insert([{ [idColumn]: itemId, profile_id: userId }]);

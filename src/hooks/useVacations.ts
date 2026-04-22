@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { supabase } from "../supabaseClient";
 import { Vacation } from "../vacation";
 
@@ -7,14 +7,15 @@ export function useVacations(fetchVacations: () => void, pushUndo: () => void) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchAllVacations = useCallback(async (includeArchived = false) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const fetchPromise = supabase
-        .from("vacations")
-        .select(
-          `
+  const fetchAllVacations = useCallback(
+    async (includeArchived = false, signal?: AbortSignal) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const { data, error } = await supabase
+          .from("vacations")
+          .select(
+            `
           *,
           profiles!user_id (
             display_name,
@@ -24,46 +25,43 @@ export function useVacations(fetchVacations: () => void, pushUndo: () => void) {
             user_id
           )
         `,
-        )
-        .order("id", { ascending: false });
+          )
+          .abortSignal(signal ?? new AbortController().signal)
+          .order("id", { ascending: false });
 
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Database timeout")), 8000),
-      );
+        if (error) {
+          throw error;
+        }
 
-      const { data, error } = await (Promise.race([
-        fetchPromise,
-        timeoutPromise,
-      ]) as any);
+        if (data) {
+          const vacationsWithProfiles = data.map((vac: any) => ({
+            ...vac,
+            owner_name: vac.profiles?.display_name,
+            owner_avatar: vac.profiles?.avatar_url,
+          }));
 
-      if (error) {
-        throw error;
+          const filteredData = includeArchived
+            ? vacationsWithProfiles
+            : vacationsWithProfiles.filter(
+                (vacation: any) => !vacation.archived,
+              );
+
+          setVacations(filteredData as Vacation[]);
+        }
+      } catch (err: any) {
+        if (signal?.aborted || err?.name === "AbortError") {
+          return;
+        }
+        console.error("Fetch vacations failed:", err);
+        setError(err.message || "Failed to fetch vacations");
+      } finally {
+        if (!signal?.aborted) {
+          setLoading(false);
+        }
       }
-
-      if (data) {
-        const vacationsWithProfiles = data.map((vac: any) => ({
-          ...vac,
-          owner_name: vac.profiles?.display_name,
-          owner_avatar: vac.profiles?.avatar_url,
-        }));
-
-        const filteredData = includeArchived
-          ? vacationsWithProfiles
-          : vacationsWithProfiles.filter((vacation: any) => !vacation.archived);
-
-        setVacations(filteredData as Vacation[]);
-      }
-    } catch (err: any) {
-      console.error("Fetch vacations failed:", err);
-      setError(err.message || "Failed to fetch vacations");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchAllVacations();
-  }, [fetchAllVacations]);
+    },
+    [],
+  );
 
   const updateVacation = async (vac: Vacation) => {
     setLoading(true);

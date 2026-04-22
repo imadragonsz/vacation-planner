@@ -229,6 +229,7 @@ const VacationEditModal: React.FC<VacationEditModalProps> = ({
                 : "rgba(0,0,0,0.2)",
             borderRadius: 3,
             px: 3,
+            height: 48,
             fontWeight: 800,
           }}
         >
@@ -240,7 +241,7 @@ const VacationEditModal: React.FC<VacationEditModalProps> = ({
           color="primary"
           type="submit"
           form="vacation-edit-form"
-          sx={{ fontWeight: 800, borderRadius: 3, px: 4, py: 1 }}
+          sx={{ fontWeight: 800, borderRadius: 3, px: 4, height: 48 }}
         >
           Save Changes
         </Button>

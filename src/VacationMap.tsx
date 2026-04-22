@@ -68,6 +68,7 @@ export type Location = {
   lng?: number;
   hotel_url?: string | null;
   start_date?: string | null;
+  end_date?: string | null;
   selected_hotel?: {
     name: string;
     url: string | null;
@@ -93,6 +94,8 @@ type LocationPopupProps = {
     name: string;
     url: string | null;
   } | null;
+  startDate?: string | null;
+  endDate?: string | null;
 };
 
 const LocationPopup: React.FC<LocationPopupProps> = ({
@@ -102,6 +105,8 @@ const LocationPopup: React.FC<LocationPopupProps> = ({
   lng,
   hotelUrl,
   selectedHotel,
+  startDate,
+  endDate,
 }) => {
   const [englishAddress, setEnglishAddress] = React.useState<string | null>(
     () => {
@@ -158,6 +163,18 @@ const LocationPopup: React.FC<LocationPopupProps> = ({
         <h3 className="vp-popup-title" style={{ fontSize: "1.1rem" }}>
           {name}
         </h3>
+        {(startDate || endDate) && (
+          <div
+            style={{
+              fontSize: "0.75rem",
+              opacity: 0.8,
+              marginTop: 4,
+              fontWeight: 500,
+            }}
+          >
+            {startDate} {endDate && ` - ${endDate}`}
+          </div>
+        )}
       </div>
       <div className="vp-popup-body">
         {(hotelUrl || selectedHotel) && (
@@ -432,9 +449,6 @@ const VacationMap = ({
   onSelectLocation?: (locId: number) => void;
   selectedLocationId?: number | null;
 }) => {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
-
   // Center on selected location if available
   const selected = selectedLocationId
     ? locations.find((l) => l.id === selectedLocationId)
@@ -463,6 +477,32 @@ const VacationMap = ({
         ? [locations[0].lat, locations[0].lng]
         : [35, 135]; // Japan as fallback
 
+  // Apply jitter to overlapping markers so they don't layer perfectly
+  const processedLocations = React.useMemo(() => {
+    const coordsMap = new Map<string, number>();
+    return locations.map((loc) => {
+      if (!loc.lat || !loc.lng) return loc;
+
+      const key = `${loc.lat.toFixed(6)},${loc.lng.toFixed(6)}`;
+      const count = coordsMap.get(key) || 0;
+      coordsMap.set(key, count + 1);
+
+      if (count === 0) return loc;
+
+      // Apply a tiny spiral offset (gold angle) to spread them out
+      const angle = count * 137.5;
+      const radius = 0.00015 * Math.sqrt(count); // Grows slightly with each overlapping marker
+      const offsetLat = radius * Math.cos(angle * (Math.PI / 180));
+      const offsetLng = radius * Math.sin(angle * (Math.PI / 180));
+
+      return {
+        ...loc,
+        lat: loc.lat + offsetLat,
+        lng: loc.lng + offsetLng,
+      };
+    });
+  }, [locations]);
+
   return (
     <div style={{ height: "100%", width: "100%", minHeight: 400 }}>
       <MapContainer
@@ -475,23 +515,17 @@ const VacationMap = ({
           bounds={bounds || undefined}
         />
         <TileLayer
-          url={
-            isDark
-              ? "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-              : "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-          }
+          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
         />
-        {locations.map((loc) => {
+        {processedLocations.map((loc) => {
           if (loc.lat && loc.lng) {
             return (
               <Marker
                 key={loc.id}
                 position={[loc.lat, loc.lng]}
                 icon={
-                  loc.hotel_url || loc.selected_hotel
-                    ? hotelIcon
-                    : locationIcon
+                  loc.hotel_url || loc.selected_hotel ? hotelIcon : locationIcon
                 }
                 draggable={!!onLocationChange}
                 eventHandlers={{
@@ -517,6 +551,8 @@ const VacationMap = ({
                     lng={loc.lng}
                     hotelUrl={loc.hotel_url}
                     selectedHotel={loc.selected_hotel}
+                    startDate={loc.start_date}
+                    endDate={loc.end_date}
                   />
                 </Popup>
               </Marker>

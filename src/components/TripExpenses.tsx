@@ -107,7 +107,8 @@ export default function TripExpenses({
     }
 
     try {
-      const res = await fetch("https://api.frankfurter.app/latest?from=EUR");
+      // Use proxy endpoint to bypass CORS
+      const res = await fetch("/api/currency");
       const data = await res.json();
       if (data.rates) {
         const newRates = { EUR: 1, ...data.rates };

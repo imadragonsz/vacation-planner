@@ -5,6 +5,7 @@ import DirectionsBusIcon from "@mui/icons-material/DirectionsBus";
 import HotelIcon from "@mui/icons-material/Hotel";
 import NoteIcon from "@mui/icons-material/Note";
 import EventNoteIcon from "@mui/icons-material/EventNote";
+import LandscapeIcon from "@mui/icons-material/Landscape";
 
 export const getTravelIcon = (type: string) => {
   switch (type) {
@@ -18,6 +19,8 @@ export const getTravelIcon = (type: string) => {
       return <HotelIcon fontSize="small" />;
     case "note":
       return <NoteIcon fontSize="small" />;
+    case "daytrip":
+      return <LandscapeIcon fontSize="small" />;
     default:
       return <EventNoteIcon fontSize="small" />;
   }

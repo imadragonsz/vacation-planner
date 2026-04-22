@@ -3,6 +3,11 @@ const path = require("path");
 const multer = require("multer");
 const sharp = require("sharp");
 const fs = require("fs");
+
+// Optimize sharp for large images
+sharp.cache(false);
+sharp.concurrency(1); // Reduce memory pressure by processing one image at a time
+
 const cors = require("cors");
 const dotenv = require("dotenv");
 const { createClient } = require("@supabase/supabase-js");
@@ -31,6 +36,15 @@ if (!process.env.REACT_APP_SUPABASE_URL) {
 }
 
 const app = express();
+
+const helmet = require("helmet");
+app.use(
+  helmet({
+    contentSecurityPolicy: false, // Turn off CSP if it breaks your React app, but keep the rest
+    permissionsPolicy: false,
+  }),
+);
+
 // Use 5001 for backend to avoid conflict with React dev server on 5454
 const PORT = process.env.BACKEND_PORT || 5001;
 
@@ -60,7 +74,7 @@ app.use(cors());
 app.use(express.json());
 
 // Ensure upload directories exist
-const uploadDirs = ["original", "large", "medium", "thumbnail"];
+const uploadDirs = ["original", "large", "medium", "thumbnail", "documents"];
 uploadDirs.forEach((dir) => {
   const fullPath = path.join(__dirname, "uploads", dir);
   if (!fs.existsSync(fullPath)) {
@@ -72,7 +86,24 @@ uploadDirs.forEach((dir) => {
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 const buildPath = path.join(__dirname, "build");
-app.use(express.static(buildPath));
+const hasBuild = fs.existsSync(buildPath);
+const hasBuildIndex = fs.existsSync(path.join(buildPath, "index.html"));
+const hasServiceWorker = fs.existsSync(
+  path.join(buildPath, "service-worker.js"),
+);
+
+if (hasBuild) {
+  // Serve build output when running in production mode.
+  app.use(express.static(buildPath));
+  app.use("/static", express.static(path.join(buildPath, "static")));
+
+  app.get("/service-worker.js", (req, res) => {
+    if (!hasServiceWorker) {
+      return res.status(404).json({ error: "service-worker.js not found" });
+    }
+    res.sendFile(path.join(buildPath, "service-worker.js"));
+  });
+}
 
 // Multer setup - Limit to 25MB for high-res travel photos
 const storage = multer.memoryStorage();
@@ -141,16 +172,33 @@ app.patch("/api/admin/vacations/:id", async (req, res) => {
   }
 });
 
-app.post("/api/gallery/upload", upload.single("image"), async (req, res) => {
+// Proxy for Currency API to bypass CORS
+app.get("/api/currency", async (req, res) => {
+  try {
+    const response = await fetch("https://api.frankfurter.app/latest?from=EUR");
+    if (!response.ok) {
+      throw new Error(`Frankfurter API error: ${response.status}`);
+    }
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    console.error("[Currency] Proxy failed:", err);
+    res
+      .status(502)
+      .json({ error: "Failed to fetch currency rates from upstream" });
+  }
+});
+
+app.post("/api/gallery/upload", upload.array("images"), async (req, res) => {
   try {
     console.log("[Upload] Received request:", req.body);
-    const { vacation_id, user_id, caption } = req.body;
-    const file = req.file;
+    const { vacation_id, user_id, captions } = req.body;
+    const files = req.files;
     const authHeader = req.headers.authorization;
 
-    if (!file) {
-      console.error("[Upload] No file in request");
-      return res.status(400).json({ error: "No file uploaded" });
+    if (!files || files.length === 0) {
+      console.error("[Upload] No files in request");
+      return res.status(400).json({ error: "No files uploaded" });
     }
 
     // Verify User strictly for uploads
@@ -185,75 +233,107 @@ app.post("/api/gallery/upload", upload.single("image"), async (req, res) => {
         .json({ error: "Server config error: Supabase URL missing" });
     }
 
-    const filename = `${Date.now()}-${file.originalname.replace(/\s+/g, "_")}`;
-    const baseFilename = path.parse(filename).name;
+    const captionList = JSON.parse(captions || "[]");
+    const results = [];
 
-    console.log("[Upload] Processing file:", filename);
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const filename = `${Date.now()}-${i}-${file.originalname.replace(
+        /\s+/g,
+        "_",
+      )}`;
+      const baseFilename = path.parse(filename).name;
 
-    // Save original
-    const originalDir = path.join(__dirname, "uploads", "original");
-    if (!fs.existsSync(originalDir))
-      fs.mkdirSync(originalDir, { recursive: true });
+      console.log(
+        `[Upload] Processing file ${i + 1}/${files.length}:`,
+        filename,
+      );
 
-    const originalPath = path.join(originalDir, filename);
-    fs.writeFileSync(originalPath, file.buffer);
+      // Save original
+      const originalDir = path.join(__dirname, "uploads", "original");
+      if (!fs.existsSync(originalDir))
+        fs.mkdirSync(originalDir, { recursive: true });
 
-    // Process resolutions
-    const sizes = [
-      { name: "large", width: 1920 },
-      { name: "medium", width: 1024 },
-      { name: "thumbnail", width: 480 },
-    ];
+      const originalPath = path.join(originalDir, filename);
+      fs.writeFileSync(originalPath, file.buffer);
 
-    const paths = {
-      original: `/uploads/original/${filename}`,
-    };
+      // Process resolutions with failOn: 'none' to handle slightly corrupt JPEGs (common in mobile uploads)
+      const imageInstance = sharp(file.buffer, { failOn: "none" }).rotate();
+      const metadata = await imageInstance.metadata();
+      console.log(
+        `[Upload] Processing ${i + 1}/${files.length}: ${metadata.width}x${
+          metadata.height
+        } (${file.size} bytes)`,
+      );
 
-    for (const size of sizes) {
-      try {
-        const sizeDir = path.join(__dirname, "uploads", size.name);
-        if (!fs.existsSync(sizeDir)) fs.mkdirSync(sizeDir, { recursive: true });
+      const sizes = [
+        { name: "large", width: 1920 },
+        { name: "medium", width: 1024 },
+        { name: "thumbnail", width: 480 },
+      ];
 
-        const outputPath = path.join(sizeDir, `${baseFilename}.webp`);
+      const paths = {
+        original: `/uploads/original/${filename}`,
+      };
 
-        await sharp(file.buffer)
-          .rotate() // Automatically rotate based on EXIF orientation
-          .resize(size.width, null, { withoutEnlargement: true })
-          .webp({ quality: size.name === "large" ? 85 : 80 })
-          .toFile(outputPath);
+      for (const size of sizes) {
+        try {
+          const sizeDir = path.join(__dirname, "uploads", size.name);
+          if (!fs.existsSync(sizeDir))
+            fs.mkdirSync(sizeDir, { recursive: true });
 
-        paths[size.name] = `/uploads/${size.name}/${baseFilename}.webp`;
-      } catch (sharpErr) {
-        console.error(`[Upload] Sharp error (${size.name}):`, sharpErr);
+          const outputPath = path.join(sizeDir, `${baseFilename}.webp`);
+
+          // Only resize if the original is actually wider than the target
+          const resizeWidth = Math.min(
+            size.width,
+            metadata.width || size.width,
+          );
+
+          await imageInstance
+            .clone()
+            .resize(resizeWidth, null, { withoutEnlargement: true })
+            .webp({ quality: 80, effort: 6 }) // effort 6 for better compression/speed balance
+            .toFile(outputPath);
+
+          paths[size.name] = `/uploads/${size.name}/${baseFilename}.webp`;
+          console.log(`[Upload] Generated ${size.name} resolution`);
+        } catch (sharpErr) {
+          console.error(`[Upload] Sharp error (${size.name}):`, sharpErr);
+          // If a resized version fails, fallback to the original for now
+          // so the user at least sees something (even if slow)
+          paths[size.name] = paths.original;
+        }
       }
+
+      // Save to database
+      console.log(`[Upload] Saving ${i + 1} to DB...`);
+      const { data, error } = await supabase
+        .from("vacation_gallery")
+        .insert([
+          {
+            vacation_id: parseInt(vacation_id),
+            user_id,
+            original_url: paths.original,
+            large_url: paths.large,
+            medium_url: paths.medium,
+            thumbnail_url: paths.thumbnail,
+            caption: captionList[i] || "",
+          },
+        ])
+        .select();
+
+      if (error) {
+        console.error("[Upload] DB Error:", error);
+        throw error;
+      }
+      results.push(data[0]);
     }
 
-    // Save to database
-    console.log("[Upload] Saving to DB...");
-    const { data, error } = await supabase
-      .from("vacation_gallery")
-      .insert([
-        {
-          vacation_id: parseInt(vacation_id),
-          user_id,
-          original_url: paths.original,
-          large_url: paths.large,
-          medium_url: paths.medium,
-          thumbnail_url: paths.thumbnail,
-          caption: caption || "",
-        },
-      ])
-      .select();
-
-    if (error) {
-      console.error("[Upload] DB Error:", error);
-      throw error;
-    }
-
-    console.log("[Upload] Success!");
-    res.json({ success: true, data: data[0] });
+    console.log("[Upload] Success: Uploaded", results.length, "images");
+    res.json({ success: true, count: results.length });
   } catch (err) {
-    console.error("[Upload] Global Catch:", err);
+    console.error("[Upload] Error:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -341,16 +421,17 @@ app.get("/api/gallery/:vacationId", async (req, res) => {
 app.get("/api/gallery/download/:filename", (req, res) => {
   try {
     const { filename } = req.params;
-    const filePath = path.join(__dirname, "uploads", "original", filename);
+    const safeFilename = path.basename(filename); // Strips directory paths to prevent Path Traversal
+    const filePath = path.join(__dirname, "uploads", "original", safeFilename);
 
-    console.log(`[Download] Requested: ${filename}`);
+    console.log(`[Download] Requested: ${filename} -> Safe: ${safeFilename}`);
 
     if (!fs.existsSync(filePath)) {
       console.error(`[Download] File not found: ${filePath}`);
       return res.status(404).send("File not found");
     }
 
-    res.download(filePath, filename);
+    res.download(filePath, safeFilename);
   } catch (err) {
     console.error("[Download] Error:", err);
     res.status(500).send("Server error during download");
@@ -465,10 +546,159 @@ app.delete("/api/gallery/:id", async (req, res) => {
   }
 });
 
+app.post("/api/documents/upload", upload.single("file"), async (req, res) => {
+  try {
+    const { vacation_id, user_id } = req.body;
+    const file = req.file;
+    const authHeader = req.headers.authorization;
+
+    if (!file) return res.status(400).json({ error: "No file uploaded" });
+    if (!authHeader) return res.status(401).json({ error: "Missing token" });
+
+    const token = authHeader.replace("Bearer ", "");
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser(token);
+
+    if (authError || !user || user.id !== user_id) {
+      return res.status(401).json({ error: "Unauthorized upload" });
+    }
+
+    const filename = `${Date.now()}-${file.originalname.replace(/\s+/g, "_")}`;
+    const filePath = path.join(__dirname, "uploads", "documents", filename);
+
+    // Ensure directory exists (just in case)
+    const docsDir = path.join(__dirname, "uploads", "documents");
+    if (!fs.existsSync(docsDir)) fs.mkdirSync(docsDir, { recursive: true });
+
+    fs.writeFileSync(filePath, file.buffer);
+
+    const relativePath = `documents/${filename}`;
+
+    const { data, error } = await supabase
+      .from("vacation_documents")
+      .insert({
+        vacation_id: parseInt(vacation_id),
+        name: file.originalname,
+        file_path: relativePath,
+        file_type: file.mimetype,
+        uploaded_by: user.id,
+      })
+      .select("*, profiles!uploaded_by(display_name)")
+      .single();
+
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    console.error("[Docs Upload] Error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete("/api/documents/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) return res.status(401).json({ error: "Missing token" });
+
+    const token = authHeader.replace("Bearer ", "");
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser(token);
+
+    if (authError || !user)
+      return res.status(401).json({ error: "Unauthorized" });
+
+    // Check permissions (Uploader or Trip Owner)
+    const { data: doc } = await supabase
+      .from("vacation_documents")
+      .select("*, vacations(user_id)")
+      .eq("id", id)
+      .single();
+
+    if (!doc) return res.status(404).json({ error: "Document not found" });
+
+    const isOwner = doc.uploaded_by === user.id;
+    const isTripOwner = doc.vacations?.user_id === user.id;
+
+    if (!isOwner && !isTripOwner) {
+      return res.status(403).json({ error: "Unauthorized deletion" });
+    }
+
+    // Delete from DB
+    const { error: dbError } = await supabase
+      .from("vacation_documents")
+      .delete()
+      .eq("id", id);
+
+    if (dbError) throw dbError;
+
+    // Delete from disk
+    const fullPath = path.join(__dirname, "uploads", doc.file_path);
+    try {
+      if (fs.existsSync(fullPath)) {
+        fs.unlinkSync(fullPath);
+      }
+    } catch (err) {
+      console.error("[Docs Delete] File system error:", err);
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("[Docs Delete] Error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin endpoint to manually reset a user's password (bypasses SMTP)
+app.post("/api/admin/reset-user-password", async (req, res) => {
+  try {
+    const { user_id, new_password } = req.body;
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) return res.status(401).json({ error: "Missing token" });
+    if (!user_id || !new_password)
+      return res.status(400).json({ error: "Missing parameters" });
+
+    const token = authHeader.replace("Bearer ", "");
+    const {
+      data: { user: adminUser },
+      error: authError,
+    } = await supabase.auth.getUser(token);
+
+    if (authError || !adminUser)
+      return res.status(401).json({ error: "Unauthorized" });
+
+    // Verify requesting user is the Admin
+    if (adminUser.id !== process.env.REACT_APP_ADMIN_UUID) {
+      return res.status(403).json({ error: "Forbidden: Not an admin" });
+    }
+
+    const { data, error } = await supabase.auth.admin.updateUserById(user_id, {
+      password: new_password,
+    });
+
+    if (error) throw error;
+    res.json({ success: true, user: data.user.email });
+  } catch (err) {
+    console.error("[Admin Reset] Error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Serve the React app for all unmatched routes
 app.get(/.*/, (req, res) => {
   if (req.path.startsWith("/api")) {
     return res.status(404).json({ error: `API route not found: ${req.path}` });
+  }
+  if (!hasBuildIndex) {
+    return res.status(503).json({
+      error:
+        "Frontend build not found. Start the React dev server with npm start.",
+    });
   }
   res.sendFile(path.join(buildPath, "index.html"));
 });

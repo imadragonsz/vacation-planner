@@ -13,6 +13,7 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import ExploreIcon from "@mui/icons-material/Explore";
 import { NotificationMenu } from "./NotificationMenu";
 
 export interface NavBarProps {
@@ -56,9 +57,9 @@ const NavBar: React.FC<NavBarProps> = React.memo(
         sx={{
           backgroundColor: (theme) =>
             theme.palette.mode === "dark"
-              ? "rgba(18, 18, 18, 0.7)"
-              : "rgba(255, 255, 255, 0.8)",
-          backdropFilter: "blur(20px)",
+              ? "rgba(10, 10, 11, 0.6)"
+              : "rgba(255, 255, 255, 0.7)",
+          backdropFilter: "blur(20px) saturate(180%)",
           borderBottom: (theme) =>
             `1px solid ${
               theme.palette.mode === "dark"
@@ -90,29 +91,51 @@ const NavBar: React.FC<NavBarProps> = React.memo(
               <IconButton
                 color="inherit"
                 onClick={onBackToTrips}
-                size="small"
+                size="large"
                 sx={{
                   mr: 0.5,
+                  width: 44,
+                  height: 44,
                   bgcolor: (theme) =>
                     theme.palette.mode === "dark"
-                      ? "rgba(255,255,255,0.05)"
-                      : "rgba(0,0,0,0.03)",
+                      ? "rgba(255,255,255,0.06)"
+                      : "rgba(0,0,0,0.04)",
+                  "&:hover": {
+                    bgcolor: "primary.main",
+                    color: "white",
+                  },
                 }}
               >
                 <ArrowBackIcon fontSize="small" />
               </IconButton>
             )}
+            <Box
+              sx={{
+                bgcolor: "primary.main",
+                width: { xs: 30, md: 36 },
+                height: { xs: 30, md: 36 },
+                borderRadius: { xs: 1, md: 1.5 },
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "white",
+                boxShadow: "0 4px 12px rgba(124, 77, 255, 0.3)",
+                mr: 1,
+              }}
+            >
+              <ExploreIcon sx={{ fontSize: { xs: 18, md: 22 } }} />
+            </Box>
             <Typography
               variant="h6"
               component="div"
               sx={{
                 fontWeight: 950,
-                letterSpacing: "-0.03em",
+                letterSpacing: "-0.04em",
                 fontSize: { xs: "1.2rem", md: "1.5rem" },
                 background: (theme) =>
                   theme.palette.mode === "dark"
-                    ? "linear-gradient(90deg, #fff 0%, rgba(255,255,255,0.5) 100%)"
-                    : "linear-gradient(90deg, #1976d2 0%, #1565c0 100%)",
+                    ? "linear-gradient(90deg, #fff 0%, rgba(255,255,255,0.6) 100%)"
+                    : "linear-gradient(90deg, #1d1d1f 0%, #555 100%)",
                 backgroundClip: "text",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",

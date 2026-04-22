@@ -14,6 +14,7 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
+  DialogContentText,
   DialogActions,
   TextField,
   Tooltip,
@@ -63,6 +64,7 @@ interface AdminPanelProps {
 }
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ onViewTrip }) => {
+  const [currentUserProfile, setCurrentUserProfile] = useState<any>(null);
   const [vacations, setVacations] = useState<Vacation[]>([]);
   const [profiles, setProfiles] = useState<any[]>([]);
   const [images, setImages] = useState<any[]>([]);
@@ -76,6 +78,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onViewTrip }) => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [managingParticipants, setManagingParticipants] =
     useState<Vacation | null>(null);
+  const [resettingUser, setResettingUser] = useState<any | null>(null);
+  const [newPassword, setNewPassword] = useState("");
   const [newTrip, setNewTrip] = useState({
     name: "",
     destination: "",
@@ -87,11 +91,68 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onViewTrip }) => {
     is_public: false,
   });
 
+  const handleResetPassword = async () => {
+    if (!resettingUser || !newPassword) return;
+
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const response = await fetch("/api/admin/reset-user-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({
+          user_id: resettingUser.id,
+          new_password: newPassword,
+        }),
+      });
+
+      if (response.ok) {
+        alert(`Successfully reset password for ${resettingUser.display_name}`);
+        setResettingUser(null);
+        setNewPassword("");
+      } else {
+        const err = await response.json();
+        alert("Error resetting password: " + err.error);
+      }
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    }
+  };
+
   const fetchAllData = async () => {
+    // Basic auth check
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.user) {
+      setLoading(false);
+      return;
+    }
+
+    // Fetch the user's role from the profiles table
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", session.user.id)
+      .single();
+
+    const isAdmin = profile?.role === "admin";
+    setCurrentUserProfile(profile);
+
+    if (!isAdmin) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
-      // Fetch rates first for calculations
-      fetch("https://api.frankfurter.app/latest?from=EUR")
+      // Fetch rates first via proxy to avoid CORS
+      fetch("/api/currency")
         .then((res) => res.json())
         .then((data) => {
           if (data.rates) setRates({ EUR: 1, ...data.rates });
@@ -167,6 +228,51 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onViewTrip }) => {
   useEffect(() => {
     fetchAllData();
   }, []);
+
+  const isAdmin = currentUserProfile?.role === "admin";
+
+  if (loading) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", mt: 10 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "70vh",
+          textAlign: "center",
+          px: 3,
+        }}
+      >
+        <Avatar
+          sx={{
+            width: 80,
+            height: 80,
+            bgcolor: "rgba(202, 29, 73, 0.1)",
+            color: "#ca1d49",
+            mb: 3,
+          }}
+        >
+          <SecurityIcon sx={{ fontSize: 40 }} />
+        </Avatar>
+        <Typography variant="h4" sx={{ fontWeight: 900, mb: 2 }}>
+          Access Denied
+        </Typography>
+        <Typography variant="body1" sx={{ opacity: 0.6, maxWidth: 400 }}>
+          The Admin Dashboard is restricted to authorized personnel only. Please
+          log in with an administrator account to access platform controls.
+        </Typography>
+      </Box>
+    );
+  }
 
   const handleTabChange = (_: any, newValue: number) => {
     setActiveTab(newValue);
@@ -680,6 +786,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onViewTrip }) => {
             <TableCell sx={{ fontWeight: 800 }}>User ID</TableCell>
             <TableCell sx={{ fontWeight: 800 }}>Joined</TableCell>
             <TableCell sx={{ fontWeight: 800 }}>Trips Owned</TableCell>
+            <TableCell sx={{ fontWeight: 800 }} align="right">
+              Actions
+            </TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -703,6 +812,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onViewTrip }) => {
               </TableCell>
               <TableCell>
                 {vacations.filter((v) => v.user_id === prof.id).length} Trips
+              </TableCell>
+              <TableCell align="right">
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<SecurityIcon />}
+                  onClick={() => setResettingUser(prof)}
+                  sx={{ borderRadius: 2, textTransform: "none" }}
+                >
+                  Reset Password
+                </Button>
               </TableCell>
             </TableRow>
           ))}
@@ -1468,7 +1588,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onViewTrip }) => {
                       }}
                     >
                       <Typography variant="caption" fontWeight={600}>
-                        Gallery Access
+                        Docs and Gallery Access
                       </Typography>
                       <Switch
                         size="small"
@@ -1522,6 +1642,42 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onViewTrip }) => {
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
           <Button onClick={() => setManagingParticipants(null)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Password Reset Dialog */}
+      <Dialog
+        open={resettingUser !== null}
+        onClose={() => setResettingUser(null)}
+      >
+        <DialogTitle>Reset Password</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 2 }}>
+            Set a new password for{" "}
+            <strong>{resettingUser?.display_name}</strong>. The user will be
+            able to log in with this password immediately.
+          </DialogContentText>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="New Password"
+            type="password"
+            fullWidth
+            variant="outlined"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setResettingUser(null)}>Cancel</Button>
+          <Button
+            onClick={handleResetPassword}
+            variant="contained"
+            color="primary"
+            disabled={!newPassword || newPassword.length < 6}
+          >
+            Reset Password
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

@@ -33,12 +33,19 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       fullWidth
       PaperProps={{
         sx: {
-          bgcolor: "rgba(255, 255, 255, 0.05)",
+          bgcolor: (theme) =>
+            theme.palette.mode === "dark"
+              ? "rgba(30,30,40,0.95)"
+              : "rgba(255,255,255,0.95)",
           backdropFilter: "blur(20px)",
           borderRadius: 5,
-          border: "1px solid rgba(255, 255, 255, 0.1)",
+          border: (theme) =>
+            theme.palette.mode === "dark"
+              ? "1px solid rgba(255, 255, 255, 0.1)"
+              : "1px solid rgba(0,0,0,0.1)",
           backgroundImage: "none",
           p: 1,
+          margin: 2, // Ensure it doesn't touch screen edges on very small tablets
         },
       }}
     >

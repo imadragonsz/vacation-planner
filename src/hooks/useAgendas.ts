@@ -8,7 +8,15 @@ export type Agenda = {
   description: string;
   address?: string;
   Time?: string;
-  type?: "activity" | "flight" | "train" | "bus" | "hotel" | "note" | "food";
+  type?:
+    | "activity"
+    | "flight"
+    | "train"
+    | "bus"
+    | "hotel"
+    | "note"
+    | "food"
+    | "daytrip";
   position: number;
   price?: number;
 };

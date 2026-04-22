@@ -21,9 +21,21 @@ import {
   Switch,
   Typography,
   Button,
+  Chip,
+  Stack,
   Skeleton,
   Grid,
+  Breadcrumbs,
+  Link,
+  Tooltip,
+  IconButton,
 } from "@mui/material";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import FileDownloadIcon from "@mui/icons-material/FileDownload";
+import ArchiveIcon from "@mui/icons-material/Archive";
+import UnarchiveIcon from "@mui/icons-material/Unarchive";
+import ShareIcon from "@mui/icons-material/Share";
+import LockIcon from "@mui/icons-material/Lock";
 import EventNoteIcon from "@mui/icons-material/EventNote";
 import TravelExploreIcon from "@mui/icons-material/TravelExplore";
 import ShoppingBagIcon from "@mui/icons-material/ShoppingBag";
@@ -55,10 +67,12 @@ export function VacationDetails({
   vacation,
   user,
   onRefresh,
+  onBack,
 }: {
   vacation: Vacation;
   user: any;
   onRefresh?: () => void;
+  onBack?: () => void;
 }) {
   const [activeTab, setActiveTab] = useState(() => {
     const saved = localStorage.getItem(`vacationTab_${vacation.id}`);
@@ -84,7 +98,7 @@ export function VacationDetails({
   }, [isOwner, participants, user]);
 
   useEffect(() => {
-    if (activeTab === 6 && !hasGalleryAccess) {
+    if ((activeTab === 6 || activeTab === 5) && !hasGalleryAccess) {
       setActiveTab(1); // Fallback to Destinations if access lost
     }
     localStorage.setItem(`vacationTab_${vacation.id}`, activeTab.toString());
@@ -298,6 +312,14 @@ export function VacationDetails({
           }
         }
 
+        // Clean query if it's falling back to name
+        if (!loc.address && query) {
+          // Remove common trip suffixes like "Leg 1", "Stay", "Arrival", etc.
+          query = query
+            .replace(/\s+(-|leg|stay|arrival|departure|final|part)\s*.*/gi, "")
+            .trim();
+        }
+
         if (!query) continue;
 
         const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(
@@ -475,8 +497,187 @@ export function VacationDetails({
   };
 
   return (
-    <Box sx={{ py: { xs: 1, md: 3 }, px: { xs: 1, sm: 3, md: 6 } }}>
-      <Box sx={{ mb: { xs: 4, md: 6 } }}>
+    <Box sx={{ py: { xs: 1, md: 3 }, px: { xs: 1, sm: 3, md: 4 } }}>
+      <Box
+        sx={{
+          mb: 4,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: 2,
+          position: "relative",
+        }}
+      >
+        <Box sx={{ width: "100%" }}>
+          <Breadcrumbs
+            sx={{
+              mb: 1,
+              "& .MuiBreadcrumbs-separator": { color: "text.secondary" },
+            }}
+          >
+            <Link
+              underline="hover"
+              color="inherit"
+              onClick={onBack}
+              sx={{
+                cursor: "pointer",
+                fontWeight: 600,
+                fontSize: "0.85rem",
+                display: "flex",
+                alignItems: "center",
+                gap: 0.5,
+                opacity: 0.6,
+                "&:hover": { opacity: 1 },
+              }}
+            >
+              <ArrowBackIcon sx={{ fontSize: 16 }} />
+              DASHBOARD
+            </Link>
+            <Typography
+              variant="caption"
+              sx={{
+                color: "primary.main",
+                fontWeight: 900,
+                fontSize: "0.85rem",
+              }}
+            >
+              {vacation.name.toUpperCase()}
+            </Typography>
+          </Breadcrumbs>
+          <Typography
+            variant="h3"
+            sx={{
+              fontWeight: 950,
+              fontSize: { xs: "1.85rem", sm: "2.25rem", md: "2.75rem" },
+              letterSpacing: "-0.04em",
+              lineHeight: 1.1,
+              mb: 0.5,
+              wordBreak: "break-word",
+            }}
+          >
+            {vacation.name}
+          </Typography>
+          <Typography
+            variant="body1"
+            sx={{
+              color: "text.secondary",
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              fontSize: { xs: "0.9rem", sm: "1rem" },
+            }}
+          >
+            <ExploreIcon sx={{ fontSize: 18, color: "primary.main" }} />
+            {vacation.destination}
+            {vacation.archived && (
+              <Chip
+                label="ARCHIVED"
+                size="small"
+                sx={{
+                  height: 20,
+                  fontSize: "0.6rem",
+                  fontWeight: 900,
+                  bgcolor: "rgba(255,255,255,0.1)",
+                }}
+              />
+            )}
+          </Typography>
+        </Box>
+
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{
+            alignSelf: "stretch",
+            overflowX: "auto",
+            pb: 0.5,
+            "&::-webkit-scrollbar": { display: "none" },
+            msOverflowStyle: "none",
+            scrollbarWidth: "none",
+          }}
+        >
+          <Tooltip title="Export Itinerary">
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={handleExportICal}
+              startIcon={<FileDownloadIcon />}
+              sx={{
+                borderRadius: 2,
+                fontWeight: 700,
+                borderColor: "rgba(255,255,255,0.1)",
+                whiteSpace: "nowrap",
+                minWidth: "fit-content",
+              }}
+            >
+              Export
+            </Button>
+          </Tooltip>
+
+          {isOwner && (
+            <Tooltip title="Manage Access">
+              <IconButton
+                onClick={() => setShowPermissions(true)}
+                sx={{
+                  bgcolor: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 2,
+                  minWidth: 40,
+                }}
+              >
+                <LockIcon sx={{ fontSize: 20 }} />
+              </IconButton>
+            </Tooltip>
+          )}
+
+          {isOwner && (
+            <Tooltip
+              title={vacation.archived ? "Restore Trip" : "Archive Trip"}
+            >
+              <IconButton
+                onClick={vacation.archived ? handleRestore : handleArchive}
+                sx={{
+                  bgcolor: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 2,
+                  minWidth: 40,
+                }}
+              >
+                {vacation.archived ? (
+                  <UnarchiveIcon sx={{ fontSize: 20 }} />
+                ) : (
+                  <ArchiveIcon sx={{ fontSize: 20 }} />
+                )}
+              </IconButton>
+            </Tooltip>
+          )}
+
+          <Tooltip title="Copy Link">
+            <Button
+              variant="contained"
+              size="small"
+              onClick={() => {
+                navigator.clipboard.writeText(window.location.href);
+              }}
+              startIcon={<ShareIcon />}
+              sx={{
+                borderRadius: 2,
+                fontWeight: 900,
+                bgcolor: "#ca1d49",
+                px: 3,
+                whiteSpace: "nowrap",
+                minWidth: "fit-content",
+                "&:hover": { bgcolor: "#e02154" },
+              }}
+            >
+              Share
+            </Button>
+          </Tooltip>
+        </Stack>
+      </Box>
+
+      <Box sx={{ mb: { xs: 3, md: 4 } }}>
         <VacationEditor
           vacation={vacation}
           onVacationUpdated={onRefresh || (() => {})}
@@ -491,24 +692,18 @@ export function VacationDetails({
           onDeletePermanently={handleDeletePermanently}
           onExportICal={handleExportICal}
           onManagePermissions={() => setShowPermissions(true)}
+          minimalistMode // Suggesting a minimalist mode for the editor to avoid redundancy
         />
 
         <Paper
           elevation={0}
           sx={{
-            p: 0.8,
+            p: 0.5,
             display: "inline-flex",
-            borderRadius: { xs: 4, sm: 5 },
-            bgcolor: (theme) =>
-              theme.palette.mode === "dark"
-                ? "rgba(255,255,255,0.03)"
-                : "rgba(0,0,0,0.02)",
-            backdropFilter: "blur(20px)",
-            border: (theme) =>
-              theme.palette.mode === "dark"
-                ? "1px solid rgba(255,255,255,0.05)"
-                : "1px solid rgba(0,0,0,0.05)",
-            mt: { xs: 2.5, sm: 4 },
+            borderRadius: 3,
+            bgcolor: "#0f0f11",
+            border: "1px solid rgba(255,255,255,0.05)",
+            mt: { xs: 2.5, sm: 3 },
             width: "100%",
             maxWidth: { xs: "none", sm: "fit-content" },
             overflowX: "auto",
@@ -529,29 +724,36 @@ export function VacationDetails({
               minHeight: "auto",
               "& .MuiTabs-indicator": {
                 height: "100%",
-                borderRadius: { xs: 3, sm: 4 },
-                zIndex: -1,
-                bgcolor: (theme) =>
-                  theme.palette.mode === "dark"
-                    ? "rgba(33, 150, 243, 0.2)"
-                    : "rgba(33, 150, 243, 0.1)",
-                border: "1px solid rgba(33, 150, 243, 0.3)",
+                borderRadius: 2.5,
+                zIndex: 0,
+                bgcolor: "rgba(202, 29, 73, 0.15)",
+                border: "1px solid rgba(202, 29, 73, 0.3)",
               },
               "& .MuiTab-root": {
                 fontWeight: 900,
-                fontSize: { xs: "0.8rem", sm: "0.875rem" },
-                py: { xs: 1, sm: 1.5 },
-                px: { xs: 2, sm: 3 },
-                borderRadius: { xs: 3, sm: 4 },
-                color: "text.secondary",
-                textTransform: "none",
+                fontSize: "0.75rem",
+                letterSpacing: "0.05em",
+                py: 1,
+                px: 2,
+                borderRadius: 2.5,
+                color: "rgba(255,255,255,0.5)",
+                textTransform: "uppercase",
                 minHeight: "auto",
                 transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
                 minWidth: "auto",
                 flex: { xs: 1, sm: "none" },
+                zIndex: 1,
                 "&.Mui-selected": {
-                  color: "primary.main",
+                  color: "#ca1d49",
                 },
+                "& .MuiTab-iconWrapper": {
+                  fontSize: "1.1rem",
+                  marginBottom: "0 !important",
+                  marginRight: 1,
+                },
+                display: "flex",
+                flexDirection: "row",
+                alignItems: "center",
               },
             }}
           >
@@ -560,7 +762,9 @@ export function VacationDetails({
             <Tab icon={<EventNoteIcon />} label="Agenda" id="tab-2" />
             <Tab icon={<ShoppingBagIcon />} label="Packing" id="tab-3" />
             <Tab icon={<AccountBalanceWalletIcon />} label="Split" id="tab-4" />
-            <Tab icon={<DescriptionIcon />} label="Docs" id="tab-5" />
+            {hasGalleryAccess && (
+              <Tab icon={<DescriptionIcon />} label="Docs" id="tab-5" />
+            )}
             {hasGalleryAccess && (
               <Tab icon={<CollectionsIcon />} label="Gallery" id="tab-6" />
             )}
@@ -711,7 +915,12 @@ export function VacationDetails({
               />
             </Box>
 
-            <Box sx={{ display: activeTab !== 5 ? "none" : "block" }}>
+            <Box
+              sx={{
+                display:
+                  activeTab !== 5 || !hasGalleryAccess ? "none" : "block",
+              }}
+            >
               <DocumentsTab
                 vacationId={vacation.id}
                 user={user}
@@ -770,8 +979,8 @@ export function VacationDetails({
         </DialogTitle>
         <DialogContent>
           <Typography variant="body2" sx={{ mb: 3, opacity: 0.7 }}>
-            Select which participants are allowed to view the gallery or edit
-            trip details. The trip owner always has full access.
+            Select which participants are allowed to view the documents and
+            gallery or edit trip details. The trip owner always has full access.
           </Typography>
           {participants.length > 0 ? (
             <List>
@@ -815,7 +1024,7 @@ export function VacationDetails({
                     }}
                   >
                     <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                      Gallery Access
+                      Docs and Gallery Access
                     </Typography>
                     <Switch
                       size="small"

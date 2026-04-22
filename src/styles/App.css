@@ -1,376 +1,109 @@
-/* Custom Scrollbars */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
+﻿@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap");
 
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  border: 2px solid transparent;
-  background-clip: content-box;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border: 2px solid transparent;
-  background-clip: content-box;
-}
-
-/* MUI Override for smooth transitions */
-.MuiPaper-root {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-}
-
-.MuiButton-root {
-  text-transform: none !important;
-}
-
-/* Glassmorphism Classes */
-.glass-panel {
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.glass-card {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-}
-
-:root {
-  --bg: #0f1115;
-  --card: #1c1f26;
-  --text: #ffffff;
-  --text-muted: #94a3b8;
-  --accent: #3b82f6;
-  --accent-hover: #2563eb;
-  --glass: rgba(255, 255, 255, 0.03);
-  --border: rgba(255, 255, 255, 0.08);
-}
-
-/* General Styles */
-html,
 body {
   margin: 0;
-  padding: 0;
-  min-height: 100%;
-}
-
-body {
-  background-color: #0f1115;
-  background-image:
-    radial-gradient(at 0% 0%, rgba(25, 118, 210, 0.1) 0, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(220, 0, 78, 0.05) 0, transparent 50%);
-  background-attachment: fixed;
-  background-size: cover;
-  background-repeat: no-repeat;
-  color: #fff;
   font-family:
     "Inter",
     -apple-system,
     BlinkMacSystemFont,
     "Segoe UI",
-    Roboto,
+    "Roboto",
+    "Oxygen",
+    "Ubuntu",
+    "Cantarell",
+    "Fira Sans",
+    "Droid Sans",
+    "Helvetica Neue",
     sans-serif;
   -webkit-font-smoothing: antialiased;
-}
-
-/* Layout */
-.vp-main {
-  max-width: 1800px;
-  margin: 0 auto;
-  padding: 0;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-.vp-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 24px;
-  background: #232638;
-  border-radius: 12px;
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
-}
-
-.vp-header h1 {
-  font-size: 36px;
-  font-weight: 700;
-  margin: 0;
-}
-
-.vp-header nav {
-  display: flex;
-  gap: 16px;
-}
-
-.vp-header nav a {
-  color: #bfc7e0;
-  text-decoration: none;
-  font-weight: 600;
-  padding: 8px 16px;
-  border-radius: 8px;
-  transition: background 0.2s;
-}
-
-.vp-header nav a:hover {
-  background: #3a3f54;
-}
-
-.vp-content {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 32px;
-}
-
-@media (min-width: 992px) {
-  .vp-content {
-    grid-template-columns: 320px 1fr;
-    align-items: start;
-  }
-}
-
-.vp-sidebar {
-  background-color: var(--card);
-  padding: 24px;
-  border-radius: 16px;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  position: sticky;
-  top: 100px;
-}
-
-.vp-sidebar h2 {
-  font-size: 1.25rem;
-  font-weight: 700;
-  margin-bottom: 8px;
-  color: var(--text);
-  letter-spacing: -0.025em;
-}
-
-.vp-sidebar .vp-button {
-  width: 100%;
-  margin-bottom: 8px;
-  background-color: var(--accent);
-  color: #fff;
-  padding: 12px;
-  border: none;
-  font-weight: 600;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 8px;
-}
-
-.vp-sidebar .vp-button:hover {
-  filter: brightness(1.1);
-  transform: translateY(-1px);
-}
-
-.vp-sidebar input[type="text"] {
-  padding: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  font-size: 0.95rem;
-  color: var(--text);
-  background-color: rgba(255, 255, 255, 0.05);
-  transition: all 0.2s;
-}
-
-.vp-sidebar input[type="text"]:focus {
-  border-color: var(--accent);
-  background-color: rgba(255, 255, 255, 0.08);
-  outline: none;
-}
-
-.vp-sidebar label {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--text);
-}
-
-.vp-vacation-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.vp-vacation-name {
-  font-weight: 600;
-  font-size: 1.05rem;
-  margin-bottom: 2px;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #000;
   color: #fff;
 }
 
-.vp-vacation-dates {
-  font-size: 0.85rem;
-  color: #94a3b8;
-}
-
-.vp-main-content {
-  background: var(--card);
-  border-radius: 16px;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
-  padding: 32px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  min-height: 600px;
-}
-
-.vp-details {
+/* Glassmorphism Classes */
+.glass-panel {
   background: rgba(255, 255, 255, 0.03);
-  border-radius: 12px;
-  padding: 24px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  transition: all 0.3s ease;
 }
 
-.vp-footer {
-  text-align: center;
-  padding: 16px;
-  background: #181a21;
-  color: #bfc7e0;
-  font-size: 14px;
-}
-
-/* Buttons */
-.vp-button {
-  background: #4caf50;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  padding: 12px 20px;
-  font-weight: 600;
-  font-size: 16px;
-  cursor: pointer;
-  transition:
-    background 0.2s,
-    transform 0.2s;
-}
-
-.vp-button:hover {
-  background: #45a049;
-  transform: scale(1.05);
-}
-
-/* Inputs */
-.vp-input {
-  width: 100%;
-  margin-bottom: 16px;
-  padding: 8px;
-  border-radius: 8px;
-  border: 1px solid #3a3f54;
-  background: #181a21;
-  color: #fff;
-}
-
-/* Map and Agenda Styles */
-.vp-map-container {
-  background: #232638;
+.glass-card {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   border-radius: 16px;
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
-  padding: 32px;
-  margin-bottom: 24px;
-  margin-top: 24px;
-}
-
-.vp-map {
-  border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
-.vp-agenda-container {
-  background: #232638;
-  border-radius: 16px;
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
-  padding: 32px;
-  margin-top: 24px;
+.glass-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.6);
 }
 
-.vp-agenda-header {
-  font-size: 22px;
-  font-weight: 700;
-  margin-bottom: 16px;
-  color: #fff;
+.interactive-element {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.vp-agenda-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 16px;
+.interactive-element:active {
+  transform: scale(0.96);
 }
 
-.vp-agenda-table th,
-.vp-agenda-table td {
-  padding: 14px;
-  text-align: left;
-  color: #fff;
+.onboarding-gradient {
+  background:
+    radial-gradient(
+      circle at top left,
+      rgba(202, 29, 73, 0.15),
+      transparent 40%
+    ),
+    radial-gradient(
+      circle at bottom right,
+      rgba(202, 29, 73, 0.05),
+      transparent 40%
+    );
 }
 
-.vp-agenda-table th {
-  background: #3a3f54;
-  font-weight: 600;
+.focus-ring:focus-visible {
+  outline: 2px solid #ca1d49;
+  outline-offset: 2px;
 }
 
-.vp-agenda-table tr:nth-child(even) {
-  background: #2a2e3c;
+/* K-Collect Aesthetics */
+.k-collect-accent {
+  color: #ca1d49;
 }
 
-.vp-agenda-table tr:hover {
-  background: #4a4f64;
+.k-collect-bg {
+  background-color: #ca1d49;
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-  .vp-content {
-    grid-template-columns: 1fr;
-  }
-
-  .vp-sidebar,
-  .vp-main-content {
-    width: 100%;
-  }
+.k-collect-button {
+  background-color: #ca1d49;
+  color: white;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-radius: 8px;
+  padding: 12px 24px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-/* Mobile Optimizations */
-@media (max-width: 600px) {
-  .vp-main {
-    padding: 8px 8px 90px 8px;
-    gap: 12px;
-  }
-
-  button,
-  .MuiButton-root,
-  .MuiIconButton-root {
-    min-height: 44px; /* Better touch target */
-  }
-
-  .MuiTab-root {
-    min-height: 48px;
-  }
+.k-collect-button:hover {
+  background-color: #e02154;
+  transform: scale(1.02);
 }
 
-/* Custom Scrollbar for modern look */
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -389,128 +122,98 @@ body {
   background: rgba(255, 255, 255, 0.2);
 }
 
-/* Leaflet adjustments */
-.leaflet-popup-content-wrapper {
-  background: #1e2130 !important;
-  color: #fff !important;
-  border-radius: 16px !important;
-  padding: 0 !important;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.leaflet-popup-tip {
-  background: #1e2130 !important;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+.fade-in {
+  animation: fadeIn 0.5s ease forwards;
 }
 
-.leaflet-popup-content {
-  margin: 0 !important;
-  width: auto !important;
-  min-width: 200px !important;
-  max-width: 300px !important;
-}
-
-.leaflet-container a.leaflet-popup-close-button {
-  color: #94a3b8 !important;
-  padding: 8px 8px 0 0 !important;
-  font-size: 18px !important;
-}
-
-.leaflet-container a.leaflet-popup-close-button:hover {
-  color: #fff !important;
+/* Leaflet Dark Mode Adjustments */
+.leaflet-container {
+  background: #111 !important;
 }
 
 .vp-popup-container {
-  padding: 20px;
+  padding: 4px;
+  color: #fff;
+  background: transparent;
 }
 
 .vp-popup-header {
-  margin-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 8px;
+  padding-bottom: 4px;
 }
 
 .vp-popup-title {
-  font-weight: 800;
-  font-size: 1.25rem;
   margin: 0;
-  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+  font-weight: 800;
+  background: linear-gradient(135deg, #fff 0%, rgba(255, 255, 255, 0.7) 100%);
   -webkit-background-clip: text;
-  background-clip: text;
   -webkit-text-fill-color: transparent;
-  letter-spacing: -0.02em;
 }
 
 .vp-popup-body {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 6px;
 }
 
 .vp-popup-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  color: #94a3b8;
-  font-size: 0.9rem;
+  gap: 8px;
 }
 
 .vp-popup-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  background: rgba(59, 130, 246, 0.1);
-  border-radius: 6px;
-  color: #60a5fa;
-  font-size: 12px;
+  font-size: 1.1rem;
+  min-width: 24px;
+  text-align: center;
 }
 
 .vp-popup-value {
-  color: #e2e8f0;
+  font-size: 0.85rem;
   font-weight: 500;
-  flex: 1;
 }
 
-.vp-popup-button {
-  width: 100%;
-  margin-top: 8px;
-  padding: 10px;
-  background: #3b82f6;
-  color: white;
-  border: none;
-  border-radius: 10px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 0.9rem;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+/* Override Leaflet default popup styles for dark mode */
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: rgba(20, 20, 20, 0.9) !important;
+  backdrop-filter: blur(10px);
+  color: #fff !important;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8) !important;
 }
 
-.vp-popup-button:hover {
-  background: #2563eb;
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+.leaflet-popup-close-button {
+  color: #fff !important;
 }
 
-/* Dark mode for Leaflet Map */
-.leaflet-tile-pane {
-  filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
-}
-.leaflet-container {
-  background: #0f1115 !important;
-}
 .leaflet-control-zoom-in,
 .leaflet-control-zoom-out {
-  background: rgba(255, 255, 255, 0.05) !important;
-  color: white !important;
+  background-color: rgba(30, 30, 30, 0.8) !important;
+  color: #fff !important;
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  backdrop-filter: blur(10px);
 }
-.leaflet-control-attribution {
-  background: rgba(0, 0, 0, 0.5) !important;
-  color: rgba(255, 255, 255, 0.5) !important;
+
+.leaflet-control-zoom-in:hover,
+.leaflet-control-zoom-out:hover {
+  background-color: #ca1d49 !important;
+  color: #fff !important;
 }
-.leaflet-control-attribution a {
-  color: #3b82f6 !important;
+
+.leaflet-bar {
+  border: none !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
 }

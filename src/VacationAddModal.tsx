@@ -12,6 +12,8 @@ import {
   FormControlLabel,
   Checkbox,
   Typography,
+  Stack,
+  Theme,
 } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers";
 import dayjs from "dayjs";
@@ -65,13 +67,13 @@ const VacationAddModal: React.FC<VacationAddModalProps> = ({
       fullScreen={isMobile}
       PaperProps={{
         sx: {
-          bgcolor: (theme) =>
+          bgcolor: (theme: Theme) =>
             theme.palette.mode === "dark"
               ? "rgba(15, 20, 25, 0.95)"
               : "rgba(255, 255, 255, 0.95)",
           backdropFilter: "blur(20px)",
-          borderRadius: isMobile ? 0 : 6,
-          border: (theme) =>
+          borderRadius: isMobile ? 0 : 4, // 16px as requested (4 * 4px)
+          border: (theme: Theme) =>
             isMobile
               ? "none"
               : `1px solid ${
@@ -84,160 +86,225 @@ const VacationAddModal: React.FC<VacationAddModalProps> = ({
         },
       }}
     >
-      <DialogTitle sx={{ fontWeight: 900, fontSize: "1.75rem", pb: 1 }}>
-        Add Vacation
+      <DialogTitle
+        sx={{
+          fontWeight: 950,
+          fontSize: "2.25rem",
+          pb: 1,
+          letterSpacing: "-0.04em",
+        }}
+      >
+        New Adventure
       </DialogTitle>
       <DialogContent sx={{ mt: 2 }}>
+        <Typography
+          variant="body2"
+          sx={{ opacity: 0.6, mb: 4, fontWeight: 500 }}
+        >
+          Fill in the details below to start planning your next great getaway.
+        </Typography>
         <form
           onSubmit={handleSubmit}
           id="vacation-add-form"
           style={{
             display: "flex",
             flexDirection: "column",
-            gap: "20px",
+            gap: "28px",
             paddingTop: "4px",
           }}
         >
-          <TextField
-            label="Trip Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            fullWidth
-            placeholder="e.g. Summer in Italy"
-            sx={{
-              "& .MuiOutlinedInput-root": {
-                bgcolor: (theme) =>
-                  theme.palette.mode === "dark"
-                    ? "rgba(0,0,0,0.1)"
-                    : "rgba(0,0,0,0.03)",
-                borderRadius: 2.5,
-              },
-            }}
-          />
-          <TextField
-            label="Destination"
-            value={destination}
-            onChange={(e) => setDestination(e.target.value)}
-            required
-            fullWidth
-            placeholder="e.g. Rome, Amalfi Coast"
-            sx={{
-              "& .MuiOutlinedInput-root": {
-                bgcolor: (theme) =>
-                  theme.palette.mode === "dark"
-                    ? "rgba(0,0,0,0.1)"
-                    : "rgba(0,0,0,0.03)",
-                borderRadius: 2.5,
-              },
-            }}
-          />
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: { xs: "column", sm: "row" },
-              gap: 2,
-            }}
-          >
-            <DatePicker
-              label="Start Date"
-              value={startDate ? dayjs(startDate) : null}
-              onChange={(newValue) =>
-                setStartDate(newValue ? newValue.format("YYYY-MM-DD") : "")
-              }
+          <Box>
+            <Typography
+              variant="caption"
               sx={{
-                flex: 1,
-                "& .MuiOutlinedInput-root": {
-                  bgcolor: (theme) =>
-                    theme.palette.mode === "dark"
-                      ? "rgba(0,0,0,0.1)"
-                      : "rgba(0,0,0,0.03)",
-                  borderRadius: 2.5,
-                },
+                fontWeight: 900,
+                color: "#ca1d49",
+                mb: 1.5,
+                display: "block",
+                letterSpacing: 1.5,
               }}
-            />
-            <DatePicker
-              label="End Date"
-              value={endDate ? dayjs(endDate) : null}
-              onChange={(newValue) =>
-                setEndDate(newValue ? newValue.format("YYYY-MM-DD") : "")
-              }
-              sx={{
-                flex: 1,
-                "& .MuiOutlinedInput-root": {
-                  bgcolor: (theme) =>
-                    theme.palette.mode === "dark"
-                      ? "rgba(0,0,0,0.1)"
-                      : "rgba(0,0,0,0.03)",
-                  borderRadius: 2.5,
-                },
-              }}
-            />
+            >
+              TRIP DETAILS
+            </Typography>
+            <Stack spacing={2.5}>
+              <TextField
+                label="Trip Name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                fullWidth
+                autoFocus
+                placeholder="e.g. Summer in Italy"
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    bgcolor: (theme: Theme) =>
+                      theme.palette.mode === "dark"
+                        ? "rgba(0,0,0,0.2)"
+                        : "rgba(0,0,0,0.03)",
+                    borderRadius: 4,
+                  },
+                }}
+              />
+              <TextField
+                label="Destination"
+                value={destination}
+                onChange={(e) => setDestination(e.target.value)}
+                required
+                fullWidth
+                placeholder="e.g. Rome, Amalfi Coast"
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    bgcolor: (theme: Theme) =>
+                      theme.palette.mode === "dark"
+                        ? "rgba(0,0,0,0.2)"
+                        : "rgba(0,0,0,0.03)",
+                    borderRadius: 4,
+                  },
+                }}
+              />
+            </Stack>
           </Box>
-          <Box
-            sx={{
-              mt: 1,
-              p: 2,
-              borderRadius: 3,
-              bgcolor: (theme) =>
-                theme.palette.mode === "dark"
-                  ? "rgba(255,255,255,0.03)"
-                  : "rgba(0,0,0,0.02)",
-              border: (theme) =>
-                `1px solid ${
-                  theme.palette.mode === "dark"
-                    ? "rgba(255,255,255,0.05)"
-                    : "rgba(0,0,0,0.05)"
-                }`,
-            }}
-          >
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={isPublic}
-                  onChange={(e) => setIsPublic(e.target.checked)}
-                  color="primary"
+
+          <Box>
+            <Typography
+              variant="caption"
+              sx={{
+                fontWeight: 900,
+                color: "#ca1d49",
+                mb: 1.5,
+                display: "block",
+                letterSpacing: 1.5,
+              }}
+            >
+              DATES & VISIBILITY
+            </Typography>
+            <Stack spacing={2.5}>
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: { xs: "column", sm: "row" },
+                  gap: 2.5,
+                }}
+              >
+                <DatePicker
+                  label="Start Date"
+                  value={startDate ? dayjs(startDate) : null}
+                  onChange={(newValue) =>
+                    setStartDate(newValue ? newValue.format("YYYY-MM-DD") : "")
+                  }
+                  sx={{
+                    flex: 1,
+                    "& .MuiOutlinedInput-root": {
+                      bgcolor: (theme: Theme) =>
+                        theme.palette.mode === "dark"
+                          ? "rgba(0,0,0,0.2)"
+                          : "rgba(0,0,0,0.03)",
+                      borderRadius: 4,
+                    },
+                  }}
                 />
-              }
-              label={
-                <Box>
-                  <Typography
-                    variant="subtitle2"
-                    sx={{ fontWeight: 800, display: "flex", gap: 1 }}
-                  >
-                    <PublicIcon fontSize="small" color="primary" /> Public Trip
-                  </Typography>
-                  <Typography variant="caption" sx={{ opacity: 0.6 }}>
-                    Allow other travelers to see this trip in the Explore tab.
-                  </Typography>
-                </Box>
-              }
-            />
+                <DatePicker
+                  label="End Date"
+                  value={endDate ? dayjs(endDate) : null}
+                  onChange={(newValue) =>
+                    setEndDate(newValue ? newValue.format("YYYY-MM-DD") : "")
+                  }
+                  sx={{
+                    flex: 1,
+                    "& .MuiOutlinedInput-root": {
+                      bgcolor: (theme: Theme) =>
+                        theme.palette.mode === "dark"
+                          ? "rgba(0,0,0,0.2)"
+                          : "rgba(0,0,0,0.03)",
+                      borderRadius: 4,
+                    },
+                  }}
+                />
+              </Box>
+
+              <Box
+                sx={{
+                  p: 2.5,
+                  borderRadius: 4,
+                  bgcolor: (theme: Theme) =>
+                    theme.palette.mode === "dark"
+                      ? "rgba(255,255,255,0.03)"
+                      : "rgba(0,0,0,0.02)",
+                  border: (theme: Theme) =>
+                    `1px solid ${
+                      theme.palette.mode === "dark"
+                        ? "rgba(255,255,255,0.08)"
+                        : "rgba(0,0,0,0.05)"
+                    }`,
+                }}
+              >
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={isPublic}
+                      onChange={(e) => setIsPublic(e.target.checked)}
+                      color="primary"
+                    />
+                  }
+                  label={
+                    <Box sx={{ ml: 1 }}>
+                      <Typography
+                        variant="subtitle2"
+                        sx={{
+                          fontWeight: 900,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1,
+                        }}
+                      >
+                        <PublicIcon fontSize="small" color="primary" /> Public
+                        Trip
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{ opacity: 0.6, display: "block" }}
+                      >
+                        Allow other travelers to see this trip in the Explore
+                        tab.
+                      </Typography>
+                    </Box>
+                  }
+                />
+              </Box>
+            </Stack>
           </Box>
         </form>
       </DialogContent>
-      <DialogActions sx={{ p: 3, pt: 1, gap: 1 }}>
+      <DialogActions sx={{ p: isMobile ? 3 : 5, pt: 1, gap: 2 }}>
         <Button
           onClick={onClose}
-          variant="outlined"
           sx={{
+            fontWeight: 900,
             color: "text.secondary",
-            borderColor: (theme) =>
-              theme.palette.mode === "dark"
-                ? "rgba(255,255,255,0.2)"
-                : "rgba(0,0,0,0.2)",
-            borderRadius: 3,
-            px: 3,
-            fontWeight: 800,
+            px: 4,
+            height: 48,
+            borderRadius: 4,
+            "&:hover": { bgcolor: "transparent", color: "text.primary" },
           }}
         >
           Cancel
         </Button>
         <Button
-          onClick={handleSubmit}
+          type="submit"
+          form="vacation-add-form"
           variant="contained"
-          color="primary"
-          sx={{ fontWeight: 800, borderRadius: 3, px: 4, py: 1 }}
+          className="interactive-element"
+          sx={{
+            fontWeight: 950,
+            borderRadius: 4,
+            bgcolor: "#ca1d49",
+            px: 6,
+            height: 48,
+            py: 1.5,
+            fontSize: "1rem",
+            boxShadow: "0 10px 30px rgba(202, 29, 73, 0.4)",
+            "&:hover": { bgcolor: "#e02154" },
+          }}
         >
           Create Trip
         </Button>

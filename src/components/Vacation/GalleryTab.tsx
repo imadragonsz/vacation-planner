@@ -91,14 +91,8 @@ export const GalleryTab: React.FC<GalleryTabProps> = ({
   }, [fetchGallery]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append("image", file);
-    formData.append("vacation_id", vacationId.toString());
-    formData.append("user_id", userId);
-    formData.append("caption", caption);
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
     try {
       setUploading(true);
@@ -110,6 +104,18 @@ export const GalleryTab: React.FC<GalleryTabProps> = ({
         alert("You must be logged in to upload photos.");
         return;
       }
+
+      const formData = new FormData();
+      Array.from(files).forEach((file) => {
+        formData.append("images", file);
+      });
+      formData.append("vacation_id", vacationId.toString());
+      formData.append("user_id", userId);
+      // We send the single caption for now, or empty if multiple
+      const captionList = Array(files.length).fill(
+        files.length === 1 ? caption : "",
+      );
+      formData.append("captions", JSON.stringify(captionList));
 
       const res = await fetch("/api/gallery/upload", {
         method: "POST",
@@ -127,10 +133,9 @@ export const GalleryTab: React.FC<GalleryTabProps> = ({
       }
     } catch (err) {
       console.error("Upload error:", err);
-      alert("Failed to upload image.");
+      alert("Failed to upload images.");
     } finally {
       setUploading(false);
-      // Clean target to allow same file upload again
       if (e.target) e.target.value = "";
     }
   };
@@ -258,6 +263,7 @@ export const GalleryTab: React.FC<GalleryTabProps> = ({
                 type="file"
                 hidden
                 accept="image/*"
+                multiple
                 onChange={handleFileUpload}
               />
             </Button>

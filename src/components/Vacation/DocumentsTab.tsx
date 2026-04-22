@@ -72,61 +72,71 @@ export default function DocumentsTab({
 
     setUploading(true);
     try {
-      const fileExt = file.name.split(".").pop();
-      const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `documents/${vacationId}/${fileName}`;
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("vacation_id", vacationId.toString());
+      formData.append("user_id", user.id);
 
-      const { error: uploadError } = await supabase.storage
-        .from("gallery") // Reusing gallery bucket for simplicity
-        .upload(filePath, file);
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const response = await fetch("/api/documents/upload", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: formData,
+      });
 
-      if (uploadError) throw uploadError;
-
-      const { error: dbError } = await supabase
-        .from("vacation_documents")
-        .insert({
-          vacation_id: vacationId,
-          name: file.name,
-          file_path: filePath,
-          file_type: file.type,
-          uploaded_by: user.id,
-        });
-
-      if (dbError) throw dbError;
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || "Upload failed");
+      }
 
       fetchDocs();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Error uploading document");
+      alert(err.message || "Error uploading document");
     } finally {
       setUploading(false);
     }
   };
 
   const handleDownload = async (doc: VacationDocument) => {
-    const { data, error } = await supabase.storage
-      .from("gallery")
-      .download(doc.file_path);
-
-    if (!error && data) {
-      const url = URL.createObjectURL(data);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = doc.name;
-      a.click();
-    }
+    // We can use the static file path directly
+    const url = `/uploads/${doc.file_path}`;
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = doc.name;
+    a.target = "_blank";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   const handleDelete = async (doc: VacationDocument) => {
     if (!window.confirm(`Delete ${doc.name}?`)) return;
 
-    const { error: storageError } = await supabase.storage
-      .from("gallery")
-      .remove([doc.file_path]);
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const response = await fetch(`/api/documents/${doc.id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+      });
 
-    if (!storageError) {
-      await supabase.from("vacation_documents").delete().eq("id", doc.id);
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || "Delete failed");
+      }
+
       fetchDocs();
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Error deleting document");
     }
   };
 

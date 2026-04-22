@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { supabase } from "../../src/supabaseClient";
+import { supabase } from "../supabaseClient";
 import {
   Box,
   Typography,
@@ -7,18 +7,13 @@ import {
   Button,
   Paper,
   Divider,
-  Container,
   Avatar,
-  IconButton,
   Grid,
 } from "@mui/material";
 import PersonIcon from "@mui/icons-material/Person";
 import SecurityIcon from "@mui/icons-material/Security";
 import LogoutIcon from "@mui/icons-material/Logout";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import SettingsIcon from "@mui/icons-material/Settings";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
-import MailOutlineIcon from "@mui/icons-material/MailOutline";
 
 import { AVATAR_SLUGS, resolveAvatar } from "../utils/avatars";
 
@@ -98,65 +93,42 @@ export default function AccountPage({
     }
   }
 
-  async function handleSendResetEmail() {
-    setIsUpdating(true);
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
-        redirectTo: `${window.location.origin}/`,
-      });
-      if (error) throw error;
-      alert("Password recovery email sent successfully!");
-    } catch (error: any) {
-      alert(error.message || "Error sending recovery email");
-    } finally {
-      setIsUpdating(false);
-    }
-  }
-
   return (
-    <Container
-      maxWidth="xl"
-      sx={{ py: { xs: 2, md: 8 }, px: { xs: 2, md: 4 } }}
-    >
+    <Box sx={{ py: { xs: 2, md: 4 }, px: { xs: 2, md: 4 } }}>
       <Box
         sx={{
-          mb: 4,
+          mb: 6,
           display: "flex",
-          alignItems: { xs: "flex-start", sm: "center" },
+          alignItems: "center",
           justifyContent: "space-between",
-          flexDirection: { xs: "column", sm: "row" },
           gap: 2,
         }}
       >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-          <IconButton onClick={onHome} sx={{ color: "rgba(255,255,255,0.6)" }}>
-            <ArrowBackIcon />
-          </IconButton>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 3 }}>
           <Typography
-            variant="h4"
+            variant="h3"
             sx={{
               fontWeight: 900,
-              display: "flex",
-              alignItems: "center",
-              gap: 1.5,
-              fontSize: { xs: "1.5rem", md: "2.125rem" },
+              fontSize: { xs: "1.75rem", md: "2.5rem" },
+              letterSpacing: "-0.02em",
+              color: "white",
             }}
           >
-            <SettingsIcon sx={{ fontSize: { xs: 30, md: 40 }, opacity: 0.8 }} />
-            Account Settings
+            Settings
           </Typography>
         </Box>
         <Button
-          variant="outlined"
+          variant="contained"
           color="error"
           startIcon={<LogoutIcon />}
           onClick={onLogout}
-          fullWidth={false}
           sx={{
-            borderRadius: 2,
+            borderRadius: 1.5,
             px: 3,
-            fontWeight: 700,
-            alignSelf: { xs: "stretch", sm: "auto" },
+            fontWeight: 900,
+            bgcolor: "#ca1d49",
+            "&:hover": { bgcolor: "#a0173a" },
+            textTransform: "none",
           }}
         >
           Logout
@@ -166,60 +138,74 @@ export default function AccountPage({
       <Box
         sx={{
           display: "grid",
-          gridTemplateColumns: { xs: "1fr", md: "1fr 1.5fr" },
+          gridTemplateColumns: { xs: "1fr", lg: "1fr 1.5fr" },
           gap: 4,
-          alignItems: "stretch",
         }}
       >
-        {/* Profile Section */}
-        <Box sx={{ height: "100%" }}>
+        {/* Profile Card */}
+        <Box>
           <Paper
             elevation={0}
             sx={{
               p: 4,
-              height: "100%",
-              bgcolor: "rgba(255, 255, 255, 0.03)",
-              backdropFilter: "blur(10px)",
-              borderRadius: 4,
+              bgcolor: "#0f0f11",
+              borderRadius: 3,
               border: "1px solid rgba(255, 255, 255, 0.05)",
             }}
           >
-            <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 4 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 3, mb: 4 }}>
               <Avatar
                 src={resolveAvatar(avatarUrl)}
                 sx={{
-                  width: 80,
-                  height: 80,
-                  bgcolor: "primary.main",
-                  boxShadow: "0 8px 16px rgba(25, 118, 210, 0.3)",
-                  fontSize: 32,
-                  fontWeight: 800,
+                  width: 100,
+                  height: 100,
+                  bgcolor: "#ca1d49",
+                  fontSize: 40,
+                  fontWeight: 900,
                 }}
               >
                 {!avatarUrl && user.email?.[0].toUpperCase()}
               </Avatar>
               <Box>
-                <Typography variant="h5" sx={{ fontWeight: 900, mb: 0.5 }}>
+                <Typography
+                  variant="h5"
+                  sx={{ fontWeight: 900, color: "white" }}
+                >
                   {displayName || "Explorer"}
                 </Typography>
                 <Typography
                   variant="body2"
-                  sx={{ opacity: 0.6, fontWeight: 500 }}
+                  sx={{
+                    color: "rgba(255,255,255,0.4)",
+                    fontWeight: 600,
+                    mt: 0.5,
+                  }}
                 >
                   {user.email}
                 </Typography>
               </Box>
             </Box>
 
+            <Divider sx={{ mb: 4, borderColor: "rgba(255,255,255,0.05)" }} />
+
+            <Typography
+              variant="overline"
+              sx={{ color: "#ca1d49", fontWeight: 900, letterSpacing: "0.1em" }}
+            >
+              Public Profile
+            </Typography>
+
             <Typography
               variant="subtitle2"
               sx={{
                 mb: 2,
+                mt: 2,
                 fontWeight: 800,
                 display: "flex",
                 alignItems: "center",
                 gap: 1,
-                color: "primary.light",
+                color: "white",
+                opacity: 0.8,
               }}
             >
               <PhotoCameraIcon fontSize="small" />
@@ -227,19 +213,19 @@ export default function AccountPage({
             </Typography>
 
             <Box sx={{ mb: 4 }}>
-              <Grid container spacing={1.5}>
-                {AVATAR_SLUGS.map((slug) => (
-                  <Grid key={slug} size="auto">
+              <Grid container spacing={2}>
+                {AVATAR_SLUGS.map((slug: string) => (
+                  <Grid key={slug}>
                     <Avatar
                       src={resolveAvatar(slug)}
                       onClick={() => setAvatarUrl(slug)}
                       sx={{
-                        width: 52,
-                        height: 52,
+                        width: { xs: 56, md: 48 },
+                        height: { xs: 56, md: 48 },
                         cursor: "pointer",
                         border:
                           avatarUrl === slug
-                            ? "3px solid #1976d2"
+                            ? "3px solid #ca1d49"
                             : "2px solid transparent",
                         transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
                         transform: avatarUrl === slug ? "scale(1.1)" : "none",
@@ -262,162 +248,145 @@ export default function AccountPage({
                 display: "flex",
                 alignItems: "center",
                 gap: 1,
-                color: "primary.light",
+                color: "white",
+                opacity: 0.8,
               }}
             >
               <PersonIcon fontSize="small" />
-              Profile Information
+              Information
             </Typography>
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
               <TextField
-                label="Display Name"
                 fullWidth
+                label="Display Name"
+                variant="filled"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 sx={{
-                  "& .MuiOutlinedInput-root": {
-                    bgcolor: "rgba(255,255,255,0.02)",
+                  "& .MuiFilledInput-root": {
+                    bgcolor: "rgba(255,255,255,0.03)",
+                    color: "white",
                   },
+                  "& .MuiInputLabel-root": { color: "rgba(255,255,255,0.5)" },
                 }}
               />
               <Button
                 variant="contained"
                 fullWidth
-                onClick={handleUpdateProfile}
                 disabled={isUpdating}
-                sx={{ py: 1.5, fontWeight: 800, borderRadius: 2 }}
+                onClick={handleUpdateProfile}
+                sx={{
+                  py: 1.5,
+                  borderRadius: 1.5,
+                  fontWeight: 900,
+                  bgcolor: "white",
+                  color: "black",
+                  "&:hover": { bgcolor: "rgba(255,255,255,0.8)" },
+                }}
               >
-                {isUpdating ? "Updating..." : "Update Profile"}
+                {isUpdating ? "Saving..." : "Save Profile Changes"}
               </Button>
             </Box>
           </Paper>
         </Box>
 
-        {/* Security Section */}
-        <Box sx={{ height: "100%" }}>
+        {/* Security Card */}
+        <Box>
           <Paper
             elevation={0}
             sx={{
               p: 4,
-              height: "100%",
-              bgcolor: "rgba(255, 255, 255, 0.03)",
-              backdropFilter: "blur(10px)",
-              borderRadius: 4,
+              bgcolor: "#0f0f11",
+              borderRadius: 3,
               border: "1px solid rgba(255, 255, 255, 0.05)",
             }}
           >
             <Typography
-              variant="subtitle2"
+              variant="overline"
+              sx={{ color: "#ca1d49", fontWeight: 900, letterSpacing: "0.1em" }}
+            >
+              Security
+            </Typography>
+            <Box
               sx={{
-                mb: 3,
-                fontWeight: 700,
                 display: "flex",
                 alignItems: "center",
                 gap: 1,
+                mt: 1,
+                mb: 3,
+                color: "white",
               }}
             >
               <SecurityIcon fontSize="small" />
-              Security Settings
-            </Typography>
-            <Box
-              component="form"
-              onSubmit={handleUpdatePassword}
-              sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}
-            >
-              <TextField
-                label="New Password"
-                type="password"
-                fullWidth
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    bgcolor: "rgba(255,255,255,0.02)",
-                  },
-                }}
-              />
-              <Typography variant="caption" sx={{ opacity: 0.5 }}>
-                Password must be at least 8 characters long and include numbers
-                or special symbols.
+              <Typography variant="h6" sx={{ fontWeight: 900 }}>
+                Update Password
               </Typography>
-              <Button
-                variant="outlined"
-                color="primary"
-                type="submit"
-                disabled={isUpdating}
-                sx={{
-                  py: 1.5,
-                  fontWeight: 800,
-                  borderRadius: 2,
-                  borderWidth: 1.5,
-                  "&:hover": { borderWidth: 1.5 },
-                }}
-              >
-                {isUpdating ? "Updating..." : "Change Password"}
-              </Button>
             </Box>
 
-            <Divider sx={{ my: 4, opacity: 0.1 }} />
+            <form onSubmit={handleUpdatePassword}>
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                <TextField
+                  fullWidth
+                  label="New Password"
+                  type="password"
+                  variant="filled"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  sx={{
+                    "& .MuiFilledInput-root": {
+                      bgcolor: "rgba(255,255,255,0.03)",
+                      color: "white",
+                    },
+                    "& .MuiInputLabel-root": { color: "rgba(255,255,255,0.5)" },
+                  }}
+                />
+                <Button
+                  type="submit"
+                  variant="outlined"
+                  fullWidth
+                  disabled={isUpdating}
+                  sx={{
+                    py: 1.5,
+                    borderRadius: 1.5,
+                    fontWeight: 900,
+                    borderColor: "rgba(255,255,255,0.1)",
+                    color: "white",
+                    "&:hover": {
+                      borderColor: "white",
+                      bgcolor: "rgba(255,255,255,0.02)",
+                    },
+                  }}
+                >
+                  {isUpdating ? "Updating..." : "Update Password"}
+                </Button>
+              </Box>
+            </form>
+
+            <Divider sx={{ my: 4, borderColor: "rgba(255,255,255,0.05)" }} />
 
             <Typography
               variant="subtitle2"
-              sx={{
-                mb: 1,
-                fontWeight: 700,
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-              }}
-            >
-              Reset Password
-            </Typography>
-            <Typography variant="body2" sx={{ mb: 3, opacity: 0.6 }}>
-              Send a password recovery email to your inbox to securely reset
-              your password.
-            </Typography>
-            <Button
-              variant="outlined"
-              color="inherit"
-              fullWidth
-              disabled={isUpdating}
-              onClick={handleSendResetEmail}
-              startIcon={<MailOutlineIcon />}
-              sx={{
-                py: 1.5,
-                fontWeight: 800,
-                borderRadius: 2,
-                borderWidth: 1.5,
-                borderColor: "rgba(255,255,255,0.1)",
-                "&:hover": {
-                  borderWidth: 1.5,
-                  bgcolor: "rgba(255,255,255,0.05)",
-                  borderColor: "rgba(255,255,255,0.2)",
-                },
-              }}
-            >
-              Send password recovery
-            </Button>
-
-            <Divider sx={{ my: 4, opacity: 0.1 }} />
-
-            <Typography
-              variant="subtitle2"
-              sx={{ mb: 2, fontWeight: 700, color: "#ff5252" }}
+              sx={{ mb: 2, fontWeight: 700, color: "#ca1d49" }}
             >
               Danger Zone
             </Typography>
-            <Typography variant="body2" sx={{ mb: 3, opacity: 0.6 }}>
-              Deleting your account will permanently remove all your vacations,
-              agendas, and locations. This action cannot be undone.
+            <Typography
+              variant="body2"
+              sx={{ mb: 3, color: "rgba(255,255,255,0.4)" }}
+            >
+              Deleting your account will permanently remove all your data. This
+              action cannot be undone.
             </Typography>
             <Button
               variant="contained"
-              color="error"
+              fullWidth
               sx={{
                 py: 1.5,
-                fontWeight: 800,
-                borderRadius: 2,
-                bgcolor: "#ff5252",
+                fontWeight: 900,
+                borderRadius: 1.5,
+                bgcolor: "#ca1d49",
+                "&:hover": { bgcolor: "#a0173a" },
               }}
             >
               Delete Account
@@ -425,6 +394,6 @@ export default function AccountPage({
           </Paper>
         </Box>
       </Box>
-    </Container>
+    </Box>
   );
 }

@@ -215,7 +215,11 @@ export const HotelInfo: React.FC<HotelInfoProps> = ({
             <Box
               sx={{
                 display: "grid",
-                gridTemplateColumns: "1fr 1fr auto",
+                gridTemplateColumns: {
+                  xs: "1fr",
+                  sm: "1fr 1fr",
+                  lg: "1fr 1fr auto",
+                },
                 gap: 2,
                 alignItems: "center",
               }}
