@@ -93,8 +93,8 @@ export function useLocations(vacationId: number) {
     const { error } = await supabase.from("locations").insert([
       {
         vacation_id: vacationId,
-        name,
-        address,
+        name: name.trim(),
+        address: address.trim(),
         start_date: start_date || null,
         end_date: end_date || null,
       },
@@ -128,8 +128,8 @@ export function useLocations(vacationId: number) {
     const { error } = await supabase
       .from("locations")
       .update({
-        name,
-        address,
+        name: name.trim(),
+        address: address.trim(),
         start_date: start_date || null,
         end_date: end_date || null,
       })

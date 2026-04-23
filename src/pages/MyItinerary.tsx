@@ -6,6 +6,9 @@ import {
   Paper,
   Stack,
   IconButton,
+  FormControl,
+  Select,
+  MenuItem,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import TripOriginIcon from "@mui/icons-material/TripOrigin";
@@ -21,8 +24,22 @@ interface MyItineraryProps {
 
 const MyItinerary: React.FC<MyItineraryProps> = ({ user, onHome }) => {
   const [agendas, setAgendas] = useState<Agenda[]>([]);
+  const [vacations, setVacations] = useState<any[]>([]);
+  const [selectedVacationId, setSelectedVacationId] = useState<string>("all");
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    const fetchVacations = async () => {
+      if (!user) return;
+      const { data } = await supabase
+        .from("vacations")
+        .select("id, name")
+        .eq("user_id", user.id);
+      if (data) setVacations(data);
+    };
+    fetchVacations();
+  }, [user]);
 
   useEffect(() => {
     const fetchMyAgendas = async () => {
@@ -52,7 +69,7 @@ const MyItinerary: React.FC<MyItineraryProps> = ({ user, onHome }) => {
       // 2. Fetch those agenda items
       const { data, error } = await supabase
         .from("agendas")
-        .select("*")
+        .select("*, locations(name, vacation_id)")
         .in("id", joinedAgendaIds)
         .order("agenda_date", { ascending: true });
 
@@ -66,11 +83,17 @@ const MyItinerary: React.FC<MyItineraryProps> = ({ user, onHome }) => {
     fetchMyAgendas();
   }, [user]);
 
-  const filtered = agendas.filter(
-    (item) =>
+  const filtered = agendas.filter((item) => {
+    const matchesSearch =
       item.description?.toLowerCase().includes(search.toLowerCase()) ||
-      item.address?.toLowerCase().includes(search.toLowerCase()),
-  );
+      item.address?.toLowerCase().includes(search.toLowerCase());
+
+    const matchesVacation =
+      selectedVacationId === "all" ||
+      (item as any).locations?.vacation_id === selectedVacationId;
+
+    return matchesSearch && matchesVacation;
+  });
 
   return (
     <Box sx={{ maxWidth: 1000, mx: "auto", p: { xs: 2, md: 0 } }}>
@@ -81,7 +104,10 @@ const MyItinerary: React.FC<MyItineraryProps> = ({ user, onHome }) => {
             color: "primary.main",
             width: 44,
             height: 44,
-            bgcolor: "rgba(255,255,255,0.05)",
+            bgcolor: (theme) =>
+              theme.palette.mode === "dark"
+                ? "rgba(255,255,255,0.05)"
+                : "rgba(0,0,0,0.05)",
           }}
         >
           <ArrowBackIcon />
@@ -96,28 +122,89 @@ const MyItinerary: React.FC<MyItineraryProps> = ({ user, onHome }) => {
 
       <Paper
         sx={{
-          p: 0.5,
-          mb: 4,
-          bgcolor: "rgba(255,255,255,0.05)",
+          p: 1,
+          bgcolor: (theme) =>
+            theme.palette.mode === "dark"
+              ? "rgba(255,255,255,0.06)"
+              : "rgba(0,0,0,0.03)",
           borderRadius: 4,
-          border: "1px solid rgba(255,255,255,0.1)",
+          border: (theme) =>
+            `1px solid ${
+              theme.palette.mode === "dark"
+                ? "rgba(255,255,255,0.1)"
+                : "rgba(0,0,0,0.08)"
+            }`,
         }}
       >
-        <Stack direction="row" alignItems="center" px={2}>
-          <SearchIcon sx={{ color: "primary.main", mr: 1 }} />
-          <TextField
-            fullWidth
-            variant="standard"
-            placeholder="Search items..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            InputProps={{
-              disableUnderline: true,
-              sx: { height: { xs: 52, md: 44 }, fontSize: "1rem" },
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          alignItems="center"
+          px={2}
+          spacing={1}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              flex: 1,
+              width: "100%",
+              minHeight: 52,
             }}
-          />
+          >
+            <SearchIcon sx={{ color: "primary.main", mr: 1 }} />
+            <TextField
+              fullWidth
+              variant="standard"
+              placeholder="Search items..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              InputProps={{
+                disableUnderline: true,
+                sx: { height: { xs: 52, md: 44 }, fontSize: "1rem" },
+              }}
+            />
+          </Box>
+          <FormControl
+            size="small"
+            sx={{
+              minWidth: { xs: "100%", md: 200 },
+              mb: { xs: 1, md: 0 },
+            }}
+          >
+            <Select
+              value={selectedVacationId}
+              onChange={(e) => setSelectedVacationId(e.target.value)}
+              sx={{
+                height: 44,
+                bgcolor: (theme) =>
+                  theme.palette.mode === "dark"
+                    ? "rgba(255,255,255,0.05)"
+                    : "rgba(0,0,0,0.04)",
+                borderRadius: 2,
+                px: 2,
+                fontSize: "0.9rem",
+                fontWeight: 600,
+                color: "text.primary",
+                "& .MuiSelect-select": {
+                  display: "flex",
+                  alignItems: "center",
+                },
+              }}
+            >
+              <MenuItem value="all">
+                <em>All Trips</em>
+              </MenuItem>
+              {vacations.map((v) => (
+                <MenuItem key={v.id} value={v.id}>
+                  {v.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
         </Stack>
       </Paper>
+
+      <Box sx={{ mb: 6 }} />
 
       {loading ? (
         <Box sx={{ textAlign: "center", py: 4 }}>
@@ -135,35 +222,79 @@ const MyItinerary: React.FC<MyItineraryProps> = ({ user, onHome }) => {
                 key={item.id}
                 elevation={0}
                 sx={{
-                  p: { xs: 2.5, md: 3 },
-                  bgcolor: "#0f0f11",
-                  borderLeft: "4px solid",
+                  p: { xs: 2, md: 2.5 },
+                  bgcolor: (theme) =>
+                    theme.palette.mode === "dark"
+                      ? "rgba(255,255,255,0.04)"
+                      : "#ffffff",
+                  border: (theme) =>
+                    `1px solid ${
+                      theme.palette.mode === "dark"
+                        ? "rgba(255,255,255,0.08)"
+                        : "rgba(0,0,0,0.08)"
+                    }`,
+                  borderLeft: "6px solid",
                   borderColor: "primary.main",
-                  borderRadius: 2,
-                  transition: "transform 0.2s",
-                  "&:active": { transform: "scale(0.98)" },
+                  borderRadius: 3,
+                  transition: "all 0.2s ease-in-out",
+                  "&:hover": {
+                    bgcolor: (theme) =>
+                      theme.palette.mode === "dark"
+                        ? "rgba(255,255,255,0.07)"
+                        : "#ffffff",
+                    transform: "translateX(4px)",
+                    boxShadow: (theme) =>
+                      theme.palette.mode === "dark"
+                        ? "0 4px 20px rgba(0,0,0,0.6)"
+                        : "0 4px 20px rgba(0,0,0,0.05)",
+                  },
                 }}
               >
-                <Stack direction="row" spacing={2} alignItems="center">
-                  <TripOriginIcon
-                    sx={{ color: "primary.main", fontSize: 14 }}
-                  />
-                  <Box>
+                <Stack direction="row" spacing={3} alignItems="center">
+                  <Box
+                    sx={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: "50%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      bgcolor: "rgba(227, 27, 77, 0.1)",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <TripOriginIcon
+                      sx={{ color: "primary.main", fontSize: 16 }}
+                    />
+                  </Box>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
                     <Typography
                       variant="h6"
+                      noWrap
                       sx={{
-                        fontSize: { xs: "1.1rem", md: "1.25rem" },
-                        fontWeight: 700,
+                        fontSize: { xs: "1rem", md: "1.15rem" },
+                        fontWeight: 800,
+                        color: "text.primary",
+                        mb: 0.5,
                       }}
                     >
                       {item.description}
                     </Typography>
-                    <Typography variant="caption" color="rgba(255,255,255,0.6)">
-                      {item.address} •{" "}
+                    <Typography
+                      variant="caption"
+                      noWrap
+                      display="block"
+                      sx={{
+                        fontSize: "0.85rem",
+                        color: "text.secondary",
+                        opacity: 0.8,
+                      }}
+                    >
+                      {item.address && `${item.address} • `}
                       {item.agenda_date
-                        ? dayjs(item.agenda_date).format("MMM DD")
-                        : "TBD"}{" "}
-                      {item.Time}
+                        ? dayjs(item.agenda_date).format("MMM DD, YYYY")
+                        : "TBD"}
+                      {item.Time && ` • ${item.Time.slice(0, 5)}`}
                     </Typography>
                   </Box>
                 </Stack>

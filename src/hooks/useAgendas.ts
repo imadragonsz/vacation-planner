@@ -71,8 +71,8 @@ export function useAgendas(locationId: number) {
       {
         location_id: locationId,
         agenda_date,
-        description,
-        address: address || null,
+        description: description.trim(),
+        address: address?.trim() || null,
         Time: Time || null,
         type: type || "activity",
         position: maxPos + 1,
@@ -115,8 +115,8 @@ export function useAgendas(locationId: number) {
       .from("agendas")
       .update({
         agenda_date,
-        description,
-        address: address || null,
+        description: description.trim(),
+        address: address?.trim() || null,
         Time: Time || null,
         type: type || "activity",
         price: price !== undefined && price !== null ? price : null,

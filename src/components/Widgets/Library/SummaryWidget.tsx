@@ -5,11 +5,13 @@ import BeachAccessIcon from "@mui/icons-material/BeachAccess";
 interface SummaryWidgetProps {
   activeTripsCount: number;
   destinationsCount: number;
+  onExplore?: () => void;
 }
 
 const SummaryWidget: React.FC<SummaryWidgetProps> = ({
   activeTripsCount,
   destinationsCount,
+  onExplore,
 }) => {
   return (
     <Box sx={{ p: 0 }}>
@@ -26,10 +28,22 @@ const SummaryWidget: React.FC<SummaryWidgetProps> = ({
       </Typography>
       <Stack spacing={2.5}>
         <Box
+          onClick={onExplore}
           sx={{
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
+            cursor: onExplore ? "pointer" : "default",
+            p: 1,
+            mx: -1,
+            borderRadius: 1.5,
+            transition: "all 0.2s",
+            "&:hover": onExplore
+              ? {
+                  bgcolor: "rgba(255,255,255,0.03)",
+                  transform: "translateX(4px)",
+                }
+              : {},
           }}
         >
           <Typography variant="body2" sx={{ fontWeight: 700, opacity: 0.9 }}>
@@ -43,10 +57,22 @@ const SummaryWidget: React.FC<SummaryWidgetProps> = ({
           </Typography>
         </Box>
         <Box
+          onClick={onExplore}
           sx={{
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
+            cursor: onExplore ? "pointer" : "default",
+            p: 1,
+            mx: -1,
+            borderRadius: 1.5,
+            transition: "all 0.2s",
+            "&:hover": onExplore
+              ? {
+                  bgcolor: "rgba(255,255,255,0.03)",
+                  transform: "translateX(4px)",
+                }
+              : {},
           }}
         >
           <Typography variant="body2" sx={{ fontWeight: 700, opacity: 0.9 }}>

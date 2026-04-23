@@ -42,10 +42,16 @@ const NotificationWidget: React.FC<NotificationWidgetProps> = ({
                 border: n.is_read ? "none" : "2px solid #ca1d49",
               }}
             />
-            <Box sx={{ flex: 1 }}>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography
                 variant="body2"
-                sx={{ fontSize: "0.75rem", lineHeight: 1.2 }}
+                noWrap
+                sx={{
+                  fontSize: "0.75rem",
+                  lineHeight: 1.2,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
               >
                 <span style={{ fontWeight: 800 }}>
                   {n.profiles?.display_name || "Someone"}
@@ -54,7 +60,14 @@ const NotificationWidget: React.FC<NotificationWidgetProps> = ({
               </Typography>
               <Typography
                 variant="caption"
-                sx={{ opacity: 0.4, fontSize: "0.65rem" }}
+                noWrap
+                sx={{
+                  opacity: 0.4,
+                  fontSize: "0.65rem",
+                  display: "block",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
               >
                 {formatDistanceToNow(new Date(n.created_at), {
                   addSuffix: true,

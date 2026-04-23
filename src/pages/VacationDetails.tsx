@@ -701,8 +701,14 @@ export function VacationDetails({
             p: 0.5,
             display: "inline-flex",
             borderRadius: 3,
-            bgcolor: "#0f0f11",
-            border: "1px solid rgba(255,255,255,0.05)",
+            bgcolor: (theme) =>
+              theme.palette.mode === "dark" ? "#0f0f11" : "#f5f5f7",
+            border: (theme) =>
+              `1px solid ${
+                theme.palette.mode === "dark"
+                  ? "rgba(255,255,255,0.05)"
+                  : "rgba(0,0,0,0.05)"
+              }`,
             mt: { xs: 2.5, sm: 3 },
             width: "100%",
             maxWidth: { xs: "none", sm: "fit-content" },
@@ -726,7 +732,10 @@ export function VacationDetails({
                 height: "100%",
                 borderRadius: 2.5,
                 zIndex: 0,
-                bgcolor: "rgba(202, 29, 73, 0.15)",
+                bgcolor: (theme) =>
+                  theme.palette.mode === "dark"
+                    ? "rgba(202, 29, 73, 0.15)"
+                    : "rgba(202, 29, 73, 0.08)",
                 border: "1px solid rgba(202, 29, 73, 0.3)",
               },
               "& .MuiTab-root": {
@@ -736,7 +745,7 @@ export function VacationDetails({
                 py: 1,
                 px: 2,
                 borderRadius: 2.5,
-                color: "rgba(255,255,255,0.5)",
+                color: "text.secondary",
                 textTransform: "uppercase",
                 minHeight: "auto",
                 transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",

@@ -17,36 +17,46 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #000;
+  background-color: #030304;
   color: #fff;
 }
 
 /* Glassmorphism Classes */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  background: rgba(var(--glass-bg), 0.04);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(var(--glass-border), 0.12);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
   transition: all 0.3s ease;
 }
 
 .glass-card {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+  background: rgba(var(--glass-bg), 0.07);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(var(--glass-border), 0.22);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   border-radius: 16px;
   overflow: hidden;
 }
 
 .glass-card:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(var(--glass-bg), 0.12);
+  border: 1px solid rgba(var(--glass-border), 0.35);
   transform: translateY(-4px);
-  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.6);
+  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.75);
+}
+
+:root {
+  --glass-bg: 255, 255, 255;
+  --glass-border: 255, 255, 255;
+}
+
+[data-theme="light"] {
+  --glass-bg: 0, 0, 0;
+  --glass-border: 0, 0, 0;
 }
 
 .interactive-element {
@@ -140,6 +150,10 @@ body {
 
 /* Leaflet Dark Mode Adjustments */
 .leaflet-container {
+  background: #f5f5f7 !important;
+}
+
+[data-theme="dark"] .leaflet-container {
   background: #111 !important;
 }
 

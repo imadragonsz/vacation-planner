@@ -22,6 +22,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import InventoryIcon from "@mui/icons-material/Inventory";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
+import { TEXT_LIMITS } from "../utils/textLimits";
 import { supabase } from "../supabaseClient";
 import { resolveAvatar } from "../utils/avatars";
 import { useItemParticipants } from "../hooks/useItemParticipants";
@@ -287,6 +288,7 @@ export default function PackingList({
             variant="standard"
             autoComplete="off"
             disabled={loading || !canEdit}
+            inputProps={{ maxLength: TEXT_LIMITS.SHORT }}
             InputProps={{
               disableUnderline: true,
               sx: {

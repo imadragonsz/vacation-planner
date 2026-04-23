@@ -18,6 +18,7 @@ import {
 import { DatePicker } from "@mui/x-date-pickers";
 import dayjs from "dayjs";
 import PublicIcon from "@mui/icons-material/Public";
+import { TEXT_LIMITS } from "./utils/textLimits";
 
 interface VacationAddModalProps {
   open: boolean;
@@ -135,6 +136,7 @@ const VacationAddModal: React.FC<VacationAddModalProps> = ({
                 fullWidth
                 autoFocus
                 placeholder="e.g. Summer in Italy"
+                inputProps={{ maxLength: TEXT_LIMITS.SHORT }}
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     bgcolor: (theme: Theme) =>
@@ -152,6 +154,7 @@ const VacationAddModal: React.FC<VacationAddModalProps> = ({
                 required
                 fullWidth
                 placeholder="e.g. Rome, Amalfi Coast"
+                inputProps={{ maxLength: TEXT_LIMITS.MEDIUM }}
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     bgcolor: (theme: Theme) =>

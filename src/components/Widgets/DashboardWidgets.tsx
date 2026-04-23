@@ -7,6 +7,8 @@ import {
   Avatar,
   Drawer,
   IconButton,
+  Menu,
+  MenuItem,
 } from "@mui/material";
 import { Responsive } from "react-grid-layout";
 import { supabase } from "../../supabaseClient";
@@ -20,6 +22,7 @@ import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import WbSunnyIcon from "@mui/icons-material/WbSunny";
 import ThumbUpIcon from "@mui/icons-material/ThumbUp";
 import NotificationsIcon from "@mui/icons-material/Notifications";
+import SettingsIcon from "@mui/icons-material/Settings";
 
 import { WidgetContainer } from "./WidgetContainer";
 import SummaryWidget from "./Library/SummaryWidget";
@@ -69,6 +72,12 @@ const GlobalStyles = () => (
     .layout.locked .react-resizable-handle {
       display: none !important;
     }
+    .layout .react-grid-item {
+      cursor: default;
+    }
+    .layout:not(.locked) .react-grid-item {
+      cursor: move;
+    }
   `}</style>
 );
 
@@ -76,6 +85,7 @@ interface DashboardWidgetsProps {
   user: any;
   vacations: any[];
   onSelectVacation: (vac: any) => void;
+  onNavigate?: (path: string) => void;
 }
 
 const DEFAULT_WIDGETS = [
@@ -123,6 +133,7 @@ export const DashboardWidgets: React.FC<DashboardWidgetsProps> = ({
   user,
   vacations,
   onSelectVacation,
+  onNavigate,
 }) => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [dbWidgets, setDbWidgets] = useState<any[]>(DEFAULT_WIDGETS);
@@ -188,13 +199,17 @@ export const DashboardWidgets: React.FC<DashboardWidgetsProps> = ({
         return;
       }
 
-      const normalizedWidgets = data.map((widget: any) => ({
-        ...widget,
-        layout: widget.layout ||
-          DEFAULT_WIDGETS.find(
-            (defaultWidget) => defaultWidget.widget_id === widget.widget_id,
-          )?.layout || { x: 0, y: 0, w: 4, h: 3 },
-      }));
+      const normalizedWidgets = data.map((widget: any) => {
+        const config = widget.config || { vacationId: "none" };
+        return {
+          ...widget,
+          config,
+          layout: widget.layout ||
+            DEFAULT_WIDGETS.find(
+              (defaultWidget) => defaultWidget.widget_id === widget.widget_id,
+            )?.layout || { x: 0, y: 0, w: 4, h: 3 },
+        };
+      });
 
       setDbWidgets(normalizedWidgets);
       setLayouts({
@@ -247,10 +262,12 @@ export const DashboardWidgets: React.FC<DashboardWidgetsProps> = ({
       setLoadingEvents(true);
       try {
         // 1. Get IDs of agenda items where the user is a participant
-        const { data: participations, error: partError } = await supabase
+        let query = supabase
           .from("agenda_participants")
           .select("agenda_id")
           .eq("profile_id", user.id);
+
+        const { data: participations, error: partError } = await query;
 
         if (partError) throw partError;
 
@@ -263,15 +280,19 @@ export const DashboardWidgets: React.FC<DashboardWidgetsProps> = ({
 
         // 2. Fetch those agenda items if they are in the future
         const today = new Date().toISOString().split("T")[0];
-        const { data: agendas, error: agendaError } = await supabase
+        let agendaQuery = supabase
           .from("agendas")
-          .select("*, locations(name)")
+          .select("*, locations(name, vacation_id)")
           .in("id", joinedAgendaIds)
           .gte("agenda_date", today)
           .order("agenda_date", { ascending: true })
           .limit(5);
 
+        const { data: agendas, error: agendaError } = await agendaQuery;
+
         if (agendaError) throw agendaError;
+
+        // Filter by vacation_id if config is present (handled in render if needed, but better here for data efficiency)
         setUpcomingEvents(agendas || []);
       } catch (err) {
         console.error("Error fetching personal itinerary:", err);
@@ -440,7 +461,8 @@ export const DashboardWidgets: React.FC<DashboardWidgetsProps> = ({
       widget_id: id,
       type,
       title: titles[type] || "New Widget",
-      layout: { x: 0, y: layouts.lg.length * 3, w: specs.minW, h: specs.minH },
+      layout: { x: 0, y: 0, w: specs.minW, h: specs.minH },
+      config: { vacationId: "none" },
     };
 
     setDbWidgets([...dbWidgets, newWidget]);
@@ -504,9 +526,12 @@ export const DashboardWidgets: React.FC<DashboardWidgetsProps> = ({
   const saveLayout = async () => {
     if (!user) return;
 
+    // Use the LG (Large) layout as the source of truth for saving.
+    // This ensures that layouts saved on smaller screens don't corrupt the master layout.
     const uniqueUpdates = new Map();
+    const layoutToSave = layouts.lg || [];
 
-    for (const item of layouts.lg || []) {
+    for (const item of layoutToSave) {
       if (!item?.i) {
         continue;
       }
@@ -519,6 +544,7 @@ export const DashboardWidgets: React.FC<DashboardWidgetsProps> = ({
         type: widget?.type || item.i,
         title: widget?.title || item.i,
         layout: { x: item.x, y: item.y, w: item.w, h: item.h },
+        config: widget?.config || { vacationId: "none" },
       });
     }
 
@@ -565,13 +591,76 @@ export const DashboardWidgets: React.FC<DashboardWidgetsProps> = ({
     }
   };
 
-  const renderWidget = (type: string) => {
+  const updateWidgetConfig = (id: string, newConfig: any) => {
+    setDbWidgets((prev) =>
+      prev.map((w) => (w.widget_id === id ? { ...w, config: newConfig } : w)),
+    );
+  };
+
+  const WidgetSettings = ({ id, config }: { id: string; config: any }) => {
+    const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+    const open = Boolean(anchorEl);
+    const safeConfig = config || {};
+
+    const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+      setAnchorEl(event.currentTarget);
+    };
+
+    const handleClose = () => {
+      setAnchorEl(null);
+    };
+
+    const handleSelectVacation = (vacationId: any) => {
+      updateWidgetConfig(id, { ...safeConfig, vacationId });
+      handleClose();
+    };
+
+    return (
+      <>
+        <IconButton
+          size="small"
+          onClick={handleClick}
+          sx={{ opacity: 0.5, "&:hover": { opacity: 1 } }}
+        >
+          <SettingsIcon fontSize="small" />
+        </IconButton>
+        <Menu anchorEl={anchorEl} open={open} onClose={handleClose}>
+          <MenuItem
+            onClick={() => handleSelectVacation("none")}
+            selected={
+              safeConfig.vacationId === "none" || !safeConfig.vacationId
+            }
+          >
+            <em>Auto (Nearest/Total)</em>
+          </MenuItem>
+          {myVacations.map((v) => (
+            <MenuItem
+              key={v.id}
+              onClick={() => handleSelectVacation(v.id)}
+              selected={safeConfig.vacationId === v.id}
+            >
+              {v.name}
+            </MenuItem>
+          ))}
+        </Menu>
+      </>
+    );
+  };
+
+  const renderWidget = (type: string, widgetId: string, config: any = {}) => {
+    const safeConfig = config || {};
+    const selectedVacation =
+      safeConfig.vacationId && safeConfig.vacationId !== "none"
+        ? myVacations.find((v) => v.id === safeConfig.vacationId)
+        : null;
+
     switch (type) {
       case "summary":
         return (
           <SummaryWidget
             activeTripsCount={activeTripsCount}
             destinationsCount={destinationsCount}
+            onExplore={() => onNavigate?.("/explore")}
           />
         );
       case "recent":
@@ -582,25 +671,63 @@ export const DashboardWidgets: React.FC<DashboardWidgetsProps> = ({
           />
         );
       case "itinerary":
+        const filteredEvents =
+          selectedVacation && upcomingEvents
+            ? upcomingEvents.filter(
+                (e) => e.locations?.vacation_id === selectedVacation.id,
+              )
+            : upcomingEvents;
         return (
           <UpcomingItineraryWidget
-            events={upcomingEvents}
+            events={filteredEvents}
             loading={loadingEvents}
+            onNavigate={() => onNavigate?.("/my-itinerary")}
           />
         );
       case "expenses":
-        return <BudgetOverviewWidget totalBudget={totalBudget} />;
+        return (
+          <BudgetOverviewWidget
+            totalBudget={
+              selectedVacation ? selectedVacation.total_budget : totalBudget
+            }
+            onExplore={() =>
+              (selectedVacation || nearestTrip) &&
+              onSelectVacation(selectedVacation || nearestTrip)
+            }
+          />
+        );
       case "weather":
-        return <WeatherWidget destination={nearestTrip?.destination || ""} />;
+        return (
+          <WeatherWidget
+            destination={
+              selectedVacation?.destination || nearestTrip?.destination || ""
+            }
+          />
+        );
       case "voting":
-        return <ActivityVotingWidget suggestions={suggestions} />;
+        return (
+          <ActivityVotingWidget
+            suggestions={suggestions}
+            onNavigate={(id) => {
+              onNavigate?.("/activity-suggestions");
+            }}
+          />
+        );
       case "notifications":
         return <NotificationWidget notifications={notifications} />;
       case "countdown":
         return (
           <CountdownWidget
-            startDate={nearestTrip?.start_date || ""}
-            destination={nearestTrip?.destination || ""}
+            startDate={
+              selectedVacation?.start_date || nearestTrip?.start_date || ""
+            }
+            destination={
+              selectedVacation?.destination || nearestTrip?.destination || ""
+            }
+            onClick={() =>
+              (selectedVacation || nearestTrip) &&
+              onSelectVacation(selectedVacation || nearestTrip)
+            }
           />
         );
       default:
@@ -666,6 +793,7 @@ export const DashboardWidgets: React.FC<DashboardWidgetsProps> = ({
         cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
         rowHeight={100}
         margin={[20, 20]}
+        containerPadding={[0, 0]}
         // @ts-ignore
         draggableHandle=".drag-handle"
         onLayoutChange={onLayoutChange}
@@ -677,6 +805,8 @@ export const DashboardWidgets: React.FC<DashboardWidgetsProps> = ({
         isResizable={isEditMode}
         // @ts-ignore
         resizeHandles={["se"]}
+        compactType="vertical"
+        preventCollision={false}
       >
         {dbWidgets.map((w) => (
           <div key={w.widget_id}>
@@ -687,8 +817,15 @@ export const DashboardWidgets: React.FC<DashboardWidgetsProps> = ({
                 isEditMode ? () => removeWidget(w.widget_id) : undefined
               }
               dragHandleProps={isEditMode ? { className: "drag-handle" } : {}}
+              settings={
+                ["expenses", "weather", "countdown", "itinerary"].includes(
+                  w.type,
+                ) ? (
+                  <WidgetSettings id={w.widget_id} config={w.config} />
+                ) : undefined
+              }
             >
-              {renderWidget(w.type)}
+              {renderWidget(w.type, w.widget_id, w.config)}
             </WidgetContainer>
           </div>
         ))}

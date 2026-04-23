@@ -4,10 +4,12 @@ import ThumbUpIcon from "@mui/icons-material/ThumbUp";
 
 interface ActivityVotingWidgetProps {
   suggestions: any[];
+  onNavigate?: (id: string) => void;
 }
 
 const ActivityVotingWidget: React.FC<ActivityVotingWidgetProps> = ({
   suggestions,
+  onNavigate,
 }) => {
   // Sort suggestions by vote count
   const topSuggestions = [...suggestions]
@@ -28,6 +30,7 @@ const ActivityVotingWidget: React.FC<ActivityVotingWidgetProps> = ({
         {topSuggestions.map((s) => (
           <Box
             key={s.id}
+            onClick={() => onNavigate?.(s.id)}
             sx={{
               p: 1.5,
               borderRadius: 3,
@@ -36,9 +39,18 @@ const ActivityVotingWidget: React.FC<ActivityVotingWidgetProps> = ({
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
+              cursor: onNavigate ? "pointer" : "default",
+              transition: "all 0.2s",
+              "&:hover": onNavigate
+                ? {
+                    bgcolor: "rgba(255,255,255,0.06)",
+                    borderColor: "#ca1d49",
+                    transform: "translateX(4px)",
+                  }
+                : {},
             }}
           >
-            <Box sx={{ maxWidth: "60%" }}>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography
                 variant="subtitle2"
                 noWrap
@@ -52,13 +64,24 @@ const ActivityVotingWidget: React.FC<ActivityVotingWidgetProps> = ({
               </Typography>
               <Typography
                 variant="caption"
-                sx={{ opacity: 0.5, display: "block" }}
+                noWrap
+                sx={{
+                  opacity: 0.5,
+                  display: "block",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
               >
                 {s.location}
               </Typography>
             </Box>
 
-            <Stack direction="row" spacing={1} alignItems="center">
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              sx={{ flexShrink: 0, ml: 1 }}
+            >
               <AvatarGroup
                 max={3}
                 sx={{

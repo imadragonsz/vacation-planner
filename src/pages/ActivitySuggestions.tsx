@@ -29,7 +29,7 @@ import AddIcon from "@mui/icons-material/Add";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
-import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
+import { TEXT_LIMITS } from "../utils/textLimits";
 import { supabase } from "../supabaseClient";
 import { useLocations } from "../hooks/useLocations";
 
@@ -181,9 +181,9 @@ const ActivitySuggestions: React.FC<ActivitySuggestionsProps> = ({
       const { error } = await supabase
         .from("activity_suggestions")
         .update({
-          title: newActivity.title,
-          description: newActivity.description,
-          location: newActivity.location || null,
+          title: newActivity.title.trim(),
+          description: newActivity.description.trim(),
+          location: newActivity.location?.trim() || null,
           vacation_id: newActivity.vacation_id,
         })
         .eq("id", editingActivity.id);
@@ -191,9 +191,9 @@ const ActivitySuggestions: React.FC<ActivitySuggestionsProps> = ({
       if (error) console.error("Error updating suggestion:", error);
     } else {
       const { error } = await supabase.from("activity_suggestions").insert({
-        title: newActivity.title,
-        description: newActivity.description,
-        location: newActivity.location || null,
+        title: newActivity.title.trim(),
+        description: newActivity.description.trim(),
+        location: newActivity.location?.trim() || null,
         vacation_id: newActivity.vacation_id,
         profile_id: user.id,
       });
@@ -280,17 +280,6 @@ const ActivitySuggestions: React.FC<ActivitySuggestionsProps> = ({
         >
           Suggest Activity
         </Button>
-        {isAdmin && onAdmin && (
-          <Button
-            variant="outlined"
-            fullWidth={{ xs: true, sm: false } as any}
-            startIcon={<AdminPanelSettingsIcon />}
-            onClick={onAdmin}
-            sx={{ borderRadius: 3, px: 3, height: 48 }}
-          >
-            Admin Panel
-          </Button>
-        )}
       </Stack>
 
       <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
@@ -706,6 +695,7 @@ const ActivitySuggestions: React.FC<ActivitySuggestionsProps> = ({
               onChange={(e) =>
                 setNewActivity({ ...newActivity, title: e.target.value })
               }
+              inputProps={{ maxLength: TEXT_LIMITS.SHORT }}
             />
             <FormControl fullWidth variant="outlined">
               <InputLabel>Location</InputLabel>
@@ -736,6 +726,7 @@ const ActivitySuggestions: React.FC<ActivitySuggestionsProps> = ({
               onChange={(e) =>
                 setNewActivity({ ...newActivity, description: e.target.value })
               }
+              inputProps={{ maxLength: TEXT_LIMITS.LONG }}
             />
           </Stack>
         </DialogContent>

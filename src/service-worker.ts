@@ -150,6 +150,24 @@ registerRoute(
   }),
 );
 
+// Cache internal binary assets (documents, attachments)
+// Use CacheFirst for documents as they are usually immutable once uploaded.
+registerRoute(
+  ({ url }) => url.pathname.startsWith("/uploads/"),
+  new CacheFirst({
+    cacheName: "uploaded-assets",
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 50,
+        maxAgeSeconds: 60 * 24 * 60 * 60, // 60 Days
+      }),
+      new CacheableResponsePlugin({
+        statuses: [0, 200],
+      }),
+    ],
+  }),
+);
+
 // Cache Stylesheets and Fonts from Google or other CDNs
 registerRoute(
   ({ url }) =>

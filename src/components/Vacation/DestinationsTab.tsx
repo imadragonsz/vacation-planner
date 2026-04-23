@@ -16,6 +16,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EventNoteIcon from "@mui/icons-material/EventNote";
 import AddIcon from "@mui/icons-material/Add";
+import { TEXT_LIMITS } from "../../utils/textLimits";
 import { DatePicker } from "@mui/x-date-pickers";
 import dayjs from "dayjs";
 import { VacationLocation } from "../../hooks/useLocations";
@@ -629,6 +630,7 @@ export const DestinationsTab: React.FC<DestinationsTabProps> = ({
                 required
                 fullWidth
                 variant="filled"
+                inputProps={{ maxLength: TEXT_LIMITS.SHORT }}
                 size={window.innerWidth < 600 ? "small" : "medium"}
                 sx={{
                   "& .MuiFilledInput-root": {
@@ -647,6 +649,7 @@ export const DestinationsTab: React.FC<DestinationsTabProps> = ({
                 onChange={(e) => setNewLocAddr(e.target.value)}
                 fullWidth
                 variant="filled"
+                inputProps={{ maxLength: TEXT_LIMITS.MEDIUM }}
                 size={window.innerWidth < 600 ? "small" : "medium"}
                 sx={{
                   "& .MuiFilledInput-root": {

@@ -449,6 +449,9 @@ const VacationMap = ({
   onSelectLocation?: (locId: number) => void;
   selectedLocationId?: number | null;
 }) => {
+  const theme = useTheme();
+  const isDarkMode = theme.palette.mode === "dark";
+
   // Center on selected location if available
   const selected = selectedLocationId
     ? locations.find((l) => l.id === selectedLocationId)
@@ -515,7 +518,11 @@ const VacationMap = ({
           bounds={bounds || undefined}
         />
         <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          url={
+            isDarkMode
+              ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+              : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+          }
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
         />
         {processedLocations.map((loc) => {

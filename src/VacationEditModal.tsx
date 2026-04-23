@@ -17,6 +17,7 @@ import {
 import { DatePicker } from "@mui/x-date-pickers";
 import dayjs from "dayjs";
 import PublicIcon from "@mui/icons-material/Public";
+import { TEXT_LIMITS } from "./utils/textLimits";
 
 interface VacationEditModalProps {
   open: boolean;
@@ -107,6 +108,7 @@ const VacationEditModal: React.FC<VacationEditModalProps> = ({
             onChange={(e) => setName(e.target.value)}
             required
             fullWidth
+            inputProps={{ maxLength: TEXT_LIMITS.SHORT }}
             sx={{
               "& .MuiOutlinedInput-root": {
                 bgcolor: (theme) =>
@@ -123,6 +125,7 @@ const VacationEditModal: React.FC<VacationEditModalProps> = ({
             onChange={(e) => setDestination(e.target.value)}
             required
             fullWidth
+            inputProps={{ maxLength: TEXT_LIMITS.MEDIUM }}
             sx={{
               "& .MuiOutlinedInput-root": {
                 bgcolor: (theme) =>

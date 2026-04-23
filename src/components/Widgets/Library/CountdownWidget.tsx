@@ -5,11 +5,13 @@ import TimerIcon from "@mui/icons-material/Timer";
 interface CountdownWidgetProps {
   startDate: string;
   destination: string;
+  onClick?: () => void;
 }
 
 const CountdownWidget: React.FC<CountdownWidgetProps> = ({
   startDate,
   destination,
+  onClick,
 }) => {
   const [timeLeft, setTimeLeft] = useState<{
     days: number;
@@ -22,7 +24,10 @@ const CountdownWidget: React.FC<CountdownWidgetProps> = ({
     if (!startDate) return;
 
     const calculateTimeLeft = () => {
-      const difference = +new Date(startDate) - +new Date();
+      // Use start of day for the start date to ensure full day counting
+      const targetDate = new Date(startDate);
+      targetDate.setHours(0, 0, 0, 0);
+      const difference = +targetDate - +new Date();
       let timeLeftValues = null;
 
       if (difference > 0) {
@@ -44,7 +49,15 @@ const CountdownWidget: React.FC<CountdownWidgetProps> = ({
 
   if (!timeLeft) {
     return (
-      <Box sx={{ p: 2, textAlign: "center", opacity: 0.5 }}>
+      <Box
+        onClick={onClick}
+        sx={{
+          p: 2,
+          textAlign: "center",
+          opacity: 0.5,
+          cursor: onClick ? "pointer" : "default",
+        }}
+      >
         <Typography variant="body2">
           Your trip to {destination} is already here!
         </Typography>
@@ -53,16 +66,33 @@ const CountdownWidget: React.FC<CountdownWidgetProps> = ({
   }
 
   return (
-    <Box>
+    <Box
+      onClick={onClick}
+      sx={{
+        cursor: onClick ? "pointer" : "default",
+        transition: "all 0.2s",
+        "&:hover": onClick
+          ? {
+              transform: "translateY(-4px)",
+              "& .countdown-icon": {
+                bgcolor: "rgba(202, 29, 73, 0.25)",
+                transform: "scale(1.1)",
+              },
+            }
+          : {},
+      }}
+    >
       <Stack spacing={1}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
           <Box
+            className="countdown-icon"
             sx={{
               p: 1.2,
               borderRadius: "12px",
               bgcolor: "rgba(202, 29, 73, 0.1)",
               color: "#ca1d49",
               display: "flex",
+              transition: "all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
             }}
           >
             <TimerIcon sx={{ fontSize: 20 }} />

@@ -16,6 +16,7 @@ import {
 } from "@mui/icons-material";
 import { supabase } from "./supabaseClient";
 import dayjs from "dayjs";
+import { TEXT_LIMITS, truncateText } from "./utils/textLimits";
 import { resolveAvatar } from "./utils/avatars";
 
 interface VacationListItemProps {
@@ -92,19 +93,20 @@ const VacationListItem: React.FC<VacationListItemProps> = React.memo(
           alignItems: "center",
           justifyContent: "space-between",
           padding: { xs: "14px 18px", md: "12px 16px" },
-          borderRadius: "16px",
+          borderRadius: "8px",
           transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
           mb: { xs: 1.5, sm: 1.5, md: 1 },
           cursor: "pointer",
           position: "relative",
-          bgcolor: selected ? "rgba(202, 29, 73, 0.1)" : "transparent",
+          bgcolor: selected ? "rgba(202, 29, 73, 0.15)" : "transparent",
           border: selected
-            ? "1px solid rgba(202, 29, 73, 0.3)"
-            : "1px solid transparent",
+            ? "1px solid rgba(202, 29, 73, 0.5)"
+            : "1px solid rgba(255,255,255,0.05)",
           "&:hover": {
             bgcolor: selected
-              ? "rgba(202, 29, 73, 0.15)"
+              ? "rgba(202, 29, 73, 0.2)"
               : "rgba(255, 255, 255, 0.05)",
+            boxShadow: "0 4px 15px rgba(0,0,0,0.3)",
             transform: selected ? "none" : "translateX(4px)",
             "& .vac-actions": { opacity: 1 },
           },
@@ -116,7 +118,7 @@ const VacationListItem: React.FC<VacationListItemProps> = React.memo(
             bottom: "20%",
             width: 3,
             bgcolor: "#ca1d49",
-            borderRadius: "0 4px 4px 0",
+            borderRadius: "0 2px 2px 0",
             opacity: selected ? 1 : 0,
             transition: "opacity 0.2s",
           },
@@ -138,7 +140,7 @@ const VacationListItem: React.FC<VacationListItemProps> = React.memo(
               mb: 0.2,
             }}
           >
-            {vacation.name}
+            {truncateText(vacation.name, TEXT_LIMITS.SHORT)}
           </Typography>
           <Box
             sx={{
@@ -305,8 +307,9 @@ const VacationListItem: React.FC<VacationListItemProps> = React.memo(
                 size="small"
                 onClick={() => onDelete && onDelete(vacation.id)}
                 sx={{
-                  color: "rgba(255,255,255,0.4)",
-                  "&:hover": { color: "#ff4444" },
+                  color: "text.secondary",
+                  opacity: 0.6,
+                  "&:hover": { color: "#ff4444", opacity: 1 },
                 }}
               >
                 <ArchiveIcon sx={{ fontSize: "1.1rem" }} />

@@ -5,11 +5,13 @@ import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 interface UpcomingItineraryWidgetProps {
   events: any[];
   loading?: boolean;
+  onNavigate?: () => void;
 }
 
 const UpcomingItineraryWidget: React.FC<UpcomingItineraryWidgetProps> = ({
   events,
   loading = false,
+  onNavigate,
 }) => {
   return (
     <Box sx={{ p: 0 }}>
@@ -30,6 +32,7 @@ const UpcomingItineraryWidget: React.FC<UpcomingItineraryWidgetProps> = ({
           events.map((event) => (
             <Box
               key={event.id}
+              onClick={onNavigate}
               sx={{
                 p: 1.5,
                 borderRadius: 3,
@@ -38,6 +41,15 @@ const UpcomingItineraryWidget: React.FC<UpcomingItineraryWidgetProps> = ({
                 display: "flex",
                 alignItems: "center",
                 gap: 2,
+                cursor: onNavigate ? "pointer" : "default",
+                transition: "all 0.2s",
+                "&:hover": onNavigate
+                  ? {
+                      bgcolor: "rgba(255,255,255,0.06)",
+                      borderColor: "#ca1d49",
+                      transform: "translateX(4px)",
+                    }
+                  : {},
               }}
             >
               <Box

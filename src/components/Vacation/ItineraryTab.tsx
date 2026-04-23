@@ -16,6 +16,7 @@ import TravelExploreIcon from "@mui/icons-material/TravelExplore";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import EventNoteIcon from "@mui/icons-material/EventNote";
 import EditIcon from "@mui/icons-material/Edit";
+import { TEXT_LIMITS } from "../../utils/textLimits";
 import { DatePicker, TimePicker } from "@mui/x-date-pickers";
 import {
   DndContext,
@@ -580,6 +581,7 @@ export const ItineraryTab: React.FC<ItineraryTabProps> = ({
                     required
                     fullWidth
                     variant="filled"
+                    inputProps={{ maxLength: TEXT_LIMITS.SHORT }}
                     sx={{
                       "& .MuiFilledInput-root": {
                         bgcolor: (theme) =>
@@ -596,6 +598,7 @@ export const ItineraryTab: React.FC<ItineraryTabProps> = ({
                     onChange={(e) => setNewItemAddr(e.target.value)}
                     fullWidth
                     variant="filled"
+                    inputProps={{ maxLength: TEXT_LIMITS.MEDIUM }}
                     sx={{
                       "& .MuiFilledInput-root": {
                         bgcolor: (theme) =>

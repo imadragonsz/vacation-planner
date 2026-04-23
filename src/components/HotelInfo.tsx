@@ -23,6 +23,7 @@ import EuroIcon from "@mui/icons-material/Euro";
 import EditIcon from "@mui/icons-material/Edit";
 import SaveIcon from "@mui/icons-material/Save";
 import CloseIcon from "@mui/icons-material/Close";
+import { TEXT_LIMITS } from "../utils/textLimits";
 import { Hotel } from "../hooks/useHotels";
 
 interface HotelInfoProps {
@@ -202,6 +203,7 @@ export const HotelInfo: React.FC<HotelInfoProps> = ({
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 variant="filled"
+                inputProps={{ maxLength: TEXT_LIMITS.SHORT }}
               />
               <TextField
                 label="Booking Link / URL"
@@ -210,6 +212,7 @@ export const HotelInfo: React.FC<HotelInfoProps> = ({
                 onChange={(e) => handleUrlChange(e.target.value)}
                 required
                 variant="filled"
+                inputProps={{ maxLength: 1000 }}
               />
             </Box>
             <Box
@@ -337,6 +340,7 @@ export const HotelInfo: React.FC<HotelInfoProps> = ({
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
                       variant="filled"
+                      inputProps={{ maxLength: TEXT_LIMITS.SHORT }}
                     />
                     <TextField
                       label="URL"
@@ -344,6 +348,7 @@ export const HotelInfo: React.FC<HotelInfoProps> = ({
                       value={editUrl}
                       onChange={(e) => setEditUrl(e.target.value)}
                       variant="filled"
+                      inputProps={{ maxLength: 1000 }}
                     />
                   </Box>
                   <Box

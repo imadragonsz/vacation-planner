@@ -23,6 +23,7 @@ import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import EuroIcon from "@mui/icons-material/Euro";
+import { TEXT_LIMITS } from "../utils/textLimits";
 import { supabase } from "../supabaseClient";
 import { resolveAvatar } from "../utils/avatars";
 
@@ -572,6 +573,7 @@ export default function TripExpenses({
               autoComplete="off"
               disabled={!canEdit}
               fullWidth
+              inputProps={{ maxLength: TEXT_LIMITS.SHORT }}
               InputProps={{
                 disableUnderline: true,
                 sx: {
@@ -1060,7 +1062,12 @@ export default function TripExpenses({
                                         sx={{
                                           width: 16,
                                           height: 16,
-                                          border: "1px solid #000",
+                                          border: (theme) =>
+                                            `1px solid ${
+                                              theme.palette.mode === "dark"
+                                                ? "#000"
+                                                : "rgba(0,0,0,0.1)"
+                                            }`,
                                           fontSize: "0.5rem",
                                         }}
                                       >

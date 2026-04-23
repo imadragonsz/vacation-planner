@@ -23,12 +23,15 @@ import ExploreIcon from "@mui/icons-material/Explore";
 import HomeIcon from "@mui/icons-material/Home";
 import SearchIcon from "@mui/icons-material/Search";
 import SettingsIcon from "@mui/icons-material/Settings";
+import LightModeIcon from "@mui/icons-material/LightMode";
+import DarkModeIcon from "@mui/icons-material/DarkMode";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import { Vacation } from "./vacation";
 import { HomeDashboard } from "./components/HomeDashboard";
 import { NotificationMenu } from "./components/NotificationMenu";
 import AdminPanel from "./components/AdminPanel";
 import { useLocation, useNavigate } from "react-router-dom";
+import { OfflineBanner } from "./components/OfflineBanner";
 
 const VacationDetails = lazy(() =>
   import("./pages/VacationDetails").then((m) => ({
@@ -52,16 +55,40 @@ type AuthMode = "login" | "register" | "reset";
 function App({ user, setUser }: AppProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const [themeMode] = useState<"dark" | "light">("dark");
+  const [themeMode, setThemeMode] = useState<"dark" | "light">(() => {
+    return (localStorage.getItem("theme") as "dark" | "light") || "dark";
+  });
+
+  const toggleTheme = () => {
+    const newMode = themeMode === "dark" ? "light" : "dark";
+    setThemeMode(newMode);
+    localStorage.setItem("theme", newMode);
+    document.documentElement.setAttribute("data-theme", newMode);
+  };
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", themeMode);
+  }, [themeMode]);
+
   const theme = React.useMemo(
     () =>
       createTheme({
         palette: {
           mode: themeMode,
-          primary: { main: "#ca1d49" },
-          background: { default: themeMode === "dark" ? "#000" : "#f5f5f7" },
+          primary: { main: "#e31b4d" },
+          background: {
+            default: themeMode === "dark" ? "#030304" : "#f5f5f7",
+            paper: themeMode === "dark" ? "#080809" : "#ffffff",
+          },
+          text: {
+            primary: themeMode === "dark" ? "#ffffff" : "#1a1a1a",
+            secondary:
+              themeMode === "dark"
+                ? "rgba(255, 255, 255, 0.7)"
+                : "rgba(0, 0, 0, 0.6)",
+          },
         },
-        shape: { borderRadius: 16 },
+        shape: { borderRadius: 12 },
         typography: {
           fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
           h1: { fontWeight: 950 },
@@ -69,10 +96,19 @@ function App({ user, setUser }: AppProps) {
           h3: { fontWeight: 950 },
         },
         components: {
+          MuiCssBaseline: {
+            styleOverrides: {
+              body: {
+                backgroundColor: themeMode === "dark" ? "#030304" : "#f5f5f7",
+                color: themeMode === "dark" ? "#ffffff" : "#1a1a1a",
+                transition: "background-color 0.3s ease, color 0.3s ease",
+              },
+            },
+          },
           MuiButton: {
             styleOverrides: {
               root: {
-                borderRadius: 12,
+                borderRadius: 6,
                 textTransform: "none",
                 fontWeight: 700,
               },
@@ -81,8 +117,10 @@ function App({ user, setUser }: AppProps) {
           MuiPaper: {
             styleOverrides: {
               root: {
-                borderRadius: 16,
+                borderRadius: 12,
                 backgroundImage: "none",
+                transition:
+                  "background-color 0.3s ease, border-color 0.3s ease",
               },
             },
           },
@@ -125,6 +163,31 @@ function App({ user, setUser }: AppProps) {
   const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showAddVacationModal, setShowAddVacationModal] = useState(false);
+
+  useEffect(() => {
+    const handleNavItinerary = () => {
+      setShowItinerary(true);
+      setSelectedVacation(null);
+      setShowAccount(false);
+      setShowAdmin(false);
+      setShowSuggestions(false);
+    };
+
+    const handleNavSuggestions = () => {
+      setShowSuggestions(true);
+      setSelectedVacation(null);
+      setShowAccount(false);
+      setShowItinerary(false);
+      setShowAdmin(false);
+    };
+
+    window.addEventListener("nav-itinerary", handleNavItinerary);
+    window.addEventListener("nav-suggestions", handleNavSuggestions);
+    return () => {
+      window.removeEventListener("nav-itinerary", handleNavItinerary);
+      window.removeEventListener("nav-suggestions", handleNavSuggestions);
+    };
+  }, []);
 
   useEffect(() => {
     if (location.pathname !== "/auth") {
@@ -387,6 +450,7 @@ function App({ user, setUser }: AppProps) {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
+      <OfflineBanner />
       <UserContext.Provider value={{ user }}>
         <Box
           sx={{
@@ -421,13 +485,18 @@ function App({ user, setUser }: AppProps) {
             <Box
               sx={{
                 width: 80,
-                bgcolor: "#000",
-                borderRight: "1px solid rgba(255,255,255,0.05)",
+                bgcolor: themeMode === "dark" ? "#000" : "#fff",
+                borderRight: "1px solid",
+                borderColor:
+                  themeMode === "dark"
+                    ? "rgba(255,255,255,0.05)"
+                    : "rgba(0,0,0,0.05)",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
                 py: 4,
                 gap: 4,
+                transition: "background-color 0.3s ease",
               }}
             >
               <Box
@@ -451,9 +520,15 @@ function App({ user, setUser }: AppProps) {
                 <Box
                   sx={{
                     color:
-                      !selectedVacation && !showAccount && !showItinerary
+                      !selectedVacation &&
+                      !showAccount &&
+                      !showItinerary &&
+                      !showSuggestions &&
+                      !showAdmin
                         ? "#ca1d49"
-                        : "rgba(255,255,255,0.4)",
+                        : themeMode === "dark"
+                          ? "rgba(255,255,255,0.4)"
+                          : "rgba(0,0,0,0.4)",
                     cursor: "pointer",
                   }}
                   onClick={handleHome}
@@ -464,7 +539,11 @@ function App({ user, setUser }: AppProps) {
               <Tooltip title="Global Itinerary" placement="right">
                 <Box
                   sx={{
-                    color: showItinerary ? "#ca1d49" : "rgba(255,255,255,0.4)",
+                    color: showItinerary
+                      ? "#ca1d49"
+                      : themeMode === "dark"
+                        ? "rgba(255,255,255,0.4)"
+                        : "rgba(0,0,0,0.4)",
                     cursor: "pointer",
                   }}
                   onClick={() => {
@@ -473,6 +552,7 @@ function App({ user, setUser }: AppProps) {
                       setSelectedVacation(null);
                       setShowAccount(false);
                       setShowAdmin(false);
+                      setShowSuggestions(false);
                     } else setShowAuthModal(true);
                   }}
                 >
@@ -484,7 +564,9 @@ function App({ user, setUser }: AppProps) {
                   sx={{
                     color: showSuggestions
                       ? "#ca1d49"
-                      : "rgba(255,255,255,0.4)",
+                      : themeMode === "dark"
+                        ? "rgba(255,255,255,0.4)"
+                        : "rgba(0,0,0,0.4)",
                     cursor: "pointer",
                   }}
                   onClick={() => {
@@ -504,7 +586,11 @@ function App({ user, setUser }: AppProps) {
                 <Tooltip title="Admin Panel" placement="right">
                   <Box
                     sx={{
-                      color: showAdmin ? "#ca1d49" : "rgba(255,255,255,0.4)",
+                      color: showAdmin
+                        ? "#ca1d49"
+                        : themeMode === "dark"
+                          ? "rgba(255,255,255,0.4)"
+                          : "rgba(0,0,0,0.4)",
                       cursor: "pointer",
                     }}
                     onClick={() => {
@@ -512,17 +598,42 @@ function App({ user, setUser }: AppProps) {
                       setSelectedVacation(null);
                       setShowAccount(false);
                       setShowItinerary(false);
+                      setShowSuggestions(false);
                     }}
                   >
                     <AdminPanelSettingsIcon sx={{ fontSize: 24 }} />
                   </Box>
                 </Tooltip>
               )}
-              <Tooltip title="Account Settings" placement="right">
+              <Tooltip title="Toggle Theme" placement="right">
                 <Box
                   sx={{
                     mt: "auto",
-                    color: showAccount ? "#ca1d49" : "rgba(255,255,255,0.4)",
+                    color:
+                      themeMode === "dark"
+                        ? "rgba(255,255,255,0.4)"
+                        : "rgba(0,0,0,0.4)",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                    "&:hover": { color: "#ca1d49", transform: "scale(1.1)" },
+                  }}
+                  onClick={toggleTheme}
+                >
+                  {themeMode === "dark" ? (
+                    <LightModeIcon sx={{ fontSize: 24 }} />
+                  ) : (
+                    <DarkModeIcon sx={{ fontSize: 24 }} />
+                  )}
+                </Box>
+              </Tooltip>
+              <Tooltip title="Account Settings" placement="right">
+                <Box
+                  sx={{
+                    color: showAccount
+                      ? "#ca1d49"
+                      : themeMode === "dark"
+                        ? "rgba(255,255,255,0.4)"
+                        : "rgba(0,0,0,0.4)",
                     cursor: "pointer",
                     transition: "all 0.2s",
                     "&:hover": { color: "#ca1d49", transform: "scale(1.1)" },
@@ -533,6 +644,7 @@ function App({ user, setUser }: AppProps) {
                       setSelectedVacation(null);
                       setShowItinerary(false);
                       setShowAdmin(false);
+                      setShowSuggestions(false);
                     } else setShowAuthModal(true);
                   }}
                 >
@@ -556,9 +668,16 @@ function App({ user, setUser }: AppProps) {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                bgcolor: "rgba(0,0,0,0.2)",
+                bgcolor:
+                  themeMode === "dark"
+                    ? "rgba(0,0,0,0.2)"
+                    : "rgba(255,255,255,0.7)",
                 backdropFilter: "blur(20px)",
-                borderBottom: "1px solid rgba(255,255,255,0.05)",
+                borderBottom: "1px solid",
+                borderColor:
+                  themeMode === "dark"
+                    ? "rgba(255,255,255,0.05)"
+                    : "rgba(0,0,0,0.05)",
                 zIndex: 1100,
               }}
             >
@@ -576,7 +695,10 @@ function App({ user, setUser }: AppProps) {
                   ),
                 }}
                 sx={{
-                  bgcolor: "rgba(255,255,255,0.03)",
+                  bgcolor:
+                    themeMode === "dark"
+                      ? "rgba(255,255,255,0.03)"
+                      : "rgba(0,0,0,0.03)",
                   px: 2,
                   py: 0.8,
                   borderRadius: 2,
@@ -605,8 +727,14 @@ function App({ user, setUser }: AppProps) {
                     onClick={() => supabase.auth.signOut()}
                     sx={{
                       height: 40,
-                      borderColor: "rgba(255,255,255,0.1)",
-                      color: "rgba(255,255,255,0.7)",
+                      borderColor:
+                        themeMode === "dark"
+                          ? "rgba(255,255,255,0.1)"
+                          : "rgba(0,0,0,0.1)",
+                      color:
+                        themeMode === "dark"
+                          ? "rgba(255,255,255,0.7)"
+                          : "rgba(0,0,0,0.7)",
                       "&:hover": {
                         borderColor: "primary.main",
                         bgcolor: "rgba(202, 29, 73, 0.1)",

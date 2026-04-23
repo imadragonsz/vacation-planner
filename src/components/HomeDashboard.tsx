@@ -82,7 +82,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
   const activeTripsCount = myVacations.filter((v) => !v.archived).length;
   const daysUntilNext = nextTrip
-    ? dayjs(nextTrip.start_date).diff(dayjs(), "day")
+    ? dayjs(nextTrip.start_date).diff(dayjs().startOf("day"), "day")
     : null;
 
   const showSearchResults =
@@ -396,21 +396,23 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               sx={{
                 p: { xs: 3, md: 5 },
                 mb: { xs: 4, md: 6 },
-                borderRadius: { xs: 5, md: 7 },
+                borderRadius: { xs: 2, md: 3 },
                 background: (theme) =>
                   theme.palette.mode === "dark"
-                    ? "linear-gradient(135deg, rgba(202, 29, 73, 0.4) 0%, rgba(202, 29, 73, 0.1) 100%)"
+                    ? "linear-gradient(135deg, rgba(202, 29, 73, 0.45) 0%, rgba(0, 0, 0, 0.8) 100%)"
                     : "linear-gradient(135deg, #ca1d49 0%, #a0173a 100%)",
                 color: "white",
                 border: "1px solid",
-                borderColor: "rgba(202, 29, 73, 0.3)",
+                borderColor: "rgba(202, 29, 73, 0.5)",
                 position: "relative",
                 overflow: "hidden",
                 cursor: "pointer",
                 transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+                boxShadow: "0 10px 40px rgba(0,0,0,0.5)",
                 "&:hover": {
-                  transform: "translateY(-6px)",
-                  boxShadow: "0 20px 40px rgba(202, 29, 73, 0.2)",
+                  transform: "translateY(-4px)",
+                  boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
+                  borderColor: "primary.main",
                 },
               }}
             >
@@ -624,6 +626,19 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               user={user}
               vacations={vacations}
               onSelectVacation={onSelectVacation}
+              onNavigate={(path) => {
+                if (path === "/explore") onActiveTabChange?.(1);
+                else if (path === "/my-itinerary") {
+                  // Direct navigation via window event if handle is in App.tsx
+                  window.dispatchEvent(
+                    new CustomEvent("nav-itinerary", { detail: true }),
+                  );
+                } else if (path === "/activity-suggestions") {
+                  window.dispatchEvent(
+                    new CustomEvent("nav-suggestions", { detail: true }),
+                  );
+                }
+              }}
             />
           </Box>
         </>

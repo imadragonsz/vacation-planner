@@ -15,6 +15,7 @@ import SecurityIcon from "@mui/icons-material/Security";
 import LogoutIcon from "@mui/icons-material/Logout";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 
+import { TEXT_LIMITS } from "../utils/textLimits";
 import { AVATAR_SLUGS, resolveAvatar } from "../utils/avatars";
 
 type AccountPageProps = {
@@ -53,19 +54,21 @@ export default function AccountPage({
 
   const handleUpdateProfile = async () => {
     setIsUpdating(true);
+    const trimmedDisplayName = displayName.trim();
     try {
       const { error: authError } = await supabase.auth.updateUser({
-        data: { display_name: displayName, avatar_url: avatarUrl },
+        data: { display_name: trimmedDisplayName, avatar_url: avatarUrl },
       });
       if (authError) throw authError;
 
       const { error: profileError } = await supabase.from("profiles").upsert({
         id: user.id,
-        display_name: displayName,
+        display_name: trimmedDisplayName,
         avatar_url: avatarUrl,
       });
       if (profileError) throw profileError;
 
+      setDisplayName(trimmedDisplayName);
       alert("Profile updated successfully!");
     } catch (error: any) {
       alert(error.message || "Error updating profile");
@@ -148,9 +151,15 @@ export default function AccountPage({
             elevation={0}
             sx={{
               p: 4,
-              bgcolor: "#0f0f11",
+              bgcolor: (theme) =>
+                theme.palette.mode === "dark" ? "#0f0f11" : "#fff",
               borderRadius: 3,
-              border: "1px solid rgba(255, 255, 255, 0.05)",
+              border: (theme) =>
+                `1px solid ${
+                  theme.palette.mode === "dark"
+                    ? "rgba(255, 255, 255, 0.05)"
+                    : "rgba(0, 0, 0, 0.05)"
+                }`,
             }}
           >
             <Box sx={{ display: "flex", alignItems: "center", gap: 3, mb: 4 }}>
@@ -169,14 +178,14 @@ export default function AccountPage({
               <Box>
                 <Typography
                   variant="h5"
-                  sx={{ fontWeight: 900, color: "white" }}
+                  sx={{ fontWeight: 900, color: "text.primary" }}
                 >
                   {displayName || "Explorer"}
                 </Typography>
                 <Typography
                   variant="body2"
                   sx={{
-                    color: "rgba(255,255,255,0.4)",
+                    color: "text.secondary",
                     fontWeight: 600,
                     mt: 0.5,
                   }}
@@ -186,7 +195,15 @@ export default function AccountPage({
               </Box>
             </Box>
 
-            <Divider sx={{ mb: 4, borderColor: "rgba(255,255,255,0.05)" }} />
+            <Divider
+              sx={{
+                mb: 4,
+                borderColor: (theme) =>
+                  theme.palette.mode === "dark"
+                    ? "rgba(255,255,255,0.05)"
+                    : "rgba(0,0,0,0.05)",
+              }}
+            />
 
             <Typography
               variant="overline"
@@ -248,7 +265,7 @@ export default function AccountPage({
                 display: "flex",
                 alignItems: "center",
                 gap: 1,
-                color: "white",
+                color: "text.primary",
                 opacity: 0.8,
               }}
             >
@@ -263,12 +280,16 @@ export default function AccountPage({
                 variant="filled"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
+                inputProps={{ maxLength: TEXT_LIMITS.SHORT }}
                 sx={{
                   "& .MuiFilledInput-root": {
-                    bgcolor: "rgba(255,255,255,0.03)",
-                    color: "white",
+                    bgcolor: (theme) =>
+                      theme.palette.mode === "dark"
+                        ? "rgba(255,255,255,0.03)"
+                        : "rgba(0,0,0,0.03)",
+                    color: "text.primary",
                   },
-                  "& .MuiInputLabel-root": { color: "rgba(255,255,255,0.5)" },
+                  "& .MuiInputLabel-root": { color: "text.secondary" },
                 }}
               />
               <Button
@@ -280,9 +301,16 @@ export default function AccountPage({
                   py: 1.5,
                   borderRadius: 1.5,
                   fontWeight: 900,
-                  bgcolor: "white",
-                  color: "black",
-                  "&:hover": { bgcolor: "rgba(255,255,255,0.8)" },
+                  bgcolor: (theme) =>
+                    theme.palette.mode === "dark" ? "white" : "primary.main",
+                  color: (theme) =>
+                    theme.palette.mode === "dark" ? "black" : "white",
+                  "&:hover": {
+                    bgcolor: (theme) =>
+                      theme.palette.mode === "dark"
+                        ? "rgba(255,255,255,0.8)"
+                        : "primary.dark",
+                  },
                 }}
               >
                 {isUpdating ? "Saving..." : "Save Profile Changes"}
@@ -297,9 +325,15 @@ export default function AccountPage({
             elevation={0}
             sx={{
               p: 4,
-              bgcolor: "#0f0f11",
+              bgcolor: (theme) =>
+                theme.palette.mode === "dark" ? "#0f0f11" : "#fff",
               borderRadius: 3,
-              border: "1px solid rgba(255, 255, 255, 0.05)",
+              border: (theme) =>
+                `1px solid ${
+                  theme.palette.mode === "dark"
+                    ? "rgba(255, 255, 255, 0.05)"
+                    : "rgba(0, 0, 0, 0.05)"
+                }`,
             }}
           >
             <Typography
@@ -315,7 +349,7 @@ export default function AccountPage({
                 gap: 1,
                 mt: 1,
                 mb: 3,
-                color: "white",
+                color: "text.primary",
               }}
             >
               <SecurityIcon fontSize="small" />
@@ -330,15 +364,16 @@ export default function AccountPage({
                   fullWidth
                   label="New Password"
                   type="password"
-                  variant="filled"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
+                  variant="outlined"
                   sx={{
-                    "& .MuiFilledInput-root": {
-                      bgcolor: "rgba(255,255,255,0.03)",
-                      color: "white",
+                    "& .MuiOutlinedInput-root": {
+                      bgcolor: (theme) =>
+                        theme.palette.mode === "dark"
+                          ? "rgba(255,255,255,0.03)"
+                          : "rgba(0,0,0,0.03)",
+                      color: "text.primary",
                     },
-                    "& .MuiInputLabel-root": { color: "rgba(255,255,255,0.5)" },
+                    "& .MuiInputLabel-root": { color: "text.secondary" },
                   }}
                 />
                 <Button

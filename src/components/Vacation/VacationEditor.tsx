@@ -12,6 +12,7 @@ import Grid from "@mui/material/Grid";
 import EditIcon from "@mui/icons-material/Edit";
 import SaveIcon from "@mui/icons-material/Save";
 import CloseIcon from "@mui/icons-material/Close";
+import { TEXT_LIMITS } from "../../utils/textLimits";
 import { Vacation } from "../../vacation";
 import { supabase } from "../../supabaseClient";
 
@@ -229,6 +230,7 @@ export const VacationEditor: React.FC<
               disabled={!editing}
               value={name}
               onChange={(e) => setName(e.target.value)}
+              inputProps={{ maxLength: TEXT_LIMITS.SHORT }}
             />
           </Grid>
           <Grid size={{ xs: 12, md: 6 }}>
@@ -238,6 +240,7 @@ export const VacationEditor: React.FC<
               disabled={!editing}
               value={destination}
               onChange={(e) => setDestination(e.target.value)}
+              inputProps={{ maxLength: TEXT_LIMITS.MEDIUM }}
             />
           </Grid>
           <Grid size={{ xs: 12, md: 6 }}>

@@ -60,9 +60,17 @@ export const MapTab: React.FC<MapTabProps> = ({
         sx={{
           p: 2,
           borderRadius: 4,
-          bgcolor: "rgba(255,255,255,0.03)",
+          bgcolor: (theme) =>
+            theme.palette.mode === "dark"
+              ? "rgba(255,255,255,0.03)"
+              : "rgba(0,0,0,0.02)",
           backdropFilter: "blur(10px)",
-          border: "1px solid rgba(255,255,255,0.05)",
+          border: (theme) =>
+            `1px solid ${
+              theme.palette.mode === "dark"
+                ? "rgba(255,255,255,0.05)"
+                : "rgba(0,0,0,0.05)"
+            }`,
           overflow: "hidden",
         }}
       >
@@ -85,7 +93,10 @@ export const MapTab: React.FC<MapTabProps> = ({
             height: { xs: 400, md: 500, lg: 550, xl: 600 },
             borderRadius: 3,
             overflow: "hidden",
-            bgcolor: "rgba(0,0,0,0.2)",
+            bgcolor: (theme) =>
+              theme.palette.mode === "dark"
+                ? "rgba(0,0,0,0.2)"
+                : "rgba(0,0,0,0.05)",
           }}
         >
           <Suspense

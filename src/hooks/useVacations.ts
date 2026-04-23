@@ -69,7 +69,7 @@ export function useVacations(fetchVacations: () => void, pushUndo: () => void) {
     const { error } = await supabase
       .from("vacations")
       .update({
-        name: vac.name,
+        name: vac.name?.trim(),
         start_date: vac.start_date,
         end_date: vac.end_date,
       })
@@ -135,8 +135,8 @@ export function useAddVacation(
     try {
       const { error } = await supabase.from("vacations").insert([
         {
-          name,
-          destination,
+          name: name.trim(),
+          destination: destination.trim(),
           start_date: startDate,
           end_date: endDate,
           archived: false,
