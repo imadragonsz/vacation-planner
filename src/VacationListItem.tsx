@@ -98,13 +98,13 @@ const VacationListItem: React.FC<VacationListItemProps> = React.memo(
           mb: { xs: 1.5, sm: 1.5, md: 1 },
           cursor: "pointer",
           position: "relative",
-          bgcolor: selected ? "rgba(202, 29, 73, 0.15)" : "transparent",
+          bgcolor: selected ? "rgba(139, 92, 246, 0.15)" : "transparent",
           border: selected
-            ? "1px solid rgba(202, 29, 73, 0.5)"
+            ? "1px solid rgba(139, 92, 246, 0.5)"
             : "1px solid rgba(255,255,255,0.05)",
           "&:hover": {
             bgcolor: selected
-              ? "rgba(202, 29, 73, 0.2)"
+              ? "rgba(139, 92, 246, 0.2)"
               : "rgba(255, 255, 255, 0.05)",
             boxShadow: "0 4px 15px rgba(0,0,0,0.3)",
             transform: selected ? "none" : "translateX(4px)",
@@ -117,7 +117,7 @@ const VacationListItem: React.FC<VacationListItemProps> = React.memo(
             top: "20%",
             bottom: "20%",
             width: 3,
-            bgcolor: "#ca1d49",
+            bgcolor: "#8B5CF6",
             borderRadius: "0 2px 2px 0",
             opacity: selected ? 1 : 0,
             transition: "opacity 0.2s",
@@ -132,7 +132,7 @@ const VacationListItem: React.FC<VacationListItemProps> = React.memo(
             variant="body1"
             sx={{
               fontWeight: selected ? 800 : 700,
-              color: selected ? "#ca1d49" : "white",
+              color: selected ? "#8B5CF6" : "white",
               fontSize: "0.95rem",
               whiteSpace: "nowrap",
               overflow: "hidden",

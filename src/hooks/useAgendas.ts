@@ -26,7 +26,11 @@ export function useAgendas(locationId: number) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (locationId) fetchAgendas(locationId);
+    if (locationId) {
+      fetchAgendas(locationId);
+    } else {
+      setAgendas([]);
+    }
 
     const handleOnline = () => {
       if (locationId) {

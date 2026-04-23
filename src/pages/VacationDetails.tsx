@@ -361,13 +361,17 @@ export function VacationDetails({
       setSelectedLocation(locations[0]);
       setHasInitialSelect(true);
     }
+  }, [locations, hasInitialSelect]);
+
+  // Handle outside changes to selectedLocation (e.g. from DestinationsTab)
+  useEffect(() => {
     if (
       selectedLocation &&
       !locations.find((l) => l.id === selectedLocation.id)
     ) {
       setSelectedLocation(null);
     }
-  }, [locations, selectedLocation, hasInitialSelect]);
+  }, [locations, selectedLocation]);
 
   const [confirmDeleteLocId, setConfirmDeleteLocId] = useState<number | null>(
     null,
@@ -734,9 +738,9 @@ export function VacationDetails({
                 zIndex: 0,
                 bgcolor: (theme) =>
                   theme.palette.mode === "dark"
-                    ? "rgba(202, 29, 73, 0.15)"
-                    : "rgba(202, 29, 73, 0.08)",
-                border: "1px solid rgba(202, 29, 73, 0.3)",
+                    ? "rgba(139, 92, 246, 0.15)"
+                    : "rgba(139, 92, 246, 0.08)",
+                border: "1px solid rgba(139, 92, 246, 0.3)",
               },
               "& .MuiTab-root": {
                 fontWeight: 900,
@@ -753,7 +757,7 @@ export function VacationDetails({
                 flex: { xs: 1, sm: "none" },
                 zIndex: 1,
                 "&.Mui-selected": {
-                  color: "#ca1d49",
+                  color: "#8B5CF6",
                 },
                 "& .MuiTab-iconWrapper": {
                   fontSize: "1.1rem",
@@ -782,7 +786,7 @@ export function VacationDetails({
       </Box>
 
       <Box sx={{ width: "100%", pb: 10 }}>
-        {detailsLoading ? (
+        {detailsLoading && !selectedLocation ? (
           <Box sx={{ mt: 4 }}>
             <Grid container spacing={4}>
               <Grid size={{ xs: 12, md: 8 }}>

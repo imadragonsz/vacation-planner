@@ -76,6 +76,7 @@ function App({ user, setUser }: AppProps) {
         palette: {
           mode: themeMode,
           primary: { main: "#e31b4d" },
+          secondary: { main: "#8B5CF6" },
           background: {
             default: themeMode === "dark" ? "#030304" : "#f5f5f7",
             paper: themeMode === "dark" ? "#080809" : "#ffffff",
@@ -715,7 +716,7 @@ function App({ user, setUser }: AppProps) {
                       px: 3,
                       height: 40,
                       fontWeight: 700,
-                      boxShadow: "0 4px 14px 0 rgba(202, 29, 73, 0.39)",
+                      boxShadow: "0 4px 14px 0 rgba(139, 92, 246, 0.39)",
                     }}
                   >
                     Log In
@@ -737,7 +738,7 @@ function App({ user, setUser }: AppProps) {
                           : "rgba(0,0,0,0.7)",
                       "&:hover": {
                         borderColor: "primary.main",
-                        bgcolor: "rgba(202, 29, 73, 0.1)",
+                        bgcolor: "rgba(139, 92, 246, 0.1)",
                       },
                     }}
                   >

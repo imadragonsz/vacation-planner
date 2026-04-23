@@ -63,6 +63,368 @@ interface ActivitySuggestionsProps {
   vacations: any[];
 }
 
+const ActivityItem: React.FC<{
+  item: ActivitySuggestion;
+  user: any;
+  isAdmin: boolean;
+  handleEditClick: (item: ActivitySuggestion) => void;
+  handleDeleteActivity: (id: string) => void;
+  handleVote: (
+    suggestionId: string,
+    currentVoteType: "like" | "dislike" | null,
+    targetVoteType: "like" | "dislike",
+  ) => void;
+}> = ({
+  item,
+  user,
+  isAdmin,
+  handleEditClick,
+  handleDeleteActivity,
+  handleVote,
+}) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const userVote = item.votes?.find((v) => v.profile_id === user?.id);
+  const currentVoteType = userVote?.vote_type || null;
+  const likeCount =
+    item.votes?.filter((v) => v.vote_type === "like").length || 0;
+  const dislikeCount =
+    item.votes?.filter((v) => v.vote_type === "dislike").length || 0;
+  const isCreator = item.profile_id === user?.id;
+
+  const isDescriptionLong = item.description.length > 200;
+  const displayDescription =
+    isDescriptionLong && !isExpanded
+      ? `${item.description.substring(0, 200)}...`
+      : item.description;
+
+  return (
+    <Paper
+      key={item.id}
+      sx={{
+        p: 0,
+        overflow: "hidden",
+        bgcolor: "rgba(255,255,255,0.03)",
+        border: "1px solid rgba(255,255,255,0.05)",
+        transition: "all 0.2s",
+        "&:hover": {
+          borderColor: "rgba(255,255,255,0.1)",
+          bgcolor: "rgba(255,255,255,0.05)",
+          transform: "translateY(-2px)",
+        },
+      }}
+    >
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: { xs: "column", sm: "row" },
+          p: 2,
+          gap: 2,
+        }}
+      >
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Stack
+            direction="row"
+            justifyContent="space-between"
+            alignItems="flex-start"
+          >
+            <Typography
+              variant="subtitle1"
+              sx={{
+                fontWeight: 800,
+                wordBreak: "break-word",
+                overflowWrap: "anywhere",
+              }}
+            >
+              {item.title}
+            </Typography>
+          </Stack>
+          <Typography
+            variant="body2"
+            sx={{
+              opacity: 0.7,
+              mt: 0.5,
+              wordBreak: "break-word",
+              overflowWrap: "anywhere",
+            }}
+          >
+            {displayDescription}
+          </Typography>
+          {isDescriptionLong && (
+            <Button
+              size="small"
+              onClick={() => setIsExpanded(!isExpanded)}
+              sx={{
+                p: 0,
+                minWidth: 0,
+                mt: 0.5,
+                textTransform: "none",
+                fontWeight: 700,
+                color: "primary.main",
+                "&:hover": { bgcolor: "transparent", opacity: 0.8 },
+              }}
+            >
+              {isExpanded ? "Show Less" : "Read More"}
+            </Button>
+          )}
+          <Stack
+            direction="row"
+            alignItems="center"
+            justifyContent="space-between"
+            sx={{ mt: 1.5 }}
+          >
+            <Stack direction="row" alignItems="center" spacing={1}>
+              <Avatar
+                src={item.profiles?.avatar_url}
+                sx={{ width: 20, height: 20 }}
+              />
+              <Typography variant="caption" sx={{ opacity: 0.4 }}>
+                Suggested by {item.profiles?.display_name || "Someone"}
+              </Typography>
+            </Stack>
+          </Stack>
+        </Box>
+
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: { xs: "row", sm: "column" },
+            alignItems: "center",
+            justifyContent: {
+              xs: "space-between",
+              sm: "center",
+            },
+            minWidth: { xs: "100%", sm: 100 },
+            pt: { xs: 1.5, sm: 0 },
+            borderTop: {
+              xs: "1px solid rgba(255,255,255,0.05)",
+              sm: "none",
+            },
+            gap: 1.5,
+            position: "relative",
+            pb: { sm: 4 }, // Add space at the bottom for absolute buttons
+          }}
+        >
+          <Stack direction="row" spacing={3} alignItems="flex-start">
+            {/* Likes Section */}
+            <Stack alignItems="center" spacing={0.5}>
+              <Stack alignItems="center">
+                <IconButton
+                  size="small"
+                  onClick={() => handleVote(item.id, currentVoteType, "like")}
+                  sx={{
+                    color:
+                      currentVoteType === "like"
+                        ? "primary.main"
+                        : "rgba(255,255,255,0.2)",
+                    bgcolor:
+                      currentVoteType === "like"
+                        ? "rgba(139, 92, 246, 0.1)"
+                        : "transparent",
+                  }}
+                >
+                  {currentVoteType === "like" ? (
+                    <ThumbUpIcon fontSize="small" />
+                  ) : (
+                    <ThumbUpOutlinedIcon fontSize="small" />
+                  )}
+                </IconButton>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    fontWeight: 900,
+                    opacity: likeCount > 0 ? 1 : 0.3,
+                  }}
+                >
+                  {likeCount}
+                </Typography>
+              </Stack>
+
+              {/* Upvoters List */}
+              {item.votes && item.votes.some((v) => v.vote_type === "like") && (
+                <Stack direction="row" spacing={-1}>
+                  {item.votes
+                    .filter((v) => v.vote_type === "like")
+                    .slice(0, 3)
+                    .map((vote) => (
+                      <Tooltip
+                        key={vote.profile_id}
+                        title={vote.profiles?.display_name || "Anonymous"}
+                      >
+                        <Avatar
+                          src={vote.profiles?.avatar_url}
+                          sx={{
+                            width: 18,
+                            height: 18,
+                            border: "1px solid #121212",
+                            bgcolor: "rgba(255,255,255,0.05)",
+                            fontSize: "0.5rem",
+                          }}
+                        >
+                          {vote.profiles?.display_name?.charAt(0)}
+                        </Avatar>
+                      </Tooltip>
+                    ))}
+                </Stack>
+              )}
+            </Stack>
+
+            {/* Dislikes Section */}
+            <Stack alignItems="center" spacing={0.5}>
+              <Stack alignItems="center">
+                <IconButton
+                  size="small"
+                  onClick={() =>
+                    handleVote(item.id, currentVoteType, "dislike")
+                  }
+                  sx={{
+                    color:
+                      currentVoteType === "dislike"
+                        ? "#546e7a"
+                        : "rgba(255,255,255,0.2)",
+                    bgcolor:
+                      currentVoteType === "dislike"
+                        ? "rgba(84, 110, 122, 0.1)"
+                        : "transparent",
+                  }}
+                >
+                  {currentVoteType === "dislike" ? (
+                    <ThumbDownIcon fontSize="small" />
+                  ) : (
+                    <ThumbDownOutlinedIcon fontSize="small" />
+                  )}
+                </IconButton>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    fontWeight: 900,
+                    opacity: dislikeCount > 0 ? 1 : 0.3,
+                  }}
+                >
+                  {dislikeCount}
+                </Typography>
+              </Stack>
+
+              {/* Downvoters List */}
+              {item.votes &&
+                item.votes.some((v) => v.vote_type === "dislike") && (
+                  <Stack direction="row" spacing={-1}>
+                    {item.votes
+                      .filter((v) => v.vote_type === "dislike")
+                      .slice(0, 3)
+                      .map((vote) => (
+                        <Tooltip
+                          key={vote.profile_id}
+                          title={vote.profiles?.display_name || "Anonymous"}
+                        >
+                          <Avatar
+                            src={vote.profiles?.avatar_url}
+                            sx={{
+                              width: 18,
+                              height: 18,
+                              border: "1px solid #121212",
+                              bgcolor: "rgba(255,255,255,0.05)",
+                              fontSize: "0.5rem",
+                            }}
+                          >
+                            {vote.profiles?.display_name?.charAt(0)}
+                          </Avatar>
+                        </Tooltip>
+                      ))}
+                  </Stack>
+                )}
+            </Stack>
+          </Stack>
+
+          {(isCreator || isAdmin) && (
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{
+                position: "absolute",
+                bottom: 0,
+                right: 0,
+                display: { xs: "none", sm: "flex" },
+                opacity: 0,
+                transition: "opacity 0.2s",
+                ".MuiPaper-root:hover &": { opacity: 0.5 },
+                "&:hover": { opacity: "1 !important" },
+                zIndex: 2,
+              }}
+            >
+              <IconButton
+                size="small"
+                onClick={() => handleEditClick(item)}
+                sx={{
+                  width: 32,
+                  height: 32,
+                  bgcolor: "rgba(255,255,255,0.05)",
+                  "&:hover": { bgcolor: "rgba(255,255,255,0.1)" },
+                }}
+              >
+                <EditIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+              <IconButton
+                size="small"
+                onClick={() => handleDeleteActivity(item.id)}
+                sx={{
+                  width: 32,
+                  height: 32,
+                  bgcolor: "rgba(255,255,255,0.05)",
+                  "&:hover": {
+                    color: "error.main",
+                    bgcolor: "rgba(211, 47, 47, 0.1)",
+                  },
+                }}
+              >
+                <DeleteIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Stack>
+          )}
+
+          {/* Mobile Edit/Delete Buttons */}
+          {(isCreator || isAdmin) && (
+            <Stack
+              direction="row"
+              spacing={2}
+              sx={{
+                display: { xs: "flex", sm: "none" },
+                mt: 2,
+                pt: 1,
+                borderTop: "1px solid rgba(255,255,255,0.05)",
+                width: "100%",
+                justifyContent: "flex-end",
+              }}
+            >
+              <IconButton
+                size="small"
+                onClick={() => handleEditClick(item)}
+                sx={{
+                  width: 32,
+                  height: 32,
+                  bgcolor: "rgba(255,255,255,0.05)",
+                }}
+              >
+                <EditIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+              <IconButton
+                size="small"
+                onClick={() => handleDeleteActivity(item.id)}
+                sx={{
+                  width: 32,
+                  height: 32,
+                  bgcolor: "rgba(255,255,255,0.05)",
+                }}
+              >
+                <DeleteIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Stack>
+          )}
+        </Box>
+      </Box>
+    </Paper>
+  );
+};
+
 const ActivitySuggestions: React.FC<ActivitySuggestionsProps> = ({
   user,
   onHome,
@@ -335,307 +697,17 @@ const ActivitySuggestions: React.FC<ActivitySuggestionsProps> = ({
                 {location}
               </Typography>
               <Stack spacing={2}>
-                {items.map((item) => {
-                  const userVote = item.votes?.find(
-                    (v) => v.profile_id === user?.id,
-                  );
-                  const currentVoteType = userVote?.vote_type || null;
-                  const likeCount =
-                    item.votes?.filter((v) => v.vote_type === "like").length ||
-                    0;
-                  const dislikeCount =
-                    item.votes?.filter((v) => v.vote_type === "dislike")
-                      .length || 0;
-                  const isCreator = item.profile_id === user?.id;
-
-                  return (
-                    <Paper
-                      key={item.id}
-                      sx={{
-                        p: 0,
-                        overflow: "hidden",
-                        bgcolor: "rgba(255,255,255,0.03)",
-                        border: "1px solid rgba(255,255,255,0.05)",
-                        transition: "all 0.2s",
-                        "&:hover": {
-                          borderColor: "rgba(255,255,255,0.1)",
-                          bgcolor: "rgba(255,255,255,0.05)",
-                          transform: "translateY(-2px)",
-                        },
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          display: "flex",
-                          flexDirection: { xs: "column", sm: "row" },
-                          p: 2,
-                          gap: 2,
-                        }}
-                      >
-                        <Box sx={{ flex: 1 }}>
-                          <Stack
-                            direction="row"
-                            justifyContent="space-between"
-                            alignItems="flex-start"
-                          >
-                            <Typography
-                              variant="subtitle1"
-                              sx={{ fontWeight: 800 }}
-                            >
-                              {item.title}
-                            </Typography>
-                          </Stack>
-                          <Typography
-                            variant="body2"
-                            sx={{ opacity: 0.7, mb: 1.5, mt: 0.5 }}
-                          >
-                            {item.description}
-                          </Typography>
-                          <Stack
-                            direction="row"
-                            alignItems="center"
-                            justifyContent="space-between"
-                          >
-                            <Stack
-                              direction="row"
-                              alignItems="center"
-                              spacing={1}
-                            >
-                              <Avatar
-                                src={item.profiles?.avatar_url}
-                                sx={{ width: 20, height: 20 }}
-                              />
-                              <Typography
-                                variant="caption"
-                                sx={{ opacity: 0.4 }}
-                              >
-                                Suggested by{" "}
-                                {item.profiles?.display_name || "Someone"}
-                              </Typography>
-                            </Stack>
-
-                            {(isCreator || isAdmin) && (
-                              <Stack
-                                direction="row"
-                                spacing={0.5}
-                                sx={{ mr: -1 }}
-                              >
-                                <IconButton
-                                  size="small"
-                                  onClick={() => handleEditClick(item)}
-                                  sx={{
-                                    width: 30,
-                                    height: 30,
-                                    opacity: 0.3,
-                                    bgcolor: "rgba(255,255,255,0.03)",
-                                    "&:hover": {
-                                      opacity: 1,
-                                      bgcolor: "rgba(255,255,255,0.08)",
-                                    },
-                                  }}
-                                >
-                                  <EditIcon sx={{ fontSize: 16 }} />
-                                </IconButton>
-                                <IconButton
-                                  size="small"
-                                  onClick={() => handleDeleteActivity(item.id)}
-                                  sx={{
-                                    width: 30,
-                                    height: 30,
-                                    opacity: 0.3,
-                                    bgcolor: "rgba(255,255,255,0.03)",
-                                    "&:hover": {
-                                      opacity: 1,
-                                      color: "error.main",
-                                      bgcolor: "rgba(211, 47, 47, 0.08)",
-                                    },
-                                  }}
-                                >
-                                  <DeleteIcon sx={{ fontSize: 16 }} />
-                                </IconButton>
-                              </Stack>
-                            )}
-                          </Stack>
-                        </Box>
-
-                        <Box
-                          sx={{
-                            display: "flex",
-                            flexDirection: { xs: "row", sm: "column" },
-                            alignItems: "center",
-                            justifyContent: {
-                              xs: "space-between",
-                              sm: "center",
-                            },
-                            minWidth: { xs: "100%", sm: 100 },
-                            pt: { xs: 1.5, sm: 0 },
-                            borderTop: {
-                              xs: "1px solid rgba(255,255,255,0.05)",
-                              sm: "none",
-                            },
-                            gap: 1.5,
-                          }}
-                        >
-                          <Stack
-                            direction="row"
-                            spacing={3}
-                            alignItems="flex-start"
-                          >
-                            {/* Likes Section */}
-                            <Stack alignItems="center" spacing={0.5}>
-                              <Stack alignItems="center">
-                                <IconButton
-                                  size="small"
-                                  onClick={() =>
-                                    handleVote(item.id, currentVoteType, "like")
-                                  }
-                                  sx={{
-                                    color:
-                                      currentVoteType === "like"
-                                        ? "primary.main"
-                                        : "rgba(255,255,255,0.2)",
-                                    bgcolor:
-                                      currentVoteType === "like"
-                                        ? "rgba(202, 29, 73, 0.1)"
-                                        : "transparent",
-                                  }}
-                                >
-                                  {currentVoteType === "like" ? (
-                                    <ThumbUpIcon fontSize="small" />
-                                  ) : (
-                                    <ThumbUpOutlinedIcon fontSize="small" />
-                                  )}
-                                </IconButton>
-                                <Typography
-                                  variant="caption"
-                                  sx={{
-                                    fontWeight: 900,
-                                    opacity: likeCount > 0 ? 1 : 0.3,
-                                  }}
-                                >
-                                  {likeCount}
-                                </Typography>
-                              </Stack>
-
-                              {/* Upvoters List */}
-                              {item.votes &&
-                                item.votes.some(
-                                  (v) => v.vote_type === "like",
-                                ) && (
-                                  <Stack direction="row" spacing={-1}>
-                                    {item.votes
-                                      .filter((v) => v.vote_type === "like")
-                                      .slice(0, 3)
-                                      .map((vote) => (
-                                        <Tooltip
-                                          key={vote.profile_id}
-                                          title={
-                                            vote.profiles?.display_name ||
-                                            "Anonymous"
-                                          }
-                                        >
-                                          <Avatar
-                                            src={vote.profiles?.avatar_url}
-                                            sx={{
-                                              width: 18,
-                                              height: 18,
-                                              border: "1px solid #121212",
-                                              bgcolor: "rgba(255,255,255,0.05)",
-                                              fontSize: "0.5rem",
-                                            }}
-                                          >
-                                            {vote.profiles?.display_name?.charAt(
-                                              0,
-                                            )}
-                                          </Avatar>
-                                        </Tooltip>
-                                      ))}
-                                  </Stack>
-                                )}
-                            </Stack>
-
-                            {/* Dislikes Section */}
-                            <Stack alignItems="center" spacing={0.5}>
-                              <Stack alignItems="center">
-                                <IconButton
-                                  size="small"
-                                  onClick={() =>
-                                    handleVote(
-                                      item.id,
-                                      currentVoteType,
-                                      "dislike",
-                                    )
-                                  }
-                                  sx={{
-                                    color:
-                                      currentVoteType === "dislike"
-                                        ? "#546e7a"
-                                        : "rgba(255,255,255,0.2)",
-                                    bgcolor:
-                                      currentVoteType === "dislike"
-                                        ? "rgba(84, 110, 122, 0.1)"
-                                        : "transparent",
-                                  }}
-                                >
-                                  {currentVoteType === "dislike" ? (
-                                    <ThumbDownIcon fontSize="small" />
-                                  ) : (
-                                    <ThumbDownOutlinedIcon fontSize="small" />
-                                  )}
-                                </IconButton>
-                                <Typography
-                                  variant="caption"
-                                  sx={{
-                                    fontWeight: 900,
-                                    opacity: dislikeCount > 0 ? 1 : 0.3,
-                                  }}
-                                >
-                                  {dislikeCount}
-                                </Typography>
-                              </Stack>
-
-                              {/* Downvoters List */}
-                              {item.votes &&
-                                item.votes.some(
-                                  (v) => v.vote_type === "dislike",
-                                ) && (
-                                  <Stack direction="row" spacing={-1}>
-                                    {item.votes
-                                      .filter((v) => v.vote_type === "dislike")
-                                      .slice(0, 3)
-                                      .map((vote) => (
-                                        <Tooltip
-                                          key={vote.profile_id}
-                                          title={
-                                            vote.profiles?.display_name ||
-                                            "Anonymous"
-                                          }
-                                        >
-                                          <Avatar
-                                            src={vote.profiles?.avatar_url}
-                                            sx={{
-                                              width: 18,
-                                              height: 18,
-                                              border: "1px solid #121212",
-                                              bgcolor: "rgba(255,255,255,0.05)",
-                                              fontSize: "0.5rem",
-                                            }}
-                                          >
-                                            {vote.profiles?.display_name?.charAt(
-                                              0,
-                                            )}
-                                          </Avatar>
-                                        </Tooltip>
-                                      ))}
-                                  </Stack>
-                                )}
-                            </Stack>
-                          </Stack>
-                        </Box>
-                      </Box>
-                    </Paper>
-                  );
-                })}
+                {items.map((item) => (
+                  <ActivityItem
+                    key={item.id}
+                    item={item}
+                    user={user}
+                    isAdmin={isAdmin}
+                    handleEditClick={handleEditClick}
+                    handleDeleteActivity={handleDeleteActivity}
+                    handleVote={handleVote}
+                  />
+                ))}
               </Stack>
             </Box>
           ))}
@@ -727,6 +799,7 @@ const ActivitySuggestions: React.FC<ActivitySuggestionsProps> = ({
                 setNewActivity({ ...newActivity, description: e.target.value })
               }
               inputProps={{ maxLength: TEXT_LIMITS.LONG }}
+              helperText={`${newActivity.description.length}/${TEXT_LIMITS.LONG}`}
             />
           </Stack>
         </DialogContent>
