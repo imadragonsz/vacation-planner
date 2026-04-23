@@ -341,14 +341,14 @@ const ActivityItem: React.FC<{
               spacing={1}
               sx={{
                 position: "absolute",
-                bottom: 0,
-                right: 0,
+                bottom: 8,
+                right: 8,
                 display: { xs: "none", sm: "flex" },
                 opacity: 0,
                 transition: "opacity 0.2s",
-                ".MuiPaper-root:hover &": { opacity: 0.5 },
+                "&": { opacity: 0.3 }, // Base visibility to help discoverability
                 "&:hover": { opacity: "1 !important" },
-                zIndex: 2,
+                zIndex: 10,
               }}
             >
               <IconButton
@@ -539,6 +539,45 @@ const ActivitySuggestions: React.FC<ActivitySuggestionsProps> = ({
   const handleAddActivity = async () => {
     if (!user || !newActivity.title || !newActivity.vacation_id) return;
 
+    if (newActivity.title.length > TEXT_LIMITS.SHORT) {
+      window.dispatchEvent(
+        new CustomEvent("show-toast", {
+          detail: {
+            message: `Title must be ${TEXT_LIMITS.SHORT} characters or less.`,
+            type: "error",
+          },
+        }),
+      );
+      return;
+    }
+
+    if (newActivity.description.length > TEXT_LIMITS.LONG) {
+      window.dispatchEvent(
+        new CustomEvent("show-toast", {
+          detail: {
+            message: `Description must be ${TEXT_LIMITS.LONG} characters or less.`,
+            type: "error",
+          },
+        }),
+      );
+      return;
+    }
+
+    if (
+      newActivity.location &&
+      newActivity.location.length > TEXT_LIMITS.MEDIUM
+    ) {
+      window.dispatchEvent(
+        new CustomEvent("show-toast", {
+          detail: {
+            message: `Location must be ${TEXT_LIMITS.MEDIUM} characters or less.`,
+            type: "error",
+          },
+        }),
+      );
+      return;
+    }
+
     if (editingActivity) {
       const { error } = await supabase
         .from("activity_suggestions")
@@ -569,7 +608,7 @@ const ActivitySuggestions: React.FC<ActivitySuggestionsProps> = ({
       title: "",
       description: "",
       location: "",
-      vacation_id: selectedVacationTab as number,
+      vacation_id: selectedVacationTab, // use selectedVacationTab directly
     });
     fetchSuggestions();
   };
@@ -577,12 +616,52 @@ const ActivitySuggestions: React.FC<ActivitySuggestionsProps> = ({
   const handleDeleteActivity = async (id: string) => {
     if (!window.confirm("Are you sure you want to delete this suggestion?"))
       return;
+
+    // First, delete any votes associated with this suggestion due to foreign key constraints
+    const { error: votesError } = await supabase
+      .from("suggestion_votes")
+      .delete()
+      .eq("suggestion_id", id);
+
+    if (votesError) {
+      console.error("Error deleting suggestion votes:", votesError);
+      window.dispatchEvent(
+        new CustomEvent("show-toast", {
+          detail: {
+            message: "Failed to delete votes. Suggestion remains.",
+            type: "error",
+          },
+        }),
+      );
+      return;
+    }
+
     const { error } = await supabase
       .from("activity_suggestions")
       .delete()
       .eq("id", id);
-    if (error) console.error("Error deleting suggestion:", error);
-    else fetchSuggestions();
+
+    if (error) {
+      console.error("Error deleting suggestion:", error);
+      window.dispatchEvent(
+        new CustomEvent("show-toast", {
+          detail: {
+            message: "Error deleting suggestion. Please try again.",
+            type: "error",
+          },
+        }),
+      );
+    } else {
+      window.dispatchEvent(
+        new CustomEvent("show-toast", {
+          detail: {
+            message: "Suggestion removed successfully.",
+            type: "success",
+          },
+        }),
+      );
+      fetchSuggestions();
+    }
   };
 
   const handleEditClick = (activity: ActivitySuggestion) => {
@@ -646,27 +725,44 @@ const ActivitySuggestions: React.FC<ActivitySuggestionsProps> = ({
 
       <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
         {selectedVacationTab !== null && (
-          <Tabs
-            value={selectedVacationTab}
-            onChange={(_e, newValue) => setSelectedVacationTab(newValue)}
-            variant="scrollable"
-            scrollButtons="auto"
+          <Paper
+            elevation={0}
             sx={{
-              "& .MuiTab-root": {
-                fontWeight: 700,
-                minWidth: 120,
-                color: "rgba(255,255,255,0.4)",
-                "&.Mui-selected": { color: "primary.main" },
-              },
-              "& .MuiTabs-indicator": {
-                backgroundColor: "primary.main",
-              },
+              position: "sticky",
+              top: 0,
+              zIndex: 10,
+              bgcolor: (theme) =>
+                theme.palette.mode === "dark"
+                  ? "rgba(10, 10, 10, 0.9)"
+                  : "rgba(255, 255, 255, 0.9)",
+              backdropFilter: "blur(20px)",
+              borderRadius: 4,
+              border: "1px solid rgba(255,255,255,0.05)",
+              overflow: "hidden",
             }}
           >
-            {vacations.map((v) => (
-              <Tab key={v.id} label={v.name} value={v.id} />
-            ))}
-          </Tabs>
+            <Tabs
+              value={selectedVacationTab}
+              onChange={(_e, newValue) => setSelectedVacationTab(newValue)}
+              variant="scrollable"
+              scrollButtons="auto"
+              sx={{
+                "& .MuiTab-root": {
+                  fontWeight: 700,
+                  minWidth: 120,
+                  color: "rgba(255,255,255,0.4)",
+                  "&.Mui-selected": { color: "primary.main" },
+                },
+                "& .MuiTabs-indicator": {
+                  backgroundColor: "primary.main",
+                },
+              }}
+            >
+              {vacations.map((v) => (
+                <Tab key={v.id} label={v.name} value={v.id} />
+              ))}
+            </Tabs>
+          </Paper>
         )}
       </Box>
 

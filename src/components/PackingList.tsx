@@ -121,6 +121,18 @@ export default function PackingList({
     e.preventDefault();
     if (!newItemName.trim() || !user) return;
 
+    if (newItemName.trim().length > TEXT_LIMITS.SHORT) {
+      window.dispatchEvent(
+        new CustomEvent("show-toast", {
+          detail: {
+            message: `Item name must be ${TEXT_LIMITS.SHORT} characters or less.`,
+            type: "error",
+          },
+        }),
+      );
+      return;
+    }
+
     const { error } = await supabase.from("packing_items").insert({
       vacation_id: vacationId,
       item_name: newItemName.trim(),

@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { supabase } from "../supabaseClient";
 import { Vacation } from "../vacation";
+import { TEXT_LIMITS } from "../utils/textLimits";
 
 export function useVacations(fetchVacations: () => void, pushUndo: () => void) {
   const [vacations, setVacations] = useState<Vacation[]>([]);
@@ -64,6 +65,32 @@ export function useVacations(fetchVacations: () => void, pushUndo: () => void) {
   );
 
   const updateVacation = async (vac: Vacation) => {
+    if (vac.name && vac.name.length > TEXT_LIMITS.SHORT) {
+      window.dispatchEvent(
+        new CustomEvent("show-toast", {
+          detail: {
+            message: `Trip name must be ${TEXT_LIMITS.SHORT} characters or less.`,
+            type: "error",
+          },
+        }),
+      );
+      setError(`Trip name must be ${TEXT_LIMITS.SHORT} characters or less.`);
+      return;
+    }
+
+    if (vac.destination && vac.destination.length > TEXT_LIMITS.MEDIUM) {
+      window.dispatchEvent(
+        new CustomEvent("show-toast", {
+          detail: {
+            message: `Destination must be ${TEXT_LIMITS.MEDIUM} characters or less.`,
+            type: "error",
+          },
+        }),
+      );
+      setError(`Destination must be ${TEXT_LIMITS.MEDIUM} characters or less.`);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     const { error } = await supabase
@@ -127,6 +154,30 @@ export function useAddVacation(
   }) {
     if (!name || !destination || !startDate || !endDate) {
       console.error("All fields are required to add a vacation.");
+      return;
+    }
+
+    if (name.length > TEXT_LIMITS.SHORT) {
+      window.dispatchEvent(
+        new CustomEvent("show-toast", {
+          detail: {
+            message: `Trip name must be ${TEXT_LIMITS.SHORT} characters or less.`,
+            type: "error",
+          },
+        }),
+      );
+      return;
+    }
+
+    if (destination.length > TEXT_LIMITS.MEDIUM) {
+      window.dispatchEvent(
+        new CustomEvent("show-toast", {
+          detail: {
+            message: `Destination must be ${TEXT_LIMITS.MEDIUM} characters or less.`,
+            type: "error",
+          },
+        }),
+      );
       return;
     }
 

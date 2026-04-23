@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
+import { TEXT_LIMITS } from "../utils/textLimits";
 
 export type VacationLocation = {
   id: number;
@@ -89,6 +90,30 @@ export function useLocations(vacationId: number) {
     start_date?: string,
     end_date?: string,
   ) {
+    if (name.length > TEXT_LIMITS.SHORT) {
+      window.dispatchEvent(
+        new CustomEvent("show-toast", {
+          detail: {
+            message: `Location name must be ${TEXT_LIMITS.SHORT} characters or less.`,
+            type: "error",
+          },
+        }),
+      );
+      return;
+    }
+
+    if (address && address.length > TEXT_LIMITS.MEDIUM) {
+      window.dispatchEvent(
+        new CustomEvent("show-toast", {
+          detail: {
+            message: `Address must be ${TEXT_LIMITS.MEDIUM} characters or less.`,
+            type: "error",
+          },
+        }),
+      );
+      return;
+    }
+
     setLoading(true);
     const { error } = await supabase.from("locations").insert([
       {
@@ -110,6 +135,30 @@ export function useLocations(vacationId: number) {
     start_date?: string,
     end_date?: string,
   ) {
+    if (name.length > TEXT_LIMITS.SHORT) {
+      window.dispatchEvent(
+        new CustomEvent("show-toast", {
+          detail: {
+            message: `Location name must be ${TEXT_LIMITS.SHORT} characters or less.`,
+            type: "error",
+          },
+        }),
+      );
+      return;
+    }
+
+    if (address && address.length > TEXT_LIMITS.MEDIUM) {
+      window.dispatchEvent(
+        new CustomEvent("show-toast", {
+          detail: {
+            message: `Address must be ${TEXT_LIMITS.MEDIUM} characters or less.`,
+            type: "error",
+          },
+        }),
+      );
+      return;
+    }
+
     // Optimistic update
     setLocations((prev) =>
       prev.map((loc) =>
@@ -140,12 +189,57 @@ export function useLocations(vacationId: number) {
   }
 
   async function removeLocation(id: number) {
-    // Optimistic update
-    setLocations((prev) => prev.filter((loc) => loc.id !== id));
+    if (
+      !window.confirm(
+        "Are you sure you want to delete this location? All agenda items linked to this location will be updated.",
+      )
+    )
+      return;
+
+    // We don't delete agenda items normally, just nullify their location_id
+    // But we need to ensure foreign keys don't block the deletion
+    const { error: updateError } = await supabase
+      .from("agendas")
+      .update({ location_id: null })
+      .eq("location_id", id);
+
+    if (updateError) {
+      console.error("Error unlinking agenda items:", updateError);
+      window.dispatchEvent(
+        new CustomEvent("show-toast", {
+          detail: {
+            message: "Failed to unlink activities. Location remains.",
+            type: "error",
+          },
+        }),
+      );
+      return;
+    }
 
     const { error } = await supabase.from("locations").delete().eq("id", id);
+
     if (error) {
+      console.error("Error deleting location:", error);
+      window.dispatchEvent(
+        new CustomEvent("show-toast", {
+          detail: {
+            message: "Error deleting location.",
+            type: "error",
+          },
+        }),
+      );
       fetchLocations(); // Revert on failure
+    } else {
+      window.dispatchEvent(
+        new CustomEvent("show-toast", {
+          detail: {
+            message: "Location removed.",
+            type: "success",
+          },
+        }),
+      );
+      setLocations((prev) => prev.filter((loc) => loc.id !== id));
+      setTimeout(() => fetchLocations(), 100);
     }
   }
 

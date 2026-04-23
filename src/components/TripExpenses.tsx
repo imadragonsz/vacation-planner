@@ -204,6 +204,18 @@ export default function TripExpenses({
     )
       return;
 
+    if (desc.trim().length > TEXT_LIMITS.SHORT) {
+      window.dispatchEvent(
+        new CustomEvent("show-toast", {
+          detail: {
+            message: `Description must be ${TEXT_LIMITS.SHORT} characters or less.`,
+            type: "error",
+          },
+        }),
+      );
+      return;
+    }
+
     const { data: newExpense, error } = await supabase
       .from("trip_expenses")
       .insert({

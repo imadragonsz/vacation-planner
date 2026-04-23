@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
+import { TEXT_LIMITS } from "../utils/textLimits";
 
 export type Hotel = {
   id: number;
@@ -40,6 +41,31 @@ export function useHotels(locationId: number | null) {
     notes?: string,
   ) {
     if (!locationId) return;
+
+    if (name.length > TEXT_LIMITS.SHORT) {
+      window.dispatchEvent(
+        new CustomEvent("show-toast", {
+          detail: {
+            message: `Hotel name must be ${TEXT_LIMITS.SHORT} characters or less.`,
+            type: "error",
+          },
+        }),
+      );
+      return;
+    }
+
+    if (notes && notes.length > TEXT_LIMITS.LONG) {
+      window.dispatchEvent(
+        new CustomEvent("show-toast", {
+          detail: {
+            message: `Notes must be ${TEXT_LIMITS.LONG} characters or less.`,
+            type: "error",
+          },
+        }),
+      );
+      return;
+    }
+
     const { error } = await supabase.from("hotels").insert([
       {
         location_id: locationId,

@@ -3,6 +3,7 @@ import { UserContext } from "./context";
 import { supabase } from "./supabaseClient";
 import "./styles/App.css";
 import { useVacations, useAddVacation } from "./hooks/useVacations";
+import Toast from "./components/Toast";
 import {
   CssBaseline,
   ThemeProvider,
@@ -164,6 +165,10 @@ function App({ user, setUser }: AppProps) {
   const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showAddVacationModal, setShowAddVacationModal] = useState(false);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "info" | "success" | "error";
+  } | null>(null);
 
   useEffect(() => {
     const handleNavItinerary = () => {
@@ -184,9 +189,18 @@ function App({ user, setUser }: AppProps) {
 
     window.addEventListener("nav-itinerary", handleNavItinerary);
     window.addEventListener("nav-suggestions", handleNavSuggestions);
+
+    const handleShowToast = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      setToast({ message: detail.message, type: detail.type });
+    };
+
+    window.addEventListener("show-toast", handleShowToast);
+
     return () => {
       window.removeEventListener("nav-itinerary", handleNavItinerary);
       window.removeEventListener("nav-suggestions", handleNavSuggestions);
+      window.removeEventListener("show-toast", handleShowToast);
     };
   }, []);
 
@@ -934,6 +948,13 @@ function App({ user, setUser }: AppProps) {
               errorMsg={null}
             />
           </Suspense>
+        )}
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast(null)}
+          />
         )}
       </UserContext.Provider>
     </ThemeProvider>

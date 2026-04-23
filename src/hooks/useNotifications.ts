@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../supabaseClient";
+import { TEXT_LIMITS } from "../utils/textLimits";
 
 export type NotificationType =
   | "join"
@@ -141,7 +142,10 @@ export async function createNotification(
       sender_id: senderId,
       vacation_id: vacationId,
       type,
-      message,
+      message:
+        message.length > TEXT_LIMITS.MEDIUM
+          ? message.substring(0, TEXT_LIMITS.MEDIUM - 3) + "..."
+          : message,
     },
   ]);
   return !error;

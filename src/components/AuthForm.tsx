@@ -3,6 +3,7 @@ import { supabase } from "../supabaseClient";
 import { TextField, Button, IconButton, Typography, Box } from "@mui/material";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
+import { TEXT_LIMITS } from "../utils/textLimits";
 
 interface AuthFormProps {
   open: boolean;
@@ -190,6 +191,7 @@ function AuthForm({
               required
               fullWidth
               size="medium"
+              inputProps={{ maxLength: TEXT_LIMITS.SHORT }}
             />
           )}
           {(mode === "login" || mode === "register") && (

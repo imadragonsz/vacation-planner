@@ -250,11 +250,54 @@ export function VacationDetails({
         "Are you sure you want to permanently delete this vacation? This action cannot be undone.",
       )
     ) {
+      const vacationId = vacation.id;
+
+      // Manually delete child records to handle FK constraints
+      const tablesToClean = [
+        "agendas",
+        "locations",
+        "activity_suggestions",
+        "housing",
+        "participants",
+        "expenses",
+        "documents",
+        "gallery",
+      ];
+
+      for (const table of tablesToClean) {
+        try {
+          await supabase.from(table).delete().eq("vacation_id", vacationId);
+        } catch (e) {
+          console.warn(`Could not clean ${table} table:`, e);
+        }
+      }
+
       const { error } = await supabase
         .from("vacations")
         .delete()
-        .eq("id", vacation.id);
-      if (!error && onRefresh) onRefresh();
+        .eq("id", vacationId);
+
+      if (error) {
+        console.error("Error deleting vacation:", error);
+        window.dispatchEvent(
+          new CustomEvent("show-toast", {
+            detail: {
+              message: "Failed to delete vacation.",
+              type: "error",
+            },
+          }),
+        );
+      } else {
+        window.dispatchEvent(
+          new CustomEvent("show-toast", {
+            detail: {
+              message: "Vacation deleted permanently.",
+              type: "success",
+            },
+          }),
+        );
+        if (onRefresh) onRefresh();
+      }
     }
   };
 
@@ -486,7 +529,35 @@ export function VacationDetails({
   }
 
   async function handleDeleteAgenda(id: number) {
-    await supabase.from("agendas").delete().eq("id", id);
+    try {
+      // Manual cleanup of linked tables
+      await Promise.all([
+        supabase.from("agenda_participants").delete().eq("agenda_id", id),
+        supabase.from("agenda_votes").delete().eq("agenda_id", id),
+      ]);
+
+      const { error } = await supabase.from("agendas").delete().eq("id", id);
+      if (error) throw error;
+
+      window.dispatchEvent(
+        new CustomEvent("show-toast", {
+          detail: {
+            message: "Item removed from itinerary.",
+            type: "success",
+          },
+        }),
+      );
+    } catch (error) {
+      console.error("Error deleting agenda item:", error);
+      window.dispatchEvent(
+        new CustomEvent("show-toast", {
+          detail: {
+            message: "Failed to remove item.",
+            type: "error",
+          },
+        }),
+      );
+    }
     setConfirmDeleteAgendaId(null);
   }
 

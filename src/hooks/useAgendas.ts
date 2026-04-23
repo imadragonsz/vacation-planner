@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
+import { TEXT_LIMITS } from "../utils/textLimits";
 
 export type Agenda = {
   id: number;
@@ -65,6 +66,30 @@ export function useAgendas(locationId: number) {
     type: string = "activity",
     price?: number,
   ) {
+    if (description.length > TEXT_LIMITS.MEDIUM) {
+      window.dispatchEvent(
+        new CustomEvent("show-toast", {
+          detail: {
+            message: `Description must be ${TEXT_LIMITS.MEDIUM} characters or less.`,
+            type: "error",
+          },
+        }),
+      );
+      return;
+    }
+
+    if (address && address.length > TEXT_LIMITS.MEDIUM) {
+      window.dispatchEvent(
+        new CustomEvent("show-toast", {
+          detail: {
+            message: `Address must be ${TEXT_LIMITS.MEDIUM} characters or less.`,
+            type: "error",
+          },
+        }),
+      );
+      return;
+    }
+
     setLoading(true);
     // Get max position for this date
     const maxPos = agendas
@@ -98,6 +123,30 @@ export function useAgendas(locationId: number) {
     type?: string,
     price?: number,
   ) {
+    if (description.length > TEXT_LIMITS.MEDIUM) {
+      window.dispatchEvent(
+        new CustomEvent("show-toast", {
+          detail: {
+            message: `Description must be ${TEXT_LIMITS.MEDIUM} characters or less.`,
+            type: "error",
+          },
+        }),
+      );
+      return;
+    }
+
+    if (address && address.length > TEXT_LIMITS.MEDIUM) {
+      window.dispatchEvent(
+        new CustomEvent("show-toast", {
+          detail: {
+            message: `Address must be ${TEXT_LIMITS.MEDIUM} characters or less.`,
+            type: "error",
+          },
+        }),
+      );
+      return;
+    }
+
     // Optimistic update
     setAgendas((prev) =>
       prev.map((a) =>

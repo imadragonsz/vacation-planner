@@ -65,19 +65,57 @@ const VacationListItem: React.FC<VacationListItemProps> = React.memo(
     const countdown = getCountdown();
     const isOwner = user && user.id === vacation.user_id;
 
-    const handleDelete = async (id: number) => {
+    const handleDelete = async (vacationId: number) => {
       if (
         window.confirm(
           "Are you sure you want to permanently delete this vacation? This action cannot be undone.",
         )
       ) {
+        // Manually delete child records to handle FK constraints
+        const tablesToClean = [
+          "agendas",
+          "locations",
+          "activity_suggestions",
+          "housing",
+          "participants",
+          "expenses",
+          "documents",
+          "gallery",
+        ];
+
+        for (const table of tablesToClean) {
+          try {
+            await supabase.from(table).delete().eq("vacation_id", vacationId);
+          } catch (e) {
+            console.warn(`Could not clean ${table} table:`, e);
+          }
+        }
+
         const { error } = await supabase
           .from("vacations")
           .delete()
-          .eq("id", id);
+          .eq("id", vacationId);
+
         if (error) {
           console.error("Error deleting vacation:", error);
+          window.dispatchEvent(
+            new CustomEvent("show-toast", {
+              detail: {
+                message:
+                  "Failed to delete vacation. Some dependencies might remain.",
+                type: "error",
+              },
+            }),
+          );
         } else {
+          window.dispatchEvent(
+            new CustomEvent("show-toast", {
+              detail: {
+                message: "Vacation deleted permanently.",
+                type: "success",
+              },
+            }),
+          );
           onDeletedPermanently?.();
         }
       }
