@@ -123,13 +123,17 @@ if (supabaseUrl && supabaseKey) {
   );
 }
 
+// Read allowed CORS origins from .env (comma-separated, required)
+if (!process.env.CORS_ORIGINS) {
+  console.error(
+    "FATAL: CORS_ORIGINS is not set in .env. Server will not start.",
+  );
+  process.exit(1);
+}
+const corsOrigins = process.env.CORS_ORIGINS.split(",").map((o) => o.trim());
 app.use(
   cors({
-    origin: [
-      "https://vacationplanner.imadragonsz.link",
-      "http://localhost:3000",
-      "http://localhost:5454",
-    ],
+    origin: corsOrigins,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
