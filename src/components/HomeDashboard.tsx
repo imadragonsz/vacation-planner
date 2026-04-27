@@ -100,8 +100,13 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         }}
       >
         <Box sx={{ mb: { xs: 4, md: 6 } }}>
-          <Skeleton variant="text" width="60%" height={60} sx={{ mb: 1 }} />
-          <Skeleton variant="text" width="40%" height={30} />
+          <Skeleton
+            variant="text"
+            width="300px"
+            height={60}
+            sx={{ mb: 1, maxWidth: "100%" }}
+          />
+          <Skeleton variant="text" width="200px" height={30} />
         </Box>
 
         <Skeleton

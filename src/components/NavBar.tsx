@@ -92,6 +92,7 @@ const NavBar: React.FC<NavBarProps> = React.memo(
                 color="inherit"
                 onClick={onBackToTrips}
                 size="large"
+                aria-label="back to trips"
                 sx={{
                   mr: 0.5,
                   width: 44,
@@ -127,7 +128,7 @@ const NavBar: React.FC<NavBarProps> = React.memo(
             </Box>
             <Typography
               variant="h6"
-              component="div"
+              component="h1"
               sx={{
                 fontWeight: 950,
                 letterSpacing: "-0.04em",

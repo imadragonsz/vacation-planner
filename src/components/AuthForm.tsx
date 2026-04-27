@@ -169,12 +169,12 @@ function AuthForm({
         <Box sx={{ mb: 2, textAlign: "center" }}>
           <Typography
             variant="h4"
-            component="h2"
+            component="h1"
             sx={{ fontWeight: 900, mb: 1 }}
           >
             {mode === "login" ? "Welcome Back" : "Create Account"}
           </Typography>
-          <Typography variant="body2" sx={{ opacity: 0.6 }}>
+          <Typography variant="body2" sx={{ opacity: 0.8 }}>
             {mode === "login"
               ? "Please enter your details to sign in"
               : "Sign up to start planning your trips"}

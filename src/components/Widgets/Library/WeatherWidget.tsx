@@ -42,6 +42,9 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({ destination }) => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    let mounted = true;
+    const controller = new AbortController();
+
     const fetchWeather = async () => {
       if (!destination) return;
       setLoading(true);
@@ -52,26 +55,41 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({ destination }) => {
         )}&format=json&limit=1`;
         const geoResults = await addToGeocodeQueue(searchUrl);
 
+        if (!mounted) return;
+
         if (geoResults && geoResults.length > 0) {
           const { lat, lon } = geoResults[0];
 
           // 2. Fetch weather using coordinates from Open-Meteo
           const response = await fetch(
             `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&daily=temperature_2m_max,temperature_2m_min,relative_humidity_2m_max&timezone=auto`,
+            { signal: controller.signal },
           );
           const result = await response.json();
-          setWeather(result);
+          if (mounted) {
+            setWeather(result);
+          }
         } else {
-          setWeather(null);
+          if (mounted) {
+            setWeather(null);
+          }
         }
-      } catch (err) {
+      } catch (err: any) {
+        if (err.name === "AbortError") return;
         console.error("Error fetching dashboard weather:", err);
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchWeather();
+
+    return () => {
+      mounted = false;
+      controller.abort();
+    };
   }, [destination]);
 
   if (loading) {

@@ -18,6 +18,7 @@ import { DatePicker } from "@mui/x-date-pickers";
 import dayjs from "dayjs";
 import PublicIcon from "@mui/icons-material/Public";
 import { TEXT_LIMITS } from "./utils/textLimits";
+import { sanitize } from "./utils/sanitization";
 
 interface VacationEditModalProps {
   open: boolean;
@@ -52,8 +53,8 @@ const VacationEditModal: React.FC<VacationEditModalProps> = ({
     e.preventDefault();
     onSave({
       ...vacation,
-      name,
-      destination,
+      name: sanitize(name),
+      destination: sanitize(destination),
       start_date: startDate,
       end_date: endDate,
       is_public: isPublic,

@@ -107,20 +107,38 @@ export default function TripExpenses({
       return;
     }
 
-    try {
-      // Use proxy endpoint to bypass CORS
-      const res = await fetch("/api/currency");
-      const data = await res.json();
-      if (data.rates) {
-        const newRates = { EUR: 1, ...data.rates };
-        cachedRates = newRates;
-        lastFetchTime = now;
-        setRates(newRates);
+    // List of reliable backup endpoints
+    const endpoints = [
+      "/api/currency", // Local Proxy
+      "https://api.frankfurter.app/latest?from=EUR", // Direct Frankfurter
+    ];
+
+    for (const url of endpoints) {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) continue;
+
+        const data = await res.json();
+        const ratesData = data.rates || (data.data && data.data.rates);
+
+        if (ratesData) {
+          const newRates = { EUR: 1, ...ratesData };
+          if (process.env.NODE_ENV !== "production") {
+            console.log(`[TripExpenses] Rates loaded from ${url}:`, newRates);
+          }
+          cachedRates = newRates;
+          lastFetchTime = now;
+          setRates(newRates);
+          return; // Success!
+        }
+      } catch (err) {
+        console.warn(`[TripExpenses] Failed to fetch from ${url}:`, err);
       }
-    } catch (err) {
-      console.error("Failed to fetch rates:", err);
-      // Fallback to cache even if expired if we have nothing else
-      if (cachedRates) setRates(cachedRates);
+    }
+
+    // If all fail, use previous cache or fallback
+    if (cachedRates) {
+      setRates(cachedRates);
     }
   };
 

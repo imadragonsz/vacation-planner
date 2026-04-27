@@ -23,20 +23,31 @@ import WbSunnyIcon from "@mui/icons-material/WbSunny";
 import ThumbUpIcon from "@mui/icons-material/ThumbUp";
 import NotificationsIcon from "@mui/icons-material/Notifications";
 import SettingsIcon from "@mui/icons-material/Settings";
-
-import { WidgetContainer } from "./WidgetContainer";
-import SummaryWidget from "./Library/SummaryWidget";
-import RecentExplorationsWidget from "./Library/RecentExplorationsWidget";
-import UpcomingItineraryWidget from "./Library/UpcomingItineraryWidget";
-import BudgetOverviewWidget from "./Library/BudgetOverviewWidget";
-import WeatherWidget from "./Library/WeatherWidget";
-import ActivityVotingWidget from "./Library/ActivityVotingWidget";
-import NotificationWidget from "./Library/NotificationWidget";
-import CountdownWidget from "./Library/CountdownWidget";
 import TimerIcon from "@mui/icons-material/Timer";
 
 import "/node_modules/react-grid-layout/css/styles.css";
 import "/node_modules/react-resizable/css/styles.css";
+
+import { WidgetContainer } from "./WidgetContainer";
+
+const SummaryWidget = React.lazy(() => import("./Library/SummaryWidget"));
+const RecentExplorationsWidget = React.lazy(
+  () => import("./Library/RecentExplorationsWidget"),
+);
+const UpcomingItineraryWidget = React.lazy(
+  () => import("./Library/UpcomingItineraryWidget"),
+);
+const BudgetOverviewWidget = React.lazy(
+  () => import("./Library/BudgetOverviewWidget"),
+);
+const WeatherWidget = React.lazy(() => import("./Library/WeatherWidget"));
+const ActivityVotingWidget = React.lazy(
+  () => import("./Library/ActivityVotingWidget"),
+);
+const NotificationWidget = React.lazy(
+  () => import("./Library/NotificationWidget"),
+);
+const CountdownWidget = React.lazy(() => import("./Library/CountdownWidget"));
 
 const GlobalStyles = () => (
   <style>{`
@@ -654,85 +665,113 @@ export const DashboardWidgets: React.FC<DashboardWidgetsProps> = ({
         ? myVacations.find((v) => v.id === safeConfig.vacationId)
         : null;
 
-    switch (type) {
-      case "summary":
-        return (
-          <SummaryWidget
-            activeTripsCount={activeTripsCount}
-            destinationsCount={destinationsCount}
-            onExplore={() => onNavigate?.("/explore")}
-          />
-        );
-      case "recent":
-        return (
-          <RecentExplorationsWidget
-            vacations={myVacations}
-            onSelectVacation={onSelectVacation}
-          />
-        );
-      case "itinerary":
-        const filteredEvents =
-          selectedVacation && upcomingEvents
-            ? upcomingEvents.filter(
-                (e) => e.locations?.vacation_id === selectedVacation.id,
-              )
-            : upcomingEvents;
-        return (
-          <UpcomingItineraryWidget
-            events={filteredEvents}
-            loading={loadingEvents}
-            onNavigate={() => onNavigate?.("/my-itinerary")}
-          />
-        );
-      case "expenses":
-        return (
-          <BudgetOverviewWidget
-            totalBudget={
-              selectedVacation ? selectedVacation.total_budget : totalBudget
-            }
-            onExplore={() =>
-              (selectedVacation || nearestTrip) &&
-              onSelectVacation(selectedVacation || nearestTrip)
-            }
-          />
-        );
-      case "weather":
-        return (
-          <WeatherWidget
-            destination={
-              selectedVacation?.destination || nearestTrip?.destination || ""
-            }
-          />
-        );
-      case "voting":
-        return (
-          <ActivityVotingWidget
-            suggestions={suggestions}
-            onNavigate={(id) => {
-              onNavigate?.("/activity-suggestions");
+    return (
+      <React.Suspense
+        fallback={
+          <Box
+            sx={{
+              p: 2,
+              height: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              opacity: 0.5,
             }}
-          />
-        );
-      case "notifications":
-        return <NotificationWidget notifications={notifications} />;
-      case "countdown":
-        return (
-          <CountdownWidget
-            startDate={
-              selectedVacation?.start_date || nearestTrip?.start_date || ""
-            }
-            destination={
-              selectedVacation?.destination || nearestTrip?.destination || ""
-            }
-            onClick={() =>
-              (selectedVacation || nearestTrip) &&
-              onSelectVacation(selectedVacation || nearestTrip)
-            }
-          />
-        );
-      default:
-        return null;
-    }
+          >
+            <Typography variant="caption">Loading widget...</Typography>
+          </Box>
+        }
+      >
+        {(() => {
+          switch (type) {
+            case "summary":
+              return (
+                <SummaryWidget
+                  activeTripsCount={activeTripsCount}
+                  destinationsCount={destinationsCount}
+                  onExplore={() => onNavigate?.("/explore")}
+                />
+              );
+            case "recent":
+              return (
+                <RecentExplorationsWidget
+                  vacations={myVacations}
+                  onSelectVacation={onSelectVacation}
+                />
+              );
+            case "itinerary":
+              const filteredEvents =
+                selectedVacation && upcomingEvents
+                  ? upcomingEvents.filter(
+                      (e) => e.locations?.vacation_id === selectedVacation.id,
+                    )
+                  : upcomingEvents;
+              return (
+                <UpcomingItineraryWidget
+                  events={filteredEvents}
+                  loading={loadingEvents}
+                  onNavigate={() => onNavigate?.("/my-itinerary")}
+                />
+              );
+            case "expenses":
+              const effectiveVacation = selectedVacation || nearestTrip;
+              return (
+                <BudgetOverviewWidget
+                  vacationId={effectiveVacation?.id}
+                  totalBudgetOverride={
+                    !effectiveVacation ? totalBudget : undefined
+                  }
+                  onExplore={() =>
+                    effectiveVacation && onSelectVacation(effectiveVacation)
+                  }
+                />
+              );
+            case "weather":
+              return (
+                <WeatherWidget
+                  destination={
+                    selectedVacation?.destination ||
+                    nearestTrip?.destination ||
+                    ""
+                  }
+                />
+              );
+            case "voting":
+              return (
+                <ActivityVotingWidget
+                  suggestions={suggestions}
+                  onNavigate={(id) => {
+                    onNavigate?.("/activity-suggestions");
+                  }}
+                />
+              );
+            case "notifications":
+              return <NotificationWidget notifications={notifications} />;
+            case "countdown":
+              return (
+                <CountdownWidget
+                  startDate={
+                    selectedVacation?.start_date ||
+                    nearestTrip?.start_date ||
+                    ""
+                  }
+                  destination={
+                    selectedVacation?.destination ||
+                    nearestTrip?.destination ||
+                    ""
+                  }
+                  onClick={() =>
+                    (selectedVacation || nearestTrip) &&
+                    onSelectVacation(selectedVacation || nearestTrip)
+                  }
+                />
+              );
+            default:
+              return null;
+          }
+        })()}
+      </React.Suspense>
+    );
   };
 
   return (

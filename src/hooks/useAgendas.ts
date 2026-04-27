@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { TEXT_LIMITS } from "../utils/textLimits";
+import { sanitize } from "../utils/sanitization";
 
 export type Agenda = {
   id: number;
@@ -35,7 +36,9 @@ export function useAgendas(locationId: number) {
 
     const handleOnline = () => {
       if (locationId) {
-        console.log("Internet restored, refetching agendas...");
+        if (process.env.NODE_ENV !== "production") {
+          console.log("Internet restored, refetching agendas...");
+        }
         fetchAgendas(locationId);
       }
     };
@@ -100,8 +103,8 @@ export function useAgendas(locationId: number) {
       {
         location_id: locationId,
         agenda_date,
-        description: description.trim(),
-        address: address?.trim() || null,
+        description: sanitize(description.trim()),
+        address: address ? sanitize(address.trim()) : null,
         Time: Time || null,
         type: type || "activity",
         position: maxPos + 1,
@@ -154,8 +157,8 @@ export function useAgendas(locationId: number) {
           ? {
               ...a,
               agenda_date,
-              description,
-              address,
+              description: sanitize(description),
+              address: address ? sanitize(address) : undefined,
               Time,
               type: type as any,
               price,
@@ -168,8 +171,8 @@ export function useAgendas(locationId: number) {
       .from("agendas")
       .update({
         agenda_date,
-        description: description.trim(),
-        address: address?.trim() || null,
+        description: sanitize(description.trim()),
+        address: address ? sanitize(address.trim()) : null,
         Time: Time || null,
         type: type || "activity",
         price: price !== undefined && price !== null ? price : null,

@@ -621,7 +621,8 @@ export function VacationDetails({
             </Typography>
           </Breadcrumbs>
           <Typography
-            variant="h3"
+            variant="h4"
+            component="h1"
             sx={{
               fontWeight: 950,
               fontSize: { xs: "1.85rem", sm: "2.25rem", md: "2.75rem" },

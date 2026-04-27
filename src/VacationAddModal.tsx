@@ -19,6 +19,7 @@ import { DatePicker } from "@mui/x-date-pickers";
 import dayjs from "dayjs";
 import PublicIcon from "@mui/icons-material/Public";
 import { TEXT_LIMITS } from "./utils/textLimits";
+import { sanitize } from "./utils/sanitization";
 
 interface VacationAddModalProps {
   open: boolean;
@@ -55,7 +56,13 @@ const VacationAddModal: React.FC<VacationAddModalProps> = ({
       return;
     }
 
-    onSubmit({ name, destination, startDate, endDate, isPublic });
+    onSubmit({
+      name: sanitize(name),
+      destination: sanitize(destination),
+      startDate,
+      endDate,
+      isPublic,
+    });
     onClose();
   };
 

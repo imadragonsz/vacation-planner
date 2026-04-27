@@ -86,8 +86,8 @@ function App({ user, setUser }: AppProps) {
             primary: themeMode === "dark" ? "#ffffff" : "#1a1a1a",
             secondary:
               themeMode === "dark"
-                ? "rgba(255, 255, 255, 0.7)"
-                : "rgba(0, 0, 0, 0.6)",
+                ? "rgba(255, 255, 255, 0.85)"
+                : "rgba(0, 0, 0, 0.75)",
           },
         },
         shape: { borderRadius: 12 },

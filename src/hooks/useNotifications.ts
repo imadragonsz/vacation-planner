@@ -74,7 +74,6 @@ export function useNotifications(userId: string | undefined) {
         },
       )
       .subscribe((status) => {
-        console.log("Realtime subscription status:", status);
         if (status === "TIMED_OUT" || status === "CLOSED") {
           console.warn("Realtime connection issues. Retrying in 10s...");
           setTimeout(() => {

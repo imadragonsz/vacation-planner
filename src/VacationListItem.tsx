@@ -193,6 +193,7 @@ const VacationListItem: React.FC<VacationListItemProps> = React.memo(
               variant="caption"
               sx={{
                 color: "text.secondary",
+                opacity: 0.85,
                 fontWeight: 600,
                 display: "block",
                 whiteSpace: "nowrap",

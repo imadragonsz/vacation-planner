@@ -25,6 +25,7 @@ import SaveIcon from "@mui/icons-material/Save";
 import CloseIcon from "@mui/icons-material/Close";
 import { TEXT_LIMITS } from "../utils/textLimits";
 import { Hotel } from "../hooks/useHotels";
+import { sanitize } from "../utils/sanitization";
 
 interface HotelInfoProps {
   hotels: Hotel[];
@@ -68,8 +69,8 @@ export const HotelInfo: React.FC<HotelInfoProps> = ({
     e.preventDefault();
     if (editingId) {
       onUpdate(editingId, {
-        name: editName,
-        url: editUrl,
+        name: sanitize(editName),
+        url: sanitize(editUrl),
         price: editPrice ? parseFloat(editPrice) : null,
         rating: editRating,
       });
@@ -116,8 +117,8 @@ export const HotelInfo: React.FC<HotelInfoProps> = ({
         newName.trim() || getHotelNameFromUrl(newUrl) || "Hotel Option";
 
       onAdd(
-        finalName,
-        newUrl,
+        sanitize(finalName),
+        sanitize(newUrl),
         newPrice ? parseFloat(newPrice) : undefined,
         newRating || undefined,
       );

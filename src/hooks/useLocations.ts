@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { TEXT_LIMITS } from "../utils/textLimits";
+import { sanitize } from "../utils/sanitization";
 
 export type VacationLocation = {
   id: number;
@@ -45,7 +46,9 @@ export function useLocations(vacationId: number) {
       .subscribe();
 
     const handleOnline = () => {
-      console.log("Internet restored, refetching locations...");
+      if (process.env.NODE_ENV !== "production") {
+        console.log("Internet restored, refetching locations...");
+      }
       fetchLocations();
     };
 
@@ -118,8 +121,8 @@ export function useLocations(vacationId: number) {
     const { error } = await supabase.from("locations").insert([
       {
         vacation_id: vacationId,
-        name: name.trim(),
-        address: address.trim(),
+        name: sanitize(name.trim()),
+        address: sanitize(address.trim()),
         start_date: start_date || null,
         end_date: end_date || null,
       },
@@ -165,8 +168,8 @@ export function useLocations(vacationId: number) {
         loc.id === id
           ? {
               ...loc,
-              name,
-              address,
+              name: sanitize(name),
+              address: sanitize(address),
               start_date: start_date || null,
               end_date: end_date || null,
             }
@@ -177,8 +180,8 @@ export function useLocations(vacationId: number) {
     const { error } = await supabase
       .from("locations")
       .update({
-        name: name.trim(),
-        address: address.trim(),
+        name: sanitize(name.trim()),
+        address: sanitize(address.trim()),
         start_date: start_date || null,
         end_date: end_date || null,
       })

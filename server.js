@@ -3,6 +3,7 @@ const path = require("path");
 const multer = require("multer");
 const sharp = require("sharp");
 const fs = require("fs");
+const fetch = require("node-fetch");
 
 // Optimize sharp for large images
 sharp.cache(false);
@@ -37,13 +38,65 @@ if (!process.env.REACT_APP_SUPABASE_URL) {
 
 const app = express();
 
+// Trust the first proxy (Nginx)
+app.set("trust proxy", 1);
+
+const rateLimit = require("express-rate-limit");
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per `window` (here, per 15 minutes)
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
+
+// Apply rate limiting to all API calls
+app.use("/api/", apiLimiter);
+
+const compression = require("compression");
+app.use(compression());
+
 const helmet = require("helmet");
 app.use(
   helmet({
-    contentSecurityPolicy: false, // Turn off CSP if it breaks your React app, but keep the rest
-    permissionsPolicy: false,
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "https://apis.google.com"],
+        scriptSrcAttr: ["'unsafe-inline'", "'unsafe-hashes'"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        imgSrc: [
+          "'self'",
+          "data:",
+          "blob:",
+          "https://*.supabase.co",
+          "https://*.openstreetmap.org",
+          "https://*.cartocdn.com",
+          "https://cdn.jsdelivr.net",
+          "https://raw.githubusercontent.com",
+        ],
+        connectSrc: ["*"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        objectSrc: ["'none'"],
+        upgradeInsecureRequests: [],
+      },
+    },
+    permissionsPolicy: {
+      features: {
+        geolocation: ["'self'"],
+      },
+    },
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
   }),
 );
+
+// Add security headers to prevent sniffing and framing
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("X-XSS-Protection", "1; mode=block");
+  next();
+});
 
 // Use 5001 for backend to avoid conflict with React dev server on 5454
 const PORT = process.env.BACKEND_PORT || 5001;
@@ -70,7 +123,18 @@ if (supabaseUrl && supabaseKey) {
   );
 }
 
-app.use(cors());
+app.use(
+  cors({
+    origin: [
+      "https://vacationplanner.imadragonsz.link",
+      "http://localhost:3000",
+      "http://localhost:5454",
+    ],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+  }),
+);
 app.use(express.json());
 
 // Ensure upload directories exist
@@ -93,15 +157,38 @@ const hasServiceWorker = fs.existsSync(
 );
 
 if (hasBuild) {
-  // Serve build output when running in production mode.
-  app.use(express.static(buildPath));
-  app.use("/static", express.static(path.join(buildPath, "static")));
+  // Serve static folder with explicit caching logic if needed,
+  // but most importantly ensuring it's before the SPA fallback
+  app.use(
+    "/static",
+    express.static(path.join(buildPath, "static"), {
+      immutable: true,
+      maxAge: "1y",
+      etag: true,
+      lastModified: true,
+    }),
+  );
+
+  // Serve build output for root files with caching
+  app.use(
+    express.static(buildPath, {
+      maxAge: "1d",
+      etag: true,
+      lastModified: true,
+      setHeaders: (res, path) => {
+        if (path.endsWith(".html")) {
+          res.setHeader("Cache-Control", "no-cache");
+        }
+      },
+    }),
+  );
 
   app.get("/service-worker.js", (req, res) => {
-    if (!hasServiceWorker) {
+    const swPath = path.join(buildPath, "service-worker.js");
+    if (!fs.existsSync(swPath)) {
       return res.status(404).json({ error: "service-worker.js not found" });
     }
-    res.sendFile(path.join(buildPath, "service-worker.js"));
+    res.sendFile(swPath);
   });
 }
 
@@ -138,7 +225,7 @@ app.delete("/api/admin/vacations/:id", async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error("Admin delete failed:", err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "An internal server error occurred." });
   }
 });
 
@@ -168,7 +255,7 @@ app.patch("/api/admin/vacations/:id", async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error("Admin update failed:", err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "An internal server error occurred." });
   }
 });
 
@@ -334,7 +421,7 @@ app.post("/api/gallery/upload", upload.array("images"), async (req, res) => {
     res.json({ success: true, count: results.length });
   } catch (err) {
     console.error("[Upload] Error:", err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "An error occurred during file upload." });
   }
 });
 
@@ -404,7 +491,9 @@ app.get("/api/gallery/:vacationId", async (req, res) => {
 
     if (error) {
       console.error("[Gallery] Supabase Query Error:", error);
-      return res.status(500).json({ error: error.message, details: error });
+      return res
+        .status(500)
+        .json({ error: "Failed to retrieve gallery items." });
     }
 
     console.log(
@@ -413,7 +502,7 @@ app.get("/api/gallery/:vacationId", async (req, res) => {
     res.json(data || []);
   } catch (err) {
     console.error("[Gallery] Server Catch Error:", err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "An internal server error occurred." });
   }
 });
 
@@ -542,7 +631,7 @@ app.delete("/api/gallery/:id", async (req, res) => {
     res.json({ success: true, deleted_id: data.id });
   } catch (err) {
     console.error("[Delete] Fatal Catch:", err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "An internal server error occurred." });
   }
 });
 
@@ -592,7 +681,9 @@ app.post("/api/documents/upload", upload.single("file"), async (req, res) => {
     res.json(data);
   } catch (err) {
     console.error("[Docs Upload] Error:", err);
-    res.status(500).json({ error: err.message });
+    res
+      .status(500)
+      .json({ error: "An error occurred during document upload." });
   }
 });
 
@@ -649,7 +740,7 @@ app.delete("/api/documents/:id", async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error("[Docs Delete] Error:", err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "An internal server error occurred." });
   }
 });
 
@@ -685,12 +776,20 @@ app.post("/api/admin/reset-user-password", async (req, res) => {
     res.json({ success: true, user: data.user.email });
   } catch (err) {
     console.error("[Admin Reset] Error:", err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "An internal server error occurred." });
   }
 });
 
 // Serve the React app for all unmatched routes
-app.get(/.*/, (req, res) => {
+app.get("*", (req, res) => {
+  // If we are looking for a static asset (like a chunk.js) but it's not found,
+  // do NOT serve index.html. Serve a 404.
+  if (req.path.includes("/static/")) {
+    // Log the missing static file for debugging
+    console.warn(`[Static] Missing file requested: ${req.path}`);
+    return res.status(404).send("Not found");
+  }
+
   if (req.path.startsWith("/api")) {
     return res.status(404).json({ error: `API route not found: ${req.path}` });
   }
